@@ -1,11 +1,6 @@
-import Phaser from 'phaser';
-import { GAME_CONFIG } from './config/game-config';
-import { BootScene } from './scenes/BootScene';
-import { PreloadScene } from './scenes/PreloadScene';
+import { createGame } from './index';
 
-// Fluxo de Scenes (design.md §2): Boot → Preload → Game → GameOver.
-// GameScene e GameOverScene entram nas tasks T04-04+ e T04-13.
-const game = new Phaser.Game({ ...GAME_CONFIG, scene: [BootScene, PreloadScene] });
-
-// O GameShell (React) importa este default para montar/desmontar o jogo (design.md §6)
-export default game;
+// Dev harness: roda o jogo STANDALONE (npm run dev -w game) durante o
+// desenvolvimento das tasks de gameplay, sem precisar do shell React.
+// Em produção, quem monta o jogo é o GameShell (/web) via createGame().
+createGame('game-container');
