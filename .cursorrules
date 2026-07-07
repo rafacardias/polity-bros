@@ -1,0 +1,97 @@
+# Polity Bros / Polity Games — Cursor Rules
+
+## Contexto do Projeto
+Jogo web desenvolvido com Phaser 3, TypeScript e Vite, com backend em Supabase
+(Postgres + Auth + Edge Functions em Deno). Estrutura monorepo:
+- /game  → cliente do jogo (Phaser + Vite)
+- /web   → site/landing/dashboard
+- /supabase → migrations, Edge Functions, config
+- /assets-raw → assets fonte (não versionados no deploy)
+- /docs  → documentação
+
+Momento atual: foco em vertical slice / MVP. Priorize entregar fatias
+funcionais de ponta a ponta antes de generalizar ou otimizar.
+
+## Filosofia de Trabalho
+- O dono do projeto NÃO é desenvolvedor técnico. O tooling deve AJUDAR,
+  não atrapalhar. Prefira soluções simples, explícitas e fáceis de manter.
+- Explique decisões não óbvias em linguagem clara quando relevante.
+- Evite over-engineering. Simplicidade > abstração prematura.
+
+## Stack & Versões
+- Gerenciador de pacotes OFICIAL: **npm** (use package-lock.json).
+  Não use pnpm ou yarn; não gere lockfiles de outros gerenciadores.
+- TypeScript (strict mode)
+- Phaser 3
+- Vite (bundler)
+- Supabase (Postgres, Auth, RLS, Edge Functions em Deno)
+- Deploy: Vercel (front) + Supabase (backend)
+
+## Princípios Gerais
+- Escreva código TypeScript idiomático e type-safe. Evite `any`;
+  prefira tipos explícitos ou inferência clara.
+- Prefira funções puras e módulos pequenos e coesos.
+- Nomeie variáveis e funções de forma descritiva, em inglês.
+- Comentários em português são aceitos para explicar regras de negócio.
+- Não introduza dependências novas sem necessidade clara.
+
+## TypeScript
+- Ative e respeite `strict`. Sem `@ts-ignore` sem justificativa.
+- Use `type` para shapes/unions e `interface` para contratos extensíveis.
+- Evite asserções de tipo (`as`) exceto quando inevitável e comentado.
+- Prefira `const` e imutabilidade.
+
+## Lint & Formatação
+- ESLint + Prettier são OBRIGATÓRIOS quando configurados no projeto.
+- Setup deve ser MÍNIMO e simples: config base recomendada, sem excesso
+  de regras ou plugins que gerem ruído.
+- Não desative regras individualmente sem justificativa em comentário.
+- Prettier cuida do estilo; não discuta formatação manualmente.
+
+## Testes (leve e progressivo)
+- Framework de unidade: **Vitest**.
+- PRIORIZE testes unitários de lógica pura (systems, helpers, cálculos
+  de gameplay, regras de negócio). É onde testes dão mais retorno.
+- NÃO exija cobertura alta no início. Cobertura cresce com o projeto.
+- NÃO bloqueie o MVP por falta de testes E2E.
+- Playwright (E2E) é OPCIONAL / pós-MVP. Introduza só quando fizer sentido.
+- Flows críticos podem ser validados manualmente (inclusive no celular)
+  enquanto o setup automatizado amadurece.
+- Ao escrever lógica nova de gameplay, prefira extraí-la em funções puras
+  testáveis, separadas de Phaser/DOM.
+
+## Phaser / Jogo
+- Organize por Scenes; mantenha lógica de gameplay fora de arquivos de UI.
+- Centralize constantes de tuning (velocidade, física, cores) em config.
+- Carregue assets via chaves nomeadas; evite strings mágicas repetidas.
+- Cuidado com memory leaks: remova listeners/timers ao destruir scenes.
+- Isole regras de negócio da engine para facilitar testes unitários.
+
+## Supabase
+- NUNCA exponha a service role key no client. Só em Edge Functions.
+- Toda tabela sensível DEVE ter Row Level Security (RLS) habilitada.
+- Chaves públicas usam prefixo VITE_; segredos de servidor, não.
+- Edge Functions em Deno: use imports por URL com versão fixa.
+- Escreva migrations idempotentes e reversíveis quando possível.
+
+## Segurança
+- Nunca commite segredos. Use .env (ignorado) e supabase secrets.
+- Valide e sanitize toda entrada vinda do client antes de persistir.
+- Não confie em validação apenas no front; reforce no backend/RLS.
+
+## Estilo & Estrutura
+- Um componente/scene/função por arquivo quando fizer sentido.
+- Imports ordenados: libs externas → internas → relativos.
+- Evite arquivos gigantes; extraia helpers para /utils.
+- Siga o ESLint/Prettier do projeto; não desative regras sem motivo.
+
+## Git & Commits
+- Mensagens de commit no imperativo e concisas (ex: "add player jump").
+- Não commite node_modules, dist, .env ou assets-raw.
+
+## O que EVITAR
+- Over-engineering e abstrações prematuras.
+- Código morto, console.logs esquecidos, TODOs sem contexto.
+- Duplicação de lógica; prefira reutilizar helpers existentes.
+- Mudanças amplas não solicitadas ("refactor tudo").
+- Bloquear entregas do MVP por perfeccionismo de tooling/testes.

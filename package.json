@@ -1,0 +1,31 @@
+{
+  "name": "polity-games",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "game",
+    "web"
+  ],
+  "scripts": {
+    "dev:game": "npm run dev -w game",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w game && npm run build -w web",
+    "lint": "eslint \"{game,web,supabase}/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"{game,web,supabase}/**/*.{ts,tsx}\" --fix",
+    "typecheck": "npm run typecheck -w game && npm run typecheck -w web",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check ."
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.63.0",
+    "@typescript-eslint/parser": "^8.63.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.4"
+  }
+}

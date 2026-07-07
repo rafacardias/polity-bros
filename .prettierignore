@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+.vite/
+.vercel/
+coverage/
+assets-raw/
+package-lock.json
+supabase/.temp/
+supabase/.branches/
