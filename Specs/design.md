@@ -367,19 +367,19 @@ export function onGameEvent(evt: string, cb: (d: any) => void): () => void {
 | game:gameover | Phaser → React | { score, votes, distance } |
 
 // components/GameShell.tsx — monta Phaser em DIV (NUNCA iframe)
-import { useEffect, useRef } from 'react';
-import { GAME_EVENTS, onGameEvent } from '../lib/game-events';
+// `game` é um PACOTE do monorepo (npm workspaces): dependência explícita no
+// package.json do /web, consumido via factory createGame() — o React controla
+// o ciclo de vida (cria no mount, destrói no unmount; instância nova a cada
+// montagem, o que torna o restart/remontagem seguros).
+import { useEffect } from 'react';
+import { createGame, GAME_EVENTS, onGameEvent } from 'game';
 import { submitScore } from '../lib/scores';
 
 export function GameShell() {
-  const gameRef = useRef<import('phaser').Game | null>(null);
   useEffect(() => {
-    let unsub: (() => void)[] = [];
-    import('../../game/src/main').then(({ default: game }) => {
-      gameRef.current = game;
-      unsub.push(onGameEvent(GAME_EVENTS.GAME_OVER, (d) => submitScore(d)));
-    });
-    return () => { unsub.forEach(fn => fn()); gameRef.current?.destroy(true); };
+    const game = createGame('game-container');
+    const unsub = onGameEvent(GAME_EVENTS.GAME_OVER, (d) => submitScore(d));
+    return () => { unsub(); game.destroy(true); };
   }, []);
   return <div id="game-container" className="w-full h-full" style={{ touchAction: 'none' }} />;
 }
@@ -449,21 +449,22 @@ Deno.serve(async (req) => {
 - Metas: 60fps estável em celular médio · loading < 3s · bundle game < 2MB gzip.
 
 ## 9. Estrutura de pastas (MVP)
-/game
+/game                        # pacote "game" do monorepo (exports -> src/index.ts)
   index.html
   vite.config.ts
   src/
-    main.ts
+    index.ts      # entrada PÚBLICA: createGame() + re-export do contrato de eventos
+    main.ts       # dev harness standalone (npm run dev -w game, sem o shell)
     config/       game-config.ts · constants.ts · types.ts
     scenes/       BootScene · PreloadScene · GameScene · GameOverScene
     entities/     Entity · Player · Obstacle · Collectible
     systems/      InputSystem · SpawnerSystem · ScoreSystem · ProgressionSystem · AudioSystem
-    lib/          game-events.ts
+    lib/          game-events.ts (fonte ÚNICA do contrato — o /web importa do pacote 'game')
   public/assets/  (placeholders até Fase 3)
-/web
+/web              # depende do pacote 'game' ("game": "*")
   src/
     components/   GameShell.tsx · Leaderboard.tsx · MenuScreen.tsx
-    lib/          game-events.ts (mesma fonte) · supabase.ts · scores.ts
+    lib/          supabase.ts · scores.ts
 /supabase
   migrations/     001_scores.sql
   functions/      submit-score/index.ts
