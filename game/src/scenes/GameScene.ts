@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
+import { InputSystem } from '../systems/InputSystem';
 import { PHYSICS, SIZES } from '../config/constants';
 
 // Loop principal (design.md §2). Auto-run world-scroll (RF-04): o Player fica
@@ -7,6 +8,7 @@ import { PHYSICS, SIZES } from '../config/constants';
 // corrente. Velocidade fixa neste bloco; ProgressionSystem entra na T04-11.
 export class GameScene extends Phaser.Scene {
   private player!: Player;
+  private inputSystem!: InputSystem;
   private groundTile!: Phaser.GameObjects.TileSprite;
   private distance = 0;
   private speed = PHYSICS.RUN_SPEED;
@@ -31,12 +33,14 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.player = new Player(this, SIZES.PLAYER.SCREEN_X, groundTop);
+    this.inputSystem = new InputSystem(this, this.player);
 
     this.distance = 0;
     this.speed = PHYSICS.RUN_SPEED;
   }
 
   update(time: number, delta: number): void {
+    this.inputSystem.update();
     const step = (this.speed * delta) / 1000;
     this.distance += step;
     this.groundTile.tilePositionX += step;
