@@ -137,8 +137,10 @@ export class Player extends Entity {
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'player'); // placeholder retângulo
-    this.setGravityY(PHYSICS.GRAVITY);
-    this.setVelocityX(PHYSICS.RUN_SPEED); // avanço constante — jogador NÃO controla
+    // gravidade vem do GAME_CONFIG (arcade.gravity) — não duplicar aqui.
+    // RF-04 (world-scroll): o avanço é do CENÁRIO — player fica em X fixo
+    // na tela e obstáculos/votos se movem para a esquerda na velocidade
+    // corrente; o jogador NÃO controla o avanço horizontal.
     this.setCollideWorldBounds(true);
   }
 
@@ -170,7 +172,6 @@ export class Player extends Entity {
   update(): void {
     const b = this.body as Phaser.Physics.Arcade.Body;
     if (b.velocity.y > PHYSICS.MAX_FALL_SPEED) this.setVelocityY(PHYSICS.MAX_FALL_SPEED);
-    this.setVelocityX(PHYSICS.RUN_SPEED); // reforça avanço constante
   }
 }
 // entities/Obstacle.ts — altos (pular) e baixos/suspensos (deslizar) (RF-06)
@@ -314,7 +315,7 @@ export class AudioSystem {
 export const PHYSICS = {
   GRAVITY: 1400, RUN_SPEED: 260, JUMP_VELOCITY: -520,
   JUMP_HOLD_FORCE: 28,   // aplicado por frame enquanto segura (pulo variável)
-  JUMP_CUT: -180,        // corta o pulo ao soltar cedo (pulo curto)
+  JUMP_CUT: -420,        // corta o pulo ao soltar cedo (calibrado por medição E2E: tap ≈ 85px)
   FAST_FALL: 700, MAX_FALL_SPEED: 900,
 } as const;
 
