@@ -6,7 +6,9 @@ export const PHYSICS = {
   RUN_SPEED: 260,
   JUMP_VELOCITY: -520,
   JUMP_HOLD_FORCE: 28, // aplicado por frame enquanto segura (pulo variável)
-  JUMP_CUT: -180, // corta o pulo ao soltar cedo (pulo curto)
+  JUMP_CUT: -420, // corta o pulo ao soltar cedo (pulo curto)
+  // calibrado por medição E2E: tap ≈ 90px de apex (passa o obstáculo alto de
+  // 72px com margem justa); segurar ≈ 230px (rotas de risco/recompensa RF-11)
   FAST_FALL: 700,
   MAX_FALL_SPEED: 900,
 } as const;
