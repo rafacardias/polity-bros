@@ -328,6 +328,7 @@ export const PROGRESSION = {
 
 // config/game-config.ts
 import Phaser from 'phaser';
+import { PHYSICS } from './constants';
 import { BootScene } from '../scenes/BootScene';
 import { PreloadScene } from '../scenes/PreloadScene';
 import { GameScene } from '../scenes/GameScene';
@@ -338,7 +339,7 @@ export const GAME_CONFIG: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',            // container DIV — NUNCA iframe
   backgroundColor: '#1e1e2e',
   scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%', autoCenter: Phaser.Scale.CENTER_BOTH },
-  physics: { default: 'arcade', arcade: { gravity: { x: 0, y: PHYSICS_GRAVITY_PLACEHOLDER }, debug: false } },
+  physics: { default: 'arcade', arcade: { gravity: { x: 0, y: PHYSICS.GRAVITY }, debug: false } },
   render: { antialias: false, pixelArt: true, roundPixels: true },
   input: { activePointers: 1 },
   scene: [BootScene, PreloadScene, GameScene, GameOverScene],
@@ -401,8 +402,9 @@ create index if not exists idx_scores_recent on scores (created_at desc);
 alter table scores enable row level security;
 
 create policy "scores are public read" on scores for select using (true);
--- escrita SÓ via Edge Function (service role); usuário comum não insere direto:
-create policy "own insert" on scores for insert with check (auth.uid() = player_id);
+-- SEM policy de INSERT/UPDATE/DELETE: com RLS ativa e nenhuma policy de escrita,
+-- o cliente (anon key) NÃO consegue gravar nada. Escrita acontece SÓ pela Edge
+-- Function submit-score (service role, que bypassa RLS) — D-08.
 
 ### 7.2 Edge Function submit-score (RN-04 — inegociável no MVP)
 // supabase/functions/submit-score/index.ts
