@@ -5,7 +5,9 @@ import Phaser from 'phaser';
 // via this.load.* — os keys ('player', 'obstacle', 'vote') NÃO mudam.
 const PLACEHOLDERS = [
   { key: 'player', width: 44, height: 64, color: 0x4ade80 },
-  { key: 'obstacle', width: 44, height: 80, color: 0xef4444 },
+  { key: 'player-slide', width: 44, height: 32, color: 0x4ade80 },
+  { key: 'obstacle-high', width: 44, height: 72, color: 0xef4444 },
+  { key: 'obstacle-low', width: 44, height: 160, color: 0xf97316 },
   { key: 'vote', width: 24, height: 24, color: 0xfacc15 },
 ] as const;
 
@@ -23,9 +25,8 @@ export class PreloadScene extends Phaser.Scene {
 
   create(): void {
     this.generatePlaceholderTextures();
-    // GameScene ainda não existe (chega na T04-04). Preview provisório
-    // para validação manual — será trocado por this.scene.start('GameScene').
-    this.showValidationPreview();
+    this.generateGroundTexture();
+    this.scene.start('GameScene');
   }
 
   private createProgressBar(): void {
@@ -70,19 +71,16 @@ export class PreloadScene extends Phaser.Scene {
     graphics.destroy();
   }
 
-  private showValidationPreview(): void {
-    const { width, height } = this.scale;
-    this.add
-      .text(width / 2, height / 2 - 80, 'Placeholders prontos — GameScene chega na T04-04', {
-        fontFamily: 'monospace',
-        fontSize: '14px',
-        color: '#ffffff',
-        align: 'center',
-        wordWrap: { width: width * 0.9 },
-      })
-      .setOrigin(0.5);
-    this.add.image(width / 2 - 90, height / 2 + 20, 'player');
-    this.add.image(width / 2, height / 2 + 20, 'obstacle');
-    this.add.image(width / 2 + 90, height / 2 + 20, 'vote');
+  // faixa listrada do chão — o deslocamento do padrão dá a leitura de
+  // velocidade do auto-run (RF-04) mesmo sem parallax (Fase 3)
+  private generateGroundTexture(): void {
+    if (this.textures.exists('ground')) return;
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x3f3f46, 1);
+    graphics.fillRect(0, 0, 64, 12);
+    graphics.fillStyle(0x71717a, 1);
+    graphics.fillRect(0, 0, 32, 12);
+    graphics.generateTexture('ground', 64, 12);
+    graphics.destroy();
   }
 }
