@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
+import { Obstacle } from '../entities/Obstacle';
 import { InputSystem } from '../systems/InputSystem';
+import { SpawnerSystem } from '../systems/SpawnerSystem';
 import { PHYSICS, SIZES } from '../config/constants';
 
 // Loop principal (design.md §2). Auto-run world-scroll (RF-04): o Player fica
@@ -9,6 +11,8 @@ import { PHYSICS, SIZES } from '../config/constants';
 export class GameScene extends Phaser.Scene {
   private player!: Player;
   private inputSystem!: InputSystem;
+  private spawner!: SpawnerSystem;
+  private obstacles!: Phaser.Physics.Arcade.Group;
   private groundTile!: Phaser.GameObjects.TileSprite;
   private distance = 0;
   private speed = PHYSICS.RUN_SPEED;
@@ -35,6 +39,14 @@ export class GameScene extends Phaser.Scene {
     this.player = new Player(this, SIZES.PLAYER.SCREEN_X, groundTop);
     this.inputSystem = new InputSystem(this, this.player);
 
+    // pool de obstáculos (RN-01): maxSize limita instâncias; get() reutiliza
+    this.obstacles = this.physics.add.group({
+      classType: Obstacle,
+      maxSize: 24,
+      runChildUpdate: true,
+    });
+    this.spawner = new SpawnerSystem(this, this.obstacles);
+
     this.distance = 0;
     this.speed = PHYSICS.RUN_SPEED;
   }
@@ -44,6 +56,7 @@ export class GameScene extends Phaser.Scene {
     const step = (this.speed * delta) / 1000;
     this.distance += step;
     this.groundTile.tilePositionX += step;
+    this.spawner.update(this.distance, this.speed);
     this.player.update(time, delta);
   }
 }
