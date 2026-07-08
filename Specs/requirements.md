@@ -78,7 +78,8 @@ scores id uuid pk player_id uuid -> auth.users (escrita SÓ via Edge Function/se
 - **Coletável extra "dinheiro/propina"** (sátira "são todos iguais") como segundo colecionável, sem virar mecânica principal.
 - **Power-up "viralizou"** — publicação viral dá poder temporário e troca a música de fundo enquanto durar.
 - **Login social (Google/Facebook)** como upgrade da conta anônima para compartilhar score.
-- **Compartilhamento em redes sociais** — score e/ou clipe curto de melhor momento em formato story.
+- **Compartilhamento em redes sociais** — score e/ou clipe curto de melhor momento em formato story (Instagram, Facebook, WhatsApp, TikTok), disponível para jogador logado.
+- **Obstáculos móveis / inimigos (Enemy — cortado do MVP em D-06)** — entram conforme a dificuldade sobe: no chão, vindo contra o player, "eleitores cobrando promessas" e "repórteres com perguntas" (o candidato se esquiva); no ar, ameaças voadoras (tema a definir — ex.: drone de fake news) para pressionar o slide/timing.
 - **Múltiplos mundos/temas**, cada um introduzindo 1 mecânica nova.
 - **Modo Desafio** (no-hit, speed run, alvo de votos).
 - **Ghost race assíncrono** contra fantasmas de amigos/global.
