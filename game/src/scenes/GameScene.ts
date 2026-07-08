@@ -6,7 +6,10 @@ import { InputSystem } from '../systems/InputSystem';
 import { SpawnerSystem } from '../systems/SpawnerSystem';
 import { ScoreSystem } from '../systems/ScoreSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
+import { emitGameEvent, GAME_EVENTS } from '../lib/game-events';
 import { SIZES } from '../config/constants';
+
+const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
 
 // Loop principal (design.md §2). Auto-run world-scroll (RF-04): o Player fica
 // em X fixo e o cenário/obstáculos deslizam para a esquerda na velocidade
@@ -18,9 +21,12 @@ export class GameScene extends Phaser.Scene {
   private obstacles!: Phaser.Physics.Arcade.Group;
   private votes!: Phaser.Physics.Arcade.Group;
   private votesText!: Phaser.GameObjects.Text;
+  private scoreText!: Phaser.GameObjects.Text;
+  private distanceText!: Phaser.GameObjects.Text;
   private groundTile!: Phaser.GameObjects.TileSprite;
   private score!: ScoreSystem;
   private progression!: ProgressionSystem;
+  private emitAccumulator = 0;
   private isGameOver = false;
 
   constructor() {
@@ -66,13 +72,36 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.score = new ScoreSystem();
-    this.votesText = this.add
-      .text(width - 12, 10, 'VOTOS 0', { fontFamily: 'monospace', fontSize: '16px', color: '#facc15' })
-      .setOrigin(1, 0)
-      .setDepth(10);
+    this.createHud(width);
 
     this.progression = new ProgressionSystem();
+    this.emitAccumulator = 0;
     this.isGameOver = false;
+  }
+
+  // HUD (RF-03/T04-12): score, votos e distância sempre visíveis, fora da
+  // área de ação do polegar (RN-02)
+  private createHud(width: number): void {
+    const style = { fontFamily: 'monospace', fontSize: '16px', color: '#ffffff' };
+    this.scoreText = this.add
+      .text(width / 2, 10, 'SCORE 0', { ...style, fontSize: '20px' })
+      .setOrigin(0.5, 0)
+      .setDepth(10);
+    this.votesText = this.add
+      .text(width - 12, 10, 'VOTOS 0', { ...style, color: '#facc15' })
+      .setOrigin(1, 0)
+      .setDepth(10);
+    this.distanceText = this.add
+      .text(12, 10, '0m', { ...style, color: '#94a3b8' })
+      .setOrigin(0, 0)
+      .setDepth(10);
+  }
+
+  private updateHud(): void {
+    const snap = this.score.getSnapshot();
+    this.scoreText.setText(`SCORE ${snap.score}`);
+    this.distanceText.setText(`${snap.distance}m`);
+    // votesText atualiza em collectVote (evento raro, não a cada frame)
   }
 
   private collectVote(vote: Collectible): void {
@@ -92,6 +121,14 @@ export class GameScene extends Phaser.Scene {
     this.spawner.update(this.progression.distance, speed);
     this.syncWorldSpeed(speed);
     this.player.update(time, delta);
+    this.updateHud();
+
+    // contrato D-05: score periódico para o shell React (throttled)
+    this.emitAccumulator += delta;
+    if (this.emitAccumulator >= SCORE_EMIT_INTERVAL_MS) {
+      this.emitAccumulator = 0;
+      emitGameEvent(GAME_EVENTS.SCORE, this.score.getSnapshot());
+    }
   }
 
   // mantém obstáculos/votos já spawnados na MESMA velocidade do chão quando
