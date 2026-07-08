@@ -189,48 +189,30 @@ export class Collectible extends Entity {
 
 ## 4. Systems (lógica; sem I/O de rede)
 ### 4.1 InputSystem (RF-05, RN-08) — mesmo timing em mobile e desktop
-// systems/InputSystem.ts
-import Phaser from 'phaser';
-import { Player } from '../entities/Player';
 
-const HOLD_MAX_MS = 220;      // janela do pulo variável
-const SWIPE_DOWN_PX = 40;     // limiar de swipe para slide
+**Modelo (paridade exata teclado ↔ touch):** o pulo inicia no *down* (tecla ou
+toque) e o arco varia com o tempo segurado (`HOLD_MAX_MS`); soltar cedo corta
+o arco (`cutJump`). O gesto de descer no touch usa **cancelamento por swipe**:
+se o dedo descer `SWIPE_INTENT_PX` dentro de `SWIPE_CANCEL_WINDOW_MS`, a
+intenção real era deslizar — o pulo nascente (1–2 frames) é abortado via
+`player.abortJumpToSlide()` (reassenta os pés no chão e desliza na hora).
 
-export class InputSystem {
-  private holding = false;
-  private holdStart = 0;
-  private pointerDownY = 0;
+> ⚠️ Anti-padrão (bug corrigido em 2026-07): classificar o swipe só no
+> `pointerup` faz o toque pular no `touchstart` e deslizar no `touchend`
+> ("sobe antes de descer", sentido no Safari). A classificação acontece no
+> `pointermove`; o `pointerup` é apenas fallback para flicks sem move.
 
-  constructor(private scene: Phaser.Scene, private player: Player) {
-    const kb = scene.input.keyboard!;
-    const up = kb.addKey('UP'), space = kb.addKey('SPACE'), down = kb.addKey('DOWN');
+// systems/InputSystem.ts (contrato resumido — a implementação é a fonte)
+- teclado: ↑/Espaço down→beginJump, up→endJump · ↓ down/up → slide on/off
+- pointerdown no chão → beginJump IMEDIATO (zero latência) + marca touchJumping
+- pointerdown no ar → fast-fall imediato (tap no ar, RF-05)
+- pointermove: touchJumping && swipe ↓ dentro da janela → abortJumpToSlide();
+  desliza enquanto o dedo estiver na tela
+- pointerup: após swipe → slide temporizado (SLIDE_MS) · senão → endJump
+- update(): segurando dentro de HOLD_MAX_MS → holdJump (pulo variável)
 
-    up.on('down', () => this.beginJump()); space.on('down', () => this.beginJump());
-    up.on('up', () => this.endJump());     space.on('up', () => this.endJump());
-    down.on('down', () => this.player.slide(true));
-    down.on('up',   () => this.player.slide(false));
-
-    scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      this.pointerDownY = p.y; this.beginJump();
-    });
-    scene.input.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (p.y - this.pointerDownY > SWIPE_DOWN_PX) this.player.slide(true); // swipe ↓
-      else this.endJump();
-    });
-  }
-
-  private beginJump(): void { this.holding = true; this.holdStart = this.scene.time.now; this.player.startJump(); }
-  private endJump(): void {
-    if (!this.holding) return;
-    this.holding = false;
-    if (this.scene.time.now - this.holdStart < HOLD_MAX_MS) this.player.cutJump(); // soltou cedo = pulo curto
-    this.player.slide(false);
-  }
-
-  update(): void {
-    if (this.holding && this.scene.time.now - this.holdStart < HOLD_MAX_MS) this.player.holdJump();
-  }
-}
+Constantes (config/constants.ts → INPUT): HOLD_MAX_MS 220 ·
+SWIPE_CANCEL_WINDOW_MS 140 · SWIPE_INTENT_PX 14 · SLIDE_MS 550
 
 ### 4.2 SpawnerSystem (RF-06, RF-11, RN-01) — pooling, obstáculos altos+baixos
 // systems/SpawnerSystem.ts
