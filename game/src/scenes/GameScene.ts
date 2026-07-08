@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Obstacle } from '../entities/Obstacle';
+import { Collectible } from '../entities/Collectible';
 import { InputSystem } from '../systems/InputSystem';
 import { SpawnerSystem } from '../systems/SpawnerSystem';
 import { PHYSICS, SIZES } from '../config/constants';
@@ -13,9 +14,12 @@ export class GameScene extends Phaser.Scene {
   private inputSystem!: InputSystem;
   private spawner!: SpawnerSystem;
   private obstacles!: Phaser.Physics.Arcade.Group;
+  private votes!: Phaser.Physics.Arcade.Group;
+  private votesText!: Phaser.GameObjects.Text;
   private groundTile!: Phaser.GameObjects.TileSprite;
   private distance = 0;
   private speed = PHYSICS.RUN_SPEED;
+  private votesCollected = 0; // provisório — vira ScoreSystem na T04-10
   private isGameOver = false;
 
   constructor() {
@@ -40,20 +44,41 @@ export class GameScene extends Phaser.Scene {
     this.player = new Player(this, SIZES.PLAYER.SCREEN_X, groundTop);
     this.inputSystem = new InputSystem(this, this.player);
 
-    // pool de obstáculos (RN-01): maxSize limita instâncias; get() reutiliza
+    // pools (RN-01): maxSize limita instâncias; get() reutiliza
     this.obstacles = this.physics.add.group({
       classType: Obstacle,
       maxSize: 24,
       runChildUpdate: true,
     });
-    this.spawner = new SpawnerSystem(this, this.obstacles);
+    this.votes = this.physics.add.group({
+      classType: Collectible,
+      maxSize: 36,
+      runChildUpdate: true,
+    });
+    this.spawner = new SpawnerSystem(this, this.obstacles, this.votes);
 
     // RF-07: qualquer contato com obstáculo encerra a partida
     this.physics.add.overlap(this.player, this.obstacles, () => this.gameOver());
+    // RF-11: coletar voto incrementa o contador do HUD
+    this.physics.add.overlap(this.player, this.votes, (_p, v) =>
+      this.collectVote(v as Collectible),
+    );
+
+    this.votesCollected = 0;
+    this.votesText = this.add
+      .text(width - 12, 10, 'VOTOS 0', { fontFamily: 'monospace', fontSize: '16px', color: '#facc15' })
+      .setOrigin(1, 0)
+      .setDepth(10);
 
     this.distance = 0;
     this.speed = PHYSICS.RUN_SPEED;
     this.isGameOver = false;
+  }
+
+  private collectVote(vote: Collectible): void {
+    vote.deactivate(); // pooling: nunca destroy (RN-01)
+    this.votesCollected += 1;
+    this.votesText.setText(`VOTOS ${this.votesCollected}`);
   }
 
   update(time: number, delta: number): void {

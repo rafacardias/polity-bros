@@ -17,7 +17,12 @@ export const SPAWN = {
   GAP_BASE: 420,
   GAP_MIN: 220,
   GAP_TIGHTEN: 0.02,
-  VOTE_LINE_CHANCE: 0.4,
+  VOTE_LINE_CHANCE: 0.4, // linha de risco/recompensa junto ao obstáculo (RF-11)
+  EASY_VOTE_CHANCE: 0.35, // linha fácil no meio do vão entre obstáculos
+  VOTE_COUNT: 3, // votos por linha
+  VOTE_SPACING: 30, // espaçamento horizontal entre votos
+  VOTE_RISK_HEIGHT: 90, // altura da linha de risco acima da BASE do obstáculo
+  VOTE_EASY_HEIGHT: 46, // altura da linha fácil acima do chão (pede pulinho)
 } as const;
 
 export const PROGRESSION = {

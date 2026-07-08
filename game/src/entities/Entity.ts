@@ -15,12 +15,18 @@ export abstract class Entity extends Phaser.Physics.Arcade.Sprite {
     this.setPosition(x, y);
     this.setActive(true);
     this.setVisible(true);
-    (this.body as Phaser.Physics.Arcade.Body).reset(x, y);
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    body.enable = true;
+    body.reset(x, y);
   }
 
   deactivate(): void {
     this.setActive(false);
     this.setVisible(false);
-    (this.body as Phaser.Physics.Arcade.Body).stop();
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    body.stop();
+    // corpo desabilitado: um item coletado/reciclado não pode continuar
+    // colidindo do lugar onde parou (ex.: voto coletado contando 2x)
+    body.enable = false;
   }
 }
