@@ -29,8 +29,14 @@ export const PROGRESSION = {
 
 export const INPUT = {
   HOLD_MAX_MS: 220, // janela do pulo variável (RF-05)
-  SWIPE_DOWN_PX: 40, // limiar de swipe ↓ para slide (mobile)
-  SLIDE_MS: 550, // duração do slide disparado por swipe (dedo já soltou)
+  // Gesto touch (RN-02/RN-08): o toque no chão pula IMEDIATAMENTE (mesmo
+  // timing do teclado — paridade exata). Se o dedo descer SWIPE_INTENT_PX
+  // dentro da janela de cancelamento, a intenção real era deslizar: o pulo
+  // nascente (1-2 frames) é abortado e vira slide na hora. Sem isso, swipe
+  // no Safari virava "pula no touchstart, desliza no touchend".
+  SWIPE_CANCEL_WINDOW_MS: 140, // janela p/ swipe converter o pulo em slide
+  SWIPE_INTENT_PX: 14, // deslocamento ↓ que caracteriza swipe (tap desleixado fica bem abaixo)
+  SLIDE_MS: 550, // duração do slide após soltar o dedo (swipe/flick)
 } as const;
 
 // Dimensões dos placeholders/hitboxes (RN-07 — trocam de arte, não de tamanho)

@@ -48,6 +48,16 @@ export class Player extends Entity {
     }
   }
 
+  // converte um pulo RECÉM-iniciado em slide (cancelamento por swipe ↓):
+  // reassenta os pés no chão e desliza — o "hop" de 1-2 frames some na hora
+  abortJumpToSlide(): void {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    this.setVelocityY(0);
+    this.setY(this.scene.physics.world.bounds.bottom);
+    body.reset(this.x, this.y);
+    this.slide(true);
+  }
+
   // slide no chão / fast-fall no ar (RF-05)
   slide(active: boolean): void {
     if (this.sliding === active) return;
