@@ -5,7 +5,8 @@ import { Collectible } from '../entities/Collectible';
 import { InputSystem } from '../systems/InputSystem';
 import { SpawnerSystem } from '../systems/SpawnerSystem';
 import { ScoreSystem } from '../systems/ScoreSystem';
-import { PHYSICS, SIZES } from '../config/constants';
+import { ProgressionSystem } from '../systems/ProgressionSystem';
+import { SIZES } from '../config/constants';
 
 // Loop principal (design.md §2). Auto-run world-scroll (RF-04): o Player fica
 // em X fixo e o cenário/obstáculos deslizam para a esquerda na velocidade
@@ -19,8 +20,7 @@ export class GameScene extends Phaser.Scene {
   private votesText!: Phaser.GameObjects.Text;
   private groundTile!: Phaser.GameObjects.TileSprite;
   private score!: ScoreSystem;
-  private distance = 0;
-  private speed = PHYSICS.RUN_SPEED;
+  private progression!: ProgressionSystem;
   private isGameOver = false;
 
   constructor() {
@@ -71,8 +71,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(1, 0)
       .setDepth(10);
 
-    this.distance = 0;
-    this.speed = PHYSICS.RUN_SPEED;
+    this.progression = new ProgressionSystem();
     this.isGameOver = false;
   }
 
@@ -85,12 +84,26 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.isGameOver) return;
     this.inputSystem.update();
-    const step = (this.speed * delta) / 1000;
-    this.distance += step;
+    this.progression.update(delta); // dificuldade crescente (RF-09)
+    const speed = this.progression.speed;
+    const step = (speed * delta) / 1000;
     this.groundTile.tilePositionX += step;
     this.score.addDistance(step); // pontos por distância/tempo (RF-08)
-    this.spawner.update(this.distance, this.speed);
+    this.spawner.update(this.progression.distance, speed);
+    this.syncWorldSpeed(speed);
     this.player.update(time, delta);
+  }
+
+  // mantém obstáculos/votos já spawnados na MESMA velocidade do chão quando
+  // a progressão acelera — sem isso o mundo "rasga" a cada degrau de speed
+  private syncWorldSpeed(speed: number): void {
+    const sync = (child: Phaser.GameObjects.GameObject): boolean => {
+      const sprite = child as Phaser.Physics.Arcade.Sprite;
+      if (sprite.active) sprite.setVelocityX(-speed);
+      return true;
+    };
+    this.obstacles.children.iterate(sync);
+    this.votes.children.iterate(sync);
   }
 
   // Fim de partida provisório dentro da própria Scene: congela a física e
