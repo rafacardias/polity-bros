@@ -143,30 +143,17 @@ export class GameScene extends Phaser.Scene {
     this.votes.children.iterate(sync);
   }
 
-  // Fim de partida provisório dentro da própria Scene: congela a física e
-  // reinicia no toque. A GameOverScene + emissão de game:gameover (contrato
-  // D-05) entram na T04-13 — aqui é só o encerramento exigido pelo RF-07.
+  // RF-07 + contrato D-05: congela o mundo, avisa o shell (game:gameover)
+  // e passa o resultado para a GameOverScene (RF-03)
   private gameOver(): void {
     if (this.isGameOver) return;
     this.isGameOver = true;
     this.physics.pause();
     this.player.setTint(0x94a3b8);
 
-    const { width, height } = this.scale;
-    this.add
-      .text(width / 2, height * 0.4, 'GAME OVER\n\ntoque ou Espaço para reiniciar', {
-        fontFamily: 'monospace',
-        fontSize: '20px',
-        color: '#ffffff',
-        align: 'center',
-        wordWrap: { width: width * 0.9 },
-      })
-      .setOrigin(0.5);
-
-    // pequeno atraso evita que o toque da morte reinicie sem querer (RN-03)
-    this.time.delayedCall(350, () => {
-      this.input.once('pointerdown', () => this.scene.restart());
-      this.input.keyboard!.once('keydown-SPACE', () => this.scene.restart());
-    });
+    const snapshot = this.score.getSnapshot();
+    emitGameEvent(GAME_EVENTS.GAME_OVER, snapshot);
+    // beat curto para a morte "registrar" antes da troca de tela
+    this.time.delayedCall(450, () => this.scene.start('GameOverScene', snapshot));
   }
 }

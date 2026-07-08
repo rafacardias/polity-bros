@@ -3,6 +3,7 @@ import { GAME_CONFIG } from './config/game-config';
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { GameScene } from './scenes/GameScene';
+import { GameOverScene } from './scenes/GameOverScene';
 
 export { GAME_EVENTS, SHELL_EVENTS, emitGameEvent, onGameEvent } from './lib/game-events';
 export type { GameEventPayload } from './lib/game-events';
@@ -12,5 +13,9 @@ export type { GameEventPayload } from './lib/game-events';
 // vida (createGame no mount, game.destroy(true) no unmount), o que torna
 // montar → desmontar → remontar seguro.
 export function createGame(parent: string | HTMLElement = 'game-container'): Phaser.Game {
-  return new Phaser.Game({ ...GAME_CONFIG, parent, scene: [BootScene, PreloadScene, GameScene] });
+  return new Phaser.Game({
+    ...GAME_CONFIG,
+    parent,
+    scene: [BootScene, PreloadScene, GameScene, GameOverScene],
+  });
 }
