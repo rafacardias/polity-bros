@@ -4,6 +4,7 @@ import { Obstacle } from '../entities/Obstacle';
 import { Collectible } from '../entities/Collectible';
 import { InputSystem } from '../systems/InputSystem';
 import { SpawnerSystem } from '../systems/SpawnerSystem';
+import { ScoreSystem } from '../systems/ScoreSystem';
 import { PHYSICS, SIZES } from '../config/constants';
 
 // Loop principal (design.md §2). Auto-run world-scroll (RF-04): o Player fica
@@ -17,9 +18,9 @@ export class GameScene extends Phaser.Scene {
   private votes!: Phaser.Physics.Arcade.Group;
   private votesText!: Phaser.GameObjects.Text;
   private groundTile!: Phaser.GameObjects.TileSprite;
+  private score!: ScoreSystem;
   private distance = 0;
   private speed = PHYSICS.RUN_SPEED;
-  private votesCollected = 0; // provisório — vira ScoreSystem na T04-10
   private isGameOver = false;
 
   constructor() {
@@ -64,7 +65,7 @@ export class GameScene extends Phaser.Scene {
       this.collectVote(v as Collectible),
     );
 
-    this.votesCollected = 0;
+    this.score = new ScoreSystem();
     this.votesText = this.add
       .text(width - 12, 10, 'VOTOS 0', { fontFamily: 'monospace', fontSize: '16px', color: '#facc15' })
       .setOrigin(1, 0)
@@ -77,8 +78,8 @@ export class GameScene extends Phaser.Scene {
 
   private collectVote(vote: Collectible): void {
     vote.deactivate(); // pooling: nunca destroy (RN-01)
-    this.votesCollected += 1;
-    this.votesText.setText(`VOTOS ${this.votesCollected}`);
+    this.score.addVote();
+    this.votesText.setText(`VOTOS ${this.score.getSnapshot().votes}`);
   }
 
   update(time: number, delta: number): void {
@@ -87,6 +88,7 @@ export class GameScene extends Phaser.Scene {
     const step = (this.speed * delta) / 1000;
     this.distance += step;
     this.groundTile.tilePositionX += step;
+    this.score.addDistance(step); // pontos por distância/tempo (RF-08)
     this.spawner.update(this.distance, this.speed);
     this.player.update(time, delta);
   }

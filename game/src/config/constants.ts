@@ -32,6 +32,11 @@ export const PROGRESSION = {
   SPEED_MAX: 460,
 } as const;
 
+export const SCORE = {
+  VOTE_POINTS: 10, // pontos por voto coletado (RF-11)
+  PX_PER_M: 10, // conversão px → "metros" exibidos/pontuados (RF-08)
+} as const;
+
 export const INPUT = {
   HOLD_MAX_MS: 220, // janela do pulo variável (RF-05)
   // Gesto touch (RN-02/RN-08): o toque no chão pula IMEDIATAMENTE (mesmo
