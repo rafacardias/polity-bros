@@ -5,7 +5,8 @@
 > qualquer outra IA/LLM entender o contexto completo do projeto ao ler este único arquivo.
 > É atualizado a cada entrega relevante.
 >
-> **Última atualização:** 2026-07-09
+> **Última atualização:** 2026-07-09 (Fase 7A NO AR em produção; ranking zerado
+> por autorização do dono — regras novas, placar novo)
 
 ---
 
@@ -46,7 +47,7 @@ quando sente que *a culpa da derrota foi dele, a vitória estava perto, e a pró
 tentativa pode ser melhor*). Quatro blocos, nesta ordem, com teste no celular do dono
 ao fim de cada um:
 
-### 7A — Sensação de jogo + "quase consegui" *(✅ implementada em 2026-07-09 — falta seu teste no celular)*
+### 7A — Sensação de jogo + "quase consegui" *(✅ NO AR em produção desde 2026-07-09, aprovada pelo dono)*
 - [x] Este documento + registro das decisões
 - [x] Efeitos visuais de impacto: partículas ao coletar voto, tela treme na morte, personagem "estica e amassa" no pulo
 - [x] Momento "uau": completar uma linha de votos → "LINHA PERFEITA! +20" + som especial + explosão visual
