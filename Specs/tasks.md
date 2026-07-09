@@ -32,14 +32,14 @@
 - [ ] [P0] T04-14: **🎮 Gate de Diversão** — testar no celular real, uma mão, ~60fps. Se não for divertido, iterar AQUI antes de escalar. — *RN-01, RN-02, RN-03*
 
 ## Fase 5 — Ranking online + Áudio (fecha o MVP)
-- [ ] [P0] T05-01: Migration `scores` (+votos) + RLS + índices — *RF-12..14, RN-04*
-- [ ] [P0] T05-02: Supabase Auth anônima (jogador ganha player_id) — *RF-14*
-- [ ] [P0] T05-03: Edge Function `submit-score` (sanity check + rate limit) — **caminho ÚNICO de escrita de score** (service role); cliente NUNCA insere direto — *RF-12, RN-04, D-08*
-- [ ] [P0] T05-04: Envio do score à Edge Function ao morrer (via GameShell, com JWT + elapsedSec) — *RF-12, D-08*
-- [ ] [P0] T05-05: Tela de ranking React (Top 10, leitura pública) — *RF-13*
-- [ ] [P0] T05-06: AudioSystem (SFX + música, respeita autoplay) — *RF-10*
-- [ ] [P0] T05-07: Menu principal da plataforma — **card Polity Bros dentro do MenuScreen React** (ver T04-03) — *RF-01, D-07*
-- [ ] [P0] T05-08: **✅ Gate de MVP** — loop completo funciona + score falso rejeitado pela Edge Function + deploy verde — *Critérios seção 7, D-08*
+- [x] [P0] T05-01: Migration `scores` (+votos) + RLS + índices — *RF-12..14, RN-04*
+- [x] [P0] T05-02: Supabase Auth anônima (jogador ganha player_id) — *RF-14*
+- [x] [P0] T05-03: Edge Function `submit-score` (sanity check + rate limit) — **caminho ÚNICO de escrita de score** (service role); cliente NUNCA insere direto — *RF-12, RN-04, D-08*
+- [x] [P0] T05-04: Envio do score à Edge Function ao morrer (via GameShell, com JWT + elapsedSec) — *RF-12, D-08*
+- [x] [P0] T05-05: Tela de ranking React (Top 10, leitura pública) — *RF-13*
+- [x] [P0] T05-06: AudioSystem (SFX + música, respeita autoplay) — *RF-10*
+- [x] [P0] T05-07: Menu principal da plataforma — **card Polity Bros dentro do MenuScreen React** (ver T04-03) — *RF-01, D-07*
+- [ ] [P0] T05-08: **✅ Gate de MVP** — loop completo funciona + score falso rejeitado pela Edge Function + deploy verde — *Critérios seção 7, D-08* (bloqueado: falta o deploy Vercel da Fase 6 — resto já verificado)
 
 ## Fase 6 — Deploy inicial + entrega mínima
 - [ ] [P0] T06-01: Deploy Vercel (game + web) com env vars corretas (inclui `SUPABASE_SERVICE_ROLE_KEY` só na Edge Function) — *D-08*
