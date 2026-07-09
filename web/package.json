@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.1",
     "game": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
