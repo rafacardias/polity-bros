@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Obstacle } from '../entities/Obstacle';
 import { Collectible } from '../entities/Collectible';
-import { SPAWN, SIZES } from '../config/constants';
+import { ECONOMY, SCORE, SPAWN, SIZES } from '../config/constants';
 
 type Kind = 'high' | 'low'; // high = pular por cima; low/suspenso = deslizar por baixo
 
@@ -16,11 +16,18 @@ export class SpawnerSystem {
   // paleta da cidade atual (T07B-01, D-14): tint quase-branco, atmosfera
   // sem tocar silhueta/hitbox
   private obstacleTint = 0xffffff;
+  // Gema rara (T07B-02, D-11): um ponto sorteado dentro de cada janela —
+  // a gema nasce no PRIMEIRO obstáculo após o ponto, em rota de alto risco.
+  // Sorteio por partida = "talvez agora venha algo raro".
+  private gemTargetsM: number[] = ECONOMY.GEM_WINDOWS_M.map(
+    ([min, max]) => min + Math.random() * (max - min),
+  );
 
   constructor(
     private scene: Phaser.Scene,
     private obstacles: Phaser.Physics.Arcade.Group,
     private votes: Phaser.Physics.Arcade.Group,
+    private gems: Phaser.Physics.Arcade.Group,
   ) {}
 
   update(distance: number, speed: number): void {
@@ -28,7 +35,7 @@ export class SpawnerSystem {
     // 1º obstáculo usa FIRST_GAP (T07A-05): respiro de leitura pro novato
     const target = this.lastSpawnX === 0 ? SPAWN.FIRST_GAP : gap;
     if (distance - this.lastSpawnX >= target) {
-      this.spawnObstacle(speed, gap);
+      this.spawnObstacle(speed, gap, distance);
       this.lastSpawnX = distance;
     }
     this.recycleMissedVotes();
@@ -36,7 +43,7 @@ export class SpawnerSystem {
 
   // Voto que saiu da tela sem coleta: quebra a linha no ledger e devolve ao
   // pool. O ciclo de vida de "miss" vive AQUI (junto do ledger), por isso o
-  // Collectible não se auto-desativa mais.
+  // Collectible não se auto-desativa mais. Gemas perdidas só voltam ao pool.
   private recycleMissedVotes(): void {
     this.votes.children.iterate((child) => {
       const vote = child as Collectible;
@@ -44,6 +51,11 @@ export class SpawnerSystem {
         this.lineLedger.delete(vote.getData('lineId') as number);
         vote.deactivate();
       }
+      return true;
+    });
+    this.gems.children.iterate((child) => {
+      const gem = child as Collectible;
+      if (gem.active && gem.x < -gem.width) gem.deactivate();
       return true;
     });
   }
@@ -65,7 +77,7 @@ export class SpawnerSystem {
     return true;
   }
 
-  private spawnObstacle(speed: number, gap: number): void {
+  private spawnObstacle(speed: number, gap: number, distancePx: number): void {
     const { width, height } = this.scene.scale;
     const groundTop = height - SIZES.GROUND_H;
     const kind: Kind = Math.random() < 0.5 ? 'high' : 'low';
@@ -87,6 +99,14 @@ export class SpawnerSystem {
       obstacle.setVelocityX(-speed);
       obstacle.setData('kind', kind);
       obstacle.setTint(this.obstacleTint);
+    }
+
+    // gema rara (T07B-02): acima do obstáculo, altura que exige pulo alto
+    // comprometido — risco máximo, recompensa rara
+    const distanceM = distancePx / SCORE.PX_PER_M;
+    if (this.gemTargetsM.length > 0 && distanceM >= this.gemTargetsM[0]) {
+      this.gemTargetsM.shift();
+      this.spawnGem(x + 30, groundTop - ECONOMY.GEM_HEIGHT, speed);
     }
 
     // rota de risco/recompensa: linha de votos logo após o obstáculo, alta —
@@ -117,5 +137,17 @@ export class SpawnerSystem {
     }
     // 1 voto sozinho não é "linha" — sem fanfarra por coleta trivial
     if (spawned >= 2) this.lineLedger.set(lineId, { total: spawned, collected: 0 });
+  }
+
+  private spawnGem(x: number, y: number, speed: number): void {
+    const gem = this.gems.get(x, y) as Collectible | null;
+    if (!gem) return;
+    gem.setTexture('gem');
+    gem.setOrigin(0.5, 0.5);
+    gem.reset(x, y);
+    gem.setAngle(45); // losango — leitura de "item especial" mesmo em placeholder
+    const body = gem.body as Phaser.Physics.Arcade.Body;
+    body.setAllowGravity(false);
+    gem.setVelocityX(-speed);
   }
 }

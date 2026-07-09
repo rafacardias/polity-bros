@@ -29,6 +29,11 @@ export class AudioSystem {
     this.scene.sound.play('sfx-combo', { volume: AUDIO.SFX_VOLUME });
   }
 
+  // brilho da gema rara (T07B-02)
+  gem(): void {
+    this.scene.sound.play('sfx-gem', { volume: AUDIO.SFX_VOLUME });
+  }
+
   startMusic(): void {
     if (this.scene.sound.get('music')) return; // já tocando (restart de cena)
     this.scene.sound.play('music', { loop: true, volume: AUDIO.MUSIC_VOLUME });

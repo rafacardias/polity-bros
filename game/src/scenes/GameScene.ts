@@ -7,6 +7,7 @@ import { SpawnerSystem } from '../systems/SpawnerSystem';
 import { ScoreSystem } from '../systems/ScoreSystem';
 import { BestScoreSystem, type BestRecord } from '../systems/BestScoreSystem';
 import { OnboardingSystem } from '../systems/OnboardingSystem';
+import { WalletSystem } from '../systems/WalletSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS } from '../lib/game-events';
@@ -23,6 +24,10 @@ export class GameScene extends Phaser.Scene {
   private spawner!: SpawnerSystem;
   private obstacles!: Phaser.Physics.Arcade.Group;
   private votes!: Phaser.Physics.Arcade.Group;
+  private gems!: Phaser.Physics.Arcade.Group;
+  private gemText!: Phaser.GameObjects.Text;
+  private gemBurst!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private runGems = 0;
   private votesText!: Phaser.GameObjects.Text;
   private scoreText!: Phaser.GameObjects.Text;
   private distanceText!: Phaser.GameObjects.Text;
@@ -81,7 +86,12 @@ export class GameScene extends Phaser.Scene {
       maxSize: 36,
       runChildUpdate: true,
     });
-    this.spawner = new SpawnerSystem(this, this.obstacles, this.votes);
+    this.gems = this.physics.add.group({
+      classType: Collectible,
+      maxSize: 4, // no máx. 2 por partida (ECONOMY.GEM_WINDOWS_M) + folga
+      runChildUpdate: true,
+    });
+    this.spawner = new SpawnerSystem(this, this.obstacles, this.votes, this.gems);
 
     // RF-07: qualquer contato com obstáculo encerra a partida
     this.physics.add.overlap(this.player, this.obstacles, (_p, o) =>
@@ -90,6 +100,10 @@ export class GameScene extends Phaser.Scene {
     // RF-11: coletar voto incrementa o contador do HUD
     this.physics.add.overlap(this.player, this.votes, (_p, v) =>
       this.collectVote(v as Collectible),
+    );
+    // T07B-02: gema rara → carteira persistente
+    this.physics.add.overlap(this.player, this.gems, (_p, g) =>
+      this.collectGem(g as Collectible),
     );
 
     // emitter ÚNICO criado fora do loop; explode() reutiliza partículas do
@@ -104,6 +118,18 @@ export class GameScene extends Phaser.Scene {
       quantity: JUICE.VOTE_BURST_COUNT,
     });
     this.voteBurst.setDepth(5);
+    this.gemBurst = this.add.particles(0, 0, 'gem', {
+      emitting: false,
+      lifespan: 450,
+      speed: { min: 100, max: 260 },
+      angle: { min: 200, max: 340 },
+      gravityY: 500,
+      scale: { start: 0.8, end: 0 },
+      rotate: { min: 0, max: 360 },
+      quantity: 14,
+    });
+    this.gemBurst.setDepth(5);
+    this.runGems = 0;
 
     this.score = new ScoreSystem();
     this.createHud(width);
@@ -132,6 +158,11 @@ export class GameScene extends Phaser.Scene {
       .setDepth(10);
     this.votesText = this.add
       .text(width - 12, 10, 'VOTOS 0', { ...style, color: '#facc15' })
+      .setOrigin(1, 0)
+      .setDepth(10);
+    // carteira de gemas (T07B-02): saldo TOTAL do aparelho, não só da run
+    this.gemText = this.add
+      .text(width - 12, 32, `💎 ${WalletSystem.balance()}`, { ...style, color: '#c084fc' })
       .setOrigin(1, 0)
       .setDepth(10);
     this.distanceText = this.add
@@ -198,6 +229,19 @@ export class GameScene extends Phaser.Scene {
     this.voteBurst.explode(JUICE.VOTE_BURST_COUNT, x, y); // T07A-02
     if (lineComplete) this.celebrateLine(x, y); // momento "uau" (T07A-03)
     this.votesText.setText(`VOTOS ${this.score.getSnapshot().votes}`);
+  }
+
+  // gema rara (T07B-02, D-11): vai DIRETO pra carteira persistente — mesmo
+  // morrendo, a run deixou algo pra trás ("mesmo assim avancei")
+  private collectGem(gem: Collectible): void {
+    const { x, y } = gem;
+    gem.deactivate();
+    this.runGems += 1;
+    const balance = WalletSystem.add(1);
+    this.gemText.setText(`💎 ${balance}`);
+    this.audio.gem();
+    this.gemBurst.explode(14, x, y);
+    this.showFloatingText(x, y - 24, 'GEMA RARA! 💎');
   }
 
   // linha inteira coletada: bônus (em votos — ver SCORE.LINE_BONUS_VOTES),
@@ -420,6 +464,7 @@ export class GameScene extends Phaser.Scene {
     };
     this.obstacles.children.iterate(sync);
     this.votes.children.iterate(sync);
+    this.gems.children.iterate(sync);
   }
 
   // RF-07 + contrato D-05: congela o mundo, avisa o shell (game:gameover)
@@ -447,7 +492,12 @@ export class GameScene extends Phaser.Scene {
         ? ('obstacle-low' as const)
         : ('obstacle-high' as const)
       : ('unknown' as const);
-    emitGameEvent(GAME_EVENTS.GAME_OVER, { ...snapshot, elapsedSec, deathCause });
+    emitGameEvent(GAME_EVENTS.GAME_OVER, {
+      ...snapshot,
+      elapsedSec,
+      deathCause,
+      gems: this.runGems, // T07B-02: gemas desta run (pop-up 7C + telemetria)
+    });
 
     // quase-vitória (T07A-04): salva os novos máximos e leva o recorde
     // ANTERIOR para a GameOverScene calcular o "faltaram Xm"

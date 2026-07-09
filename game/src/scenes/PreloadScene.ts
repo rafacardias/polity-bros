@@ -9,6 +9,7 @@ const PLACEHOLDERS = [
   { key: 'obstacle-high', width: 44, height: 72, color: 0xef4444 },
   { key: 'obstacle-low', width: 44, height: 160, color: 0xf97316 },
   { key: 'vote', width: 24, height: 24, color: 0xfacc15 },
+  { key: 'gem', width: 20, height: 20, color: 0xa855f7 }, // gema rara (T07B-02)
 ] as const;
 
 export class PreloadScene extends Phaser.Scene {
@@ -26,6 +27,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.audio('sfx-vote', 'assets/audio/sfx-vote.wav');
     this.load.audio('sfx-death', 'assets/audio/sfx-death.wav');
     this.load.audio('sfx-combo', 'assets/audio/sfx-combo.wav');
+    this.load.audio('sfx-gem', 'assets/audio/sfx-gem.wav');
     this.load.audio('music', 'assets/audio/music.wav');
   }
 

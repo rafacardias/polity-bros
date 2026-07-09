@@ -80,6 +80,19 @@ export const INPUT = {
   SLIDE_MS: 550, // duração do slide após soltar o dedo (swipe/flick)
 } as const;
 
+// Economia de gemas (T07B-02/03, D-11): recompensa RARA de alto risco.
+// 2 janelas de spawn por partida — a gema nasce no 1º obstáculo após um
+// ponto sorteado dentro da janela ("talvez agora venha algo raro").
+export const ECONOMY = {
+  GEM_WINDOWS_M: [
+    [250, 550],
+    [900, 1400],
+  ],
+  GEM_HEIGHT: 150, // px acima do chão — exige pulo alto comprometido perto do obstáculo
+  CONTINUE_COST: 3, // gemas para continuar de onde morreu (1x por partida)
+  CONTINUE_OFFER_SEC: 4, // janela da oferta de continue no game over
+} as const;
+
 // Cidades da campanha (T07B-01, D-14): SP → RJ → Brasília, clímax no
 // Planalto. SÓ paleta/atmosfera muda — silhueta e hitbox dos obstáculos são
 // sagradas (SIZES congelado; tints de obstáculo quase-brancos, multiplicam
