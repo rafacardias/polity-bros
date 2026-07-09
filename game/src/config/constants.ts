@@ -37,6 +37,11 @@ export const SCORE = {
   PX_PER_M: 10, // conversão px → "metros" exibidos/pontuados (RF-08)
 } as const;
 
+export const AUDIO = {
+  SFX_VOLUME: 0.5,
+  MUSIC_VOLUME: 0.25,
+} as const;
+
 export const INPUT = {
   HOLD_MAX_MS: 220, // janela do pulo variável (RF-05)
   // Gesto touch (RN-02/RN-08): o toque no chão pula IMEDIATAMENTE (mesmo

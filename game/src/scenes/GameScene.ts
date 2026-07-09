@@ -6,6 +6,7 @@ import { InputSystem } from '../systems/InputSystem';
 import { SpawnerSystem } from '../systems/SpawnerSystem';
 import { ScoreSystem } from '../systems/ScoreSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
+import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS } from '../lib/game-events';
 import { SIZES } from '../config/constants';
 
@@ -26,6 +27,8 @@ export class GameScene extends Phaser.Scene {
   private groundTile!: Phaser.GameObjects.TileSprite;
   private score!: ScoreSystem;
   private progression!: ProgressionSystem;
+  private audio!: AudioSystem;
+  private muteButton!: Phaser.GameObjects.Text;
   private emitAccumulator = 0;
   private elapsedMs = 0;
   private isGameOver = false;
@@ -49,8 +52,9 @@ export class GameScene extends Phaser.Scene {
       'ground',
     );
 
+    this.audio = new AudioSystem(this);
     this.player = new Player(this, SIZES.PLAYER.SCREEN_X, groundTop);
-    this.inputSystem = new InputSystem(this, this.player);
+    this.inputSystem = new InputSystem(this, this.player, this.audio);
 
     // pools (RN-01): maxSize limita instâncias; get() reutiliza
     this.obstacles = this.physics.add.group({
@@ -74,6 +78,7 @@ export class GameScene extends Phaser.Scene {
 
     this.score = new ScoreSystem();
     this.createHud(width);
+    this.audio.startMusic();
 
     this.progression = new ProgressionSystem();
     this.emitAccumulator = 0;
@@ -97,6 +102,21 @@ export class GameScene extends Phaser.Scene {
       .text(12, 10, '0m', { ...style, color: '#94a3b8' })
       .setOrigin(0, 0)
       .setDepth(10);
+
+    // mute (T05-06/RN-02): canto oposto ao botão "← Menu" do shell React,
+    // fora da área de ação do polegar
+    this.muteButton = this.add
+      .text(width - 12, this.scale.height - 10, this.sound.mute ? '🔇' : '🔊', {
+        ...style,
+        fontSize: '22px',
+      })
+      .setOrigin(1, 1)
+      .setDepth(10)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        const muted = this.audio.toggleMute();
+        this.muteButton.setText(muted ? '🔇' : '🔊');
+      });
   }
 
   private updateHud(): void {
@@ -110,6 +130,7 @@ export class GameScene extends Phaser.Scene {
     vote.deactivate(); // pooling: nunca destroy (RN-01)
     this.score.addVote();
     this.votesText.setText(`VOTOS ${this.score.getSnapshot().votes}`);
+    this.audio.vote();
   }
 
   update(time: number, delta: number): void {
@@ -153,6 +174,7 @@ export class GameScene extends Phaser.Scene {
     this.isGameOver = true;
     this.physics.pause();
     this.player.setTint(0x94a3b8);
+    this.audio.death();
 
     const snapshot = this.score.getSnapshot();
     // elapsedSec (T05-04): a Edge Function submit-score usa pra teto de

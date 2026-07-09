@@ -24,12 +24,13 @@ export class Player extends Entity {
     return (this.body as Phaser.Physics.Arcade.Body).blocked.down;
   }
 
-  // chamado ao iniciar o toque/tecla (RF-05)
-  startJump(): void {
-    if (this.onGround) {
-      this.slide(false); // pular cancela o slide
-      this.setVelocityY(PHYSICS.JUMP_VELOCITY);
-    }
+  // chamado ao iniciar o toque/tecla (RF-05); retorna se pulou de fato —
+  // InputSystem usa isso pra só disparar o SFX de pulo quando ele acontece
+  startJump(): boolean {
+    if (!this.onGround) return false;
+    this.slide(false); // pular cancela o slide
+    this.setVelocityY(PHYSICS.JUMP_VELOCITY);
+    return true;
   }
 
   // chamado a cada frame ENQUANTO segura, dentro da janela (pulo variável)

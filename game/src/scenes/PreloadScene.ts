@@ -18,9 +18,14 @@ export class PreloadScene extends Phaser.Scene {
 
   preload(): void {
     this.createProgressBar();
-    // Assets reais (sprites + áudio) entram AQUI na Fase 3 via this.load.*.
-    // Com a fila vazia, a barra completa instantaneamente — comportamento
-    // esperado enquanto só existem placeholders gerados em runtime.
+    // Sprites permanecem placeholders gerados em runtime até a Fase 3.
+    // Áudio (T05-06/RF-10) já usa arquivos reais — tons sintéticos
+    // provisórios em /assets/audio, mesmos keys que valem para os
+    // arquivos finais.
+    this.load.audio('sfx-jump', 'assets/audio/sfx-jump.wav');
+    this.load.audio('sfx-vote', 'assets/audio/sfx-vote.wav');
+    this.load.audio('sfx-death', 'assets/audio/sfx-death.wav');
+    this.load.audio('music', 'assets/audio/music.wav');
   }
 
   create(): void {

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { INPUT } from '../config/constants';
+import type { AudioSystem } from './AudioSystem';
 
 // Única fonte de input (RF-05, RN-08). Teclado e touch usam EXATAMENTE o
 // mesmo modelo de timing: o pulo inicia no down (tecla OU toque) e o arco
@@ -27,6 +28,7 @@ export class InputSystem {
   constructor(
     private scene: Phaser.Scene,
     private player: Player,
+    private audio: AudioSystem,
   ) {
     const kb = scene.input.keyboard!;
     const up = kb.addKey('UP');
@@ -103,7 +105,7 @@ export class InputSystem {
     this.player.slide(false);
     this.holding = true;
     this.holdStart = this.scene.time.now;
-    this.player.startJump();
+    if (this.player.startJump()) this.audio.jump();
   }
 
   private endJump(): void {
