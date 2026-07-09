@@ -13,6 +13,9 @@ export class SpawnerSystem {
   // primeira quebra (voto perdido) ou na completude — não cresce sem limite.
   private lineLedger = new Map<number, { total: number; collected: number }>();
   private nextLineId = 1;
+  // paleta da cidade atual (T07B-01, D-14): tint quase-branco, atmosfera
+  // sem tocar silhueta/hitbox
+  private obstacleTint = 0xffffff;
 
   constructor(
     private scene: Phaser.Scene,
@@ -43,6 +46,12 @@ export class SpawnerSystem {
       }
       return true;
     });
+  }
+
+  // troca de cidade (T07B-01): novos obstáculos nascem com o tint da paleta;
+  // os já ativos são retintados pela GameScene para consistência visual
+  setObstacleTint(tint: number): void {
+    this.obstacleTint = tint;
   }
 
   // Chamado pela GameScene ao coletar; true = a linha INTEIRA foi coletada
@@ -77,6 +86,7 @@ export class SpawnerSystem {
       body.immovable = true;
       obstacle.setVelocityX(-speed);
       obstacle.setData('kind', kind);
+      obstacle.setTint(this.obstacleTint);
     }
 
     // rota de risco/recompensa: linha de votos logo após o obstáculo, alta —

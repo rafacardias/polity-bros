@@ -80,6 +80,17 @@ export const INPUT = {
   SLIDE_MS: 550, // duração do slide após soltar o dedo (swipe/flick)
 } as const;
 
+// Cidades da campanha (T07B-01, D-14): SP → RJ → Brasília, clímax no
+// Planalto. SÓ paleta/atmosfera muda — silhueta e hitbox dos obstáculos são
+// sagradas (SIZES congelado; tints de obstáculo quase-brancos, multiplicam
+// a textura sem alterar leitura de risco). Fundos frios/escuros mantêm
+// contraste com os obstáculos quentes (vermelho/laranja) em toda paleta.
+export const CITIES = [
+  { name: 'São Paulo', atDistanceM: 0, bg: 0x1e293b, groundTint: 0xffffff, obstacleTint: 0xffffff },
+  { name: 'Rio de Janeiro', atDistanceM: 500, bg: 0x134e4a, groundTint: 0xf5deb3, obstacleTint: 0xffe8cc },
+  { name: 'Brasília', atDistanceM: 1200, bg: 0x312e81, groundTint: 0xc7d2fe, obstacleTint: 0xe4e4ff },
+] as const;
+
 // Dimensões dos placeholders/hitboxes (RN-07 — trocam de arte, não de tamanho)
 export const SIZES = {
   PLAYER: { W: 44, H: 64, SLIDE_H: 32, SCREEN_X: 100 },

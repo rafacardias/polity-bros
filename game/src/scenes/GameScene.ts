@@ -10,7 +10,7 @@ import { OnboardingSystem } from '../systems/OnboardingSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS } from '../lib/game-events';
-import { JUICE, SCORE, SIZES } from '../config/constants';
+import { CITIES, JUICE, SCORE, SIZES } from '../config/constants';
 
 const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
 
@@ -40,6 +40,9 @@ export class GameScene extends Phaser.Scene {
   private recordCelebrated = false;
   private onboardingHint?: Phaser.GameObjects.Text;
   private onboardingPulse?: Phaser.Tweens.Tween;
+  private cityIndex = 0;
+  private cityBanner!: Phaser.GameObjects.Text;
+  private currentBg = 0;
   private emitAccumulator = 0;
   private elapsedMs = 0;
   private isGameOver = false;
@@ -108,6 +111,8 @@ export class GameScene extends Phaser.Scene {
     this.recordCelebrated = false;
     this.createRecordMarker();
     this.createOnboardingHint();
+    this.cityIndex = 0;
+    this.applyCityPalette(0, false); // largada em São Paulo (D-14)
     this.audio.startMusic();
     this.cameras.main.fadeIn(JUICE.FADE_IN_MS, 0, 0, 0);
 
@@ -148,6 +153,19 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(10)
+      .setVisible(false);
+
+    // banner de chegada em cidade (T07B-01): um objeto reutilizado
+    this.cityBanner = this.add
+      .text(width / 2, this.scale.height * 0.42, '', {
+        ...style,
+        fontSize: '20px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(11)
       .setVisible(false);
 
     this.muteButton = this.add
@@ -275,6 +293,77 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // Cidades da campanha (T07B-01, D-14): marcos de distância trocam a
+  // ATMOSFERA (fundo, chão, tint sutil dos obstáculos) — nunca a silhueta.
+  // Progresso visível e objetivo de médio prazo ("chegar em Brasília").
+  private updateCityProgress(): void {
+    const next = CITIES[this.cityIndex + 1];
+    if (!next || this.score.getSnapshot().distance < next.atDistanceM) return;
+    this.cityIndex += 1;
+    this.applyCityPalette(this.cityIndex, true);
+    this.announceCity(next.name);
+  }
+
+  private applyCityPalette(index: number, animate: boolean): void {
+    const city = CITIES[index];
+    this.groundTile.setTint(city.groundTint);
+    this.spawner.setObstacleTint(city.obstacleTint);
+    // retinta os obstáculos já em tela — consistência imediata da paleta
+    this.obstacles.children.iterate((child) => {
+      const sprite = child as Phaser.Physics.Arcade.Sprite;
+      if (sprite.active) sprite.setTint(city.obstacleTint);
+      return true;
+    });
+
+    if (!animate) {
+      this.currentBg = city.bg;
+      this.cameras.main.setBackgroundColor(city.bg);
+      return;
+    }
+    const fromColor = Phaser.Display.Color.ValueToColor(this.currentBg);
+    const toColor = Phaser.Display.Color.ValueToColor(city.bg);
+    this.currentBg = city.bg;
+    this.tweens.addCounter({
+      from: 0,
+      to: 100,
+      duration: 900,
+      onUpdate: (tw) => {
+        const c = Phaser.Display.Color.Interpolate.ColorWithColor(
+          fromColor,
+          toColor,
+          100,
+          tw.getValue() ?? 0,
+        );
+        this.cameras.main.setBackgroundColor(Phaser.Display.Color.GetColor(c.r, c.g, c.b));
+      },
+    });
+  }
+
+  private announceCity(name: string): void {
+    this.audio.combo();
+    this.cityBanner
+      .setText(`🏙️ Você chegou em ${name}!`)
+      .setAlpha(0)
+      .setScale(0.8)
+      .setVisible(true);
+    this.tweens.add({
+      targets: this.cityBanner,
+      alpha: 1,
+      scale: 1,
+      duration: 300,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: this.cityBanner,
+          alpha: 0,
+          delay: 1400,
+          duration: 500,
+          onComplete: () => this.cityBanner.setVisible(false),
+        });
+      },
+    });
+  }
+
   private updateRecordMarker(): void {
     if (this.bestRecord.distance <= 0) return; // primeira partida: sem marcador
     const bestPx = this.bestRecord.distance * SCORE.PX_PER_M;
@@ -311,6 +400,7 @@ export class GameScene extends Phaser.Scene {
     this.player.update(time, delta);
     this.updateHud();
     this.updateRecordMarker();
+    this.updateCityProgress();
 
     // contrato D-05: score periódico para o shell React (throttled)
     this.emitAccumulator += delta;
