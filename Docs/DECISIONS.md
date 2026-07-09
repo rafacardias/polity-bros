@@ -17,6 +17,13 @@
 | D-06 | Escopo MVP = vertical slice; ideias extras vão para Visão Futura | ✅ Ativa |
 | D-07 | MenuScreen vive no React Shell, não como Scene Phaser | ✅ Ativa |
 | D-08 | Escrita de score só via Edge Function (service role) | ✅ Ativa |
+| D-09 | Fase 7 = "Loop de Compulsão" (game feel → meta-progressão → identidade/social → robustez) | ✅ Ativa |
+| D-10 | Sem DDA na v1.0: curva fixa + quase-vitória por feedback + telemetria leve | ✅ Ativa |
+| D-11 | Economia de gemas sem dinheiro real na v1.0; pagamentos → Fase 9 | ✅ Ativa |
+| D-12 | Share de imagem sem login; login = pertencimento/persistência; vídeo adiado | ✅ Ativa |
+| D-13 | Login social = só Google na v1.0 (upgrade da conta anônima); Facebook adiado | ✅ Ativa |
+| D-14 | 3 "cidades da campanha" (SP→RJ→Brasília) só por paleta; silhueta/hitbox intocadas | ✅ Ativa |
+| D-15 | Game over: ranking em spotlight ~3s, mas replay disponível desde o frame 1 | ✅ Ativa |
 
 ---
 
@@ -65,6 +72,41 @@
 - plausibilidade (`score ≤ elapsedSec × teto`),
 - rate limit por `player_id`.
 **Consequência:** `SUPABASE_SERVICE_ROLE_KEY` existe só no ambiente da Edge Function (nunca no cliente). RLS permite leitura pública e bloqueia escrita direta.
+
+## D-09 — Fase 7 = "Loop de Compulsão"
+**Contexto:** MVP validado (Fases 4–6, dono aprovou no celular real). Brainstorm de retenção do dono em 2026-07-09 (controle + progresso + expectativa; dopamina vem da antecipação), endurecido em 2ª rodada com revisão externa de outra LLM. Prazo-alvo: eleições out/2026.
+**Decisão:** substituir a Fase 7 original ("polish" genérico) por 4 sub-fases orientadas ao loop ação→resposta→recompensa→novo objetivo: **7A** game feel/onboarding/quase-vitória → **7B** meta-progressão → **7C** identidade/social → **7D** robustez. Arte real continua adiada (RN-07); teste no celular do dono ao fim de cada sub-fase.
+**Consequência:** `specs/tasks.md` Fase 7 reescrita (T07A-*…T07D-*); `PROGRESS.md` criado na raiz como visão não-técnica e contexto portátil para outras LLMs.
+
+## D-10 — Fairness > adaptação (sem DDA na v1.0)
+**Contexto:** dono pediu comportamento "smart game" (dificuldade adaptativa estilo Castle Crush). DDA por jogador tornaria scores incomparáveis e quebraria RN-08 (paridade/ranking justo).
+**Decisão:** **nenhuma dificuldade adaptativa na v1.0.** Em vez disso: (a) curva de aquecimento FIXA bem calibrada em `constants.ts`; (b) engenharia de quase-vitória por feedback — marcador do recorde na pista, "faltaram Xm", destaque de novo recorde; (c) telemetria leve por eventos de analytics (distância/causa da morte, duração da run) — sem tabela nova e sem tocar a Edge Function.
+**Consequência:** DDA vira backlog (§8) condicionado a dados da telemetria. A curva que pontua é idêntica para todos, sempre.
+
+## D-11 — Economia de gemas sem dinheiro real na v1.0
+**Contexto:** dono listou monetização (continues R$1–10, skins R$5–10, remover ads R$5, funding). Gateway de pagamento (Pix/cartão) + entitlements + obrigações fiscais = semanas de trabalho antes de validar retenção ("Engagement → Retention → Revenue, nessa ordem").
+**Decisão:** v1.0 lança com economia fechada de **gemas**: colecionável raro (1–2/partida, rota de risco) troca por **continues** (revive 1x/partida) e skins. Carteira é **local por aparelho** (localStorage). Pagamentos reais, banner ads, "remover ads" e funding de jogos futuros → Fase 9. Sync de carteira cross-device → backlog.
+**Consequência:** o loop de compulsão (gema→continue→skin) funciona 100% sem backend novo nem risco de atrasar o lançamento pré-eleição.
+
+## D-12 — Share sem atrito; login = pertencimento (supersede parcial do §8 original)
+**Contexto:** spec original exigia login para compartilhar. O share de imagem é o principal loop de aquisição viral (jogador → imagem com CTA → novo jogador); atrito nesse ponto mata o loop.
+**Decisão:** compartilhar **imagem** (canvas: screenshot + frame + score + CTA "bata este recorde em <URL>", via Web Share API + fallback download/galeria) **funciona para anônimo** — com nome genérico e convite suave a logar. Login entrega o que acumula valor: nome persistente, identidade no ranking, recordes cross-device, perfil/histórico. **Vídeo da partida adiado** para spike técnico pós-v1.0 (gravar canvas compete por CPU com o jogo — risco direto aos 60fps de RN-01; iOS Safari instável).
+**Consequência:** RF-16 criado; imagem e vídeo NÃO são persistidos em banco — só o score.
+
+## D-13 — Login social: só Google na v1.0
+**Contexto:** dono pediu Google + Facebook OAuth. Facebook exige app aprovado pela Meta (revisão de semanas, requisitos de privacidade) — dependência externa incompatível com o prazo.
+**Decisão:** **Google OAuth** apenas, implementado como **upgrade da conta anônima** (`linkIdentity` do Supabase — o jogador não perde scores/identidade ao logar). Facebook → backlog.
+**Consequência:** pré-requisito do dono: credencial OAuth no Google Cloud Console (guiada passo a passo em T07C-01).
+
+## D-14 — "Cidades da campanha" por paleta (absorve variação de temas)
+**Contexto:** dono pediu tiers/níveis com mudança de cenário (Brasília, RJ, SP). Arte real está adiada, e mudar a forma dos obstáculos comprometeria a leitura de risco.
+**Decisão:** 3 cidades na ordem **SP → RJ → Brasília** (clímax no Planalto), ativadas por marcos de distância/score. Muda **apenas** paleta/atmosfera do cenário e dos obstáculos + banner de transição ("Você chegou em …!"). **Silhueta e hitbox intocadas** — `SIZES` em `game/src/config/constants.ts` permanece congelado; contraste obstáculo×fundo verificado por paleta.
+**Consequência:** o antigo T07-03 ("variação de temas") deixa de ser gap: versão light entra na v1.0; temas com arte/mecânica própria seguem no §8.
+
+## D-15 — Game over: spotlight de ranking sem bloquear o replay
+**Contexto:** dono desenhou pop-up final com ranking dominando ~3s. RN-03 exige "morrer e recomeçar em 1 toque" — o spotlight não pode travar o loop.
+**Decisão:** "**Jogar de novo**" fica fixo e clicável **desde o primeiro frame** do game over. O card de ranking (partida atual no topo; top-7 pessoal com destaque e posição global; top-7 global) brilha acima por ~3s e recolhe animado num botão; um toque pula a animação. Demais ações: login Google (se anônimo), CONTINUE por gemas, compartilhar, perfil.
+**Consequência:** recompensa emocional + loop rápido coexistem; layout mobile de 1 mão (RN-02).
 
 ---
 

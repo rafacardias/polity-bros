@@ -15,21 +15,21 @@
 - [ ] [P1] T03-05: Áudio (música + SFX: pulo, voto, colisão)
 - [ ] [P1] T03-06: Otimizar e comprimir assets (usar `ffmpeg` para áudio)
 
-## Fase 4 — Vertical Slice (o coração — TUDO P0)
-- [ ] [P0] T04-01: Setup Vite + Phaser 3 + TypeScript strict — *RN-06*
-- [ ] [P0] T04-02: BootScene + PreloadScene (carregam placeholders) — *RN-07*
-- [ ] [P0] T04-03: **MenuScreen React** (não Scene Phaser) monta GameShell em container div; botão Jogar → `menu:play` — *RF-01, RF-02, RN-05, D-07*
-- [ ] [P0] T04-04: Auto-run à direita (cenário + Player retângulo) — *RF-04*
-- [ ] [P0] T04-05: InputSystem — pulo curto + **pulo variável** (segurar) + **slide/descer** — *RF-05, RN-08*
-- [ ] [P0] T04-06: PhysicsSystem (gravidade, jump arc, fast-fall) — *RF-05*
-- [ ] [P0] T04-07: SpawnerSystem com object pooling — obstáculos **altos E baixos** — *RF-06, RN-01*
-- [ ] [P0] T04-08: Colisão Player×Obstáculo → game over — *RF-07*
-- [ ] [P0] T04-09: Votos colecionáveis + rotas risco/recompensa; contador no HUD — *RF-11*
-- [ ] [P0] T04-10: ScoreSystem (pontos por distância/tempo) — *RF-08*
-- [ ] [P0] T04-11: ProgressionSystem (dificuldade crescente) — *RF-09*
-- [ ] [P0] T04-12: HUD (score, votos, distância) — *RF-03*
-- [ ] [P0] T04-13: GameOverScene emite `game:gameover` + restart (`menu:restart`) — *RF-03, RF-12*
-- [ ] [P0] T04-14: **🎮 Gate de Diversão** — testar no celular real, uma mão, ~60fps. Se não for divertido, iterar AQUI antes de escalar. — *RN-01, RN-02, RN-03*
+## Fase 4 — Vertical Slice (o coração — TUDO P0) ✅ CONCLUÍDA
+- [x] [P0] T04-01: Setup Vite + Phaser 3 + TypeScript strict — *RN-06*
+- [x] [P0] T04-02: BootScene + PreloadScene (carregam placeholders) — *RN-07*
+- [x] [P0] T04-03: **MenuScreen React** (não Scene Phaser) monta GameShell em container div; botão Jogar → `menu:play` — *RF-01, RF-02, RN-05, D-07*
+- [x] [P0] T04-04: Auto-run à direita (cenário + Player retângulo) — *RF-04*
+- [x] [P0] T04-05: InputSystem — pulo curto + **pulo variável** (segurar) + **slide/descer** — *RF-05, RN-08*
+- [x] [P0] T04-06: PhysicsSystem (gravidade, jump arc, fast-fall) — *RF-05*
+- [x] [P0] T04-07: SpawnerSystem com object pooling — obstáculos **altos E baixos** — *RF-06, RN-01*
+- [x] [P0] T04-08: Colisão Player×Obstáculo → game over — *RF-07*
+- [x] [P0] T04-09: Votos colecionáveis + rotas risco/recompensa; contador no HUD — *RF-11*
+- [x] [P0] T04-10: ScoreSystem (pontos por distância/tempo) — *RF-08*
+- [x] [P0] T04-11: ProgressionSystem (dificuldade crescente) — *RF-09*
+- [x] [P0] T04-12: HUD (score, votos, distância) — *RF-03*
+- [x] [P0] T04-13: GameOverScene emite `game:gameover` + restart (`menu:restart`) — *RF-03, RF-12*
+- [x] [P0] T04-14: **🎮 Gate de Diversão** — testado pelo dono no celular real em 2026-07-09; aprovado ("tudo funcionando bem") — *RN-01, RN-02, RN-03*
 
 ## Fase 5 — Ranking online + Áudio (fecha o MVP)
 - [x] [P0] T05-01: Migration `scores` (+votos) + RLS + índices — *RF-12..14, RN-04*
@@ -48,11 +48,35 @@
 - [x] [P1] T06-04: SEO (meta tags, OG, sitemap)
 - [x] [P1] T06-05: PWA (manifest, service worker, ícones)
 
-## Fase 7 — Polish (só APÓS o MVP validar diversão)
-- [ ] [P1] T07-01: Juice (partículas, screen shake, transições)
-- [ ] [P1] T07-02: Personagens adicionais + habilidade única (sem pay-to-win)
-- [ ] [P1] T07-03: Variação de fases / temas
-- [ ] [P2] T07-04: Achievements
+## Fase 7 — "Loop de Compulsão" (replanejada em 2026-07-09 — D-09…D-15)
+> Substitui a Fase 7 original (T07-01 → 7A; T07-02 → T07B-04; T07-03 → T07B-01/D-14;
+> T07-04 → coberto pelos critérios de unlock, achievements formais no backlog).
+> Teste no celular do dono ao fim de CADA sub-fase. Deploy só com OK explícito.
+
+### 7A — Game Feel, Onboarding & Quase-vitória
+- [ ] [P0] T07A-01: PROGRESS.md (visão não-técnica na raiz) + DECISIONS.md D-09…D-15 + specs atualizadas — *D-09*
+- [ ] [P0] T07A-02: Juice — partículas na coleta, screen shake na morte, squash/stretch no pulo/aterrissagem, transições — *RN-01*
+- [ ] [P0] T07A-03: Momento "uau" — linha de votos completa → combo + SFX especial + explosão visual + bônus no HUD — *RF-11*
+- [ ] [P0] T07A-04: Quase-vitória — marcador do recorde pessoal na pista + "faltaram Xm!" no game over + celebração de novo recorde — *D-10*
+- [ ] [P0] T07A-05: Curva de aquecimento fixa calibrada + telemetria leve via analytics (distância/causa da morte, duração); sem DB novo, sem tocar Edge Function — *D-10, RN-08*
+- [ ] [P0] T07A-06: Micro-onboarding first-run mobile (tap/hold/swipe↓), some após 1ª interação; critério: executável em ≤5s no mobile Safari — *RF-15, RN-02*
+
+### 7B — Meta-progressão
+- [ ] [P0] T07B-01: Cidades da campanha (SP→RJ→Brasília) — 3 paletas + banner de transição; silhueta/hitbox intocadas (`SIZES` congelado) — *D-14*
+- [ ] [P0] T07B-02: Gema rara — entity pooled, 1–2/partida em rota de risco, SFX próprio; carteira local (localStorage) — *D-11, RN-01*
+- [ ] [P0] T07B-03: Continue por gemas — revive 1x/partida; `elapsedSec` segue contando (anti-cheat OK) — *D-11, RN-04*
+- [ ] [P0] T07B-04: Skins desbloqueáveis (variantes de cor) + critérios de unlock + seleção; identificadores neutros no código — *D-11*
+
+### 7C — Identidade & Social
+- [ ] [P0] T07C-01: Google OAuth como upgrade da conta anônima (`linkIdentity`); pré-requisito: credencial OAuth do dono — *D-13, RF-14*
+- [ ] [P0] T07C-02: Migration `profiles` (username) + RLS + edição de nome + ranking exibe nome — *RN-04*
+- [ ] [P0] T07C-03: Pop-up final — replay fixo desde o frame 1; ranking em spotlight ~3s (atual + top-7 pessoal + top-7 global + posição), recolhe animado — *D-15, RN-02, RN-03*
+- [ ] [P1] T07C-04: Imagem de share para todos — canvas (screenshot + frame + score + CTA) via Web Share API + fallback download/galeria — *D-12, RF-16*
+
+### 7D — Robustez & fechamento
+- [ ] [P0] T07D-01: Resiliência de rede — partida carregada roda 100% local; submit de score em fila com reenvio ao reconectar (sem prometer boot offline completo) — *RN-01*
+- [ ] [P0] T07D-02: Revisão de segurança da superfície nova (profiles RLS, OAuth, submit-score com continues) — *RN-04*
+- [ ] [P0] T07D-03: 🎮 Gate da Fase 7 — build/lint/typecheck verdes + E2E Playwright + celular real + deploy com OK explícito (inclui fix de música 6485f9e)
 
 ## Fase 8 — QA
 - [ ] [P0] T08-01: Teste cross-device (5+ dispositivos)

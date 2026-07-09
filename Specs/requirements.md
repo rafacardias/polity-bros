@@ -35,6 +35,10 @@ por cima E por baixo, votos colecionáveis, pontuação, game over e ranking onl
 - **RF-10** — O AudioSystem DEVE tocar SFX de pulo, voto, colisão e música de fundo, respeitando a política de autoplay (só após interação).
 - **RF-11 (revisado — votos, D-04)** — O SpawnerSystem DEVE posicionar **votos** ao longo da fase, incluindo em **rotas de risco/recompensa** (ex.: linha de votos que exige pulo alto perto de um obstáculo). Coletar voto incrementa um contador exibido no HUD.
 
+### Retenção & Social (Fase 7 — D-09…D-15)
+- **RF-15 (micro-onboarding)** — QUANDO um jogador abre o jogo pela primeira vez no aparelho, o sistema DEVE exibir um hint mínimo e não intrusivo dos controles (tap = pulo curto, segurar = pulo alto, swipe ↓ = slide), que desaparece após a primeira interação/partida (flag local). **Critério: usuário novo em mobile Safari entende e executa os 3 comandos em ≤5s.**
+- **RF-16 (share sem atrito)** — QUANDO o jogador pede para compartilhar, o sistema DEVE gerar a imagem (screenshot + frame + score + CTA) **mesmo sem login** (nome genérico + convite suave a logar). Login concede identidade: nome no ranking/share, recordes cross-device, perfil. Imagem/vídeo NÃO são persistidos em banco — só o score.
+
 ### Ranking (Supabase)
 - **RF-12** — QUANDO uma partida termina, o sistema DEVE enviar a pontuação para validação server-side (Edge Function) antes de gravar.
 - **RF-13** — QUANDO o jogador abre o ranking, o sistema DEVE exibir os **Top 10** scores (leitura pública).
@@ -73,14 +77,17 @@ scores id uuid pk player_id uuid -> auth.users (escrita SÓ via Edge Function/se
 > Inspirado em Super Mario Run. Registrado para não perder ideias. Cada item
 > vira sua própria spec quando (e se) for priorizado após o MVP validado.
 
-- **Personagens desbloqueáveis** com traço único (ex.: pulo mais alto), sem pay-to-win no ranking.
+- **Personagens desbloqueáveis** com traço único (ex.: pulo mais alto), sem pay-to-win no ranking. *(Versão light — skins por variante de cor via gemas/conquistas — entrou na v1.0, T07B-04/D-11; habilidade única continua aqui.)*
 - **Seleção de personagens estilo Mario/Luigi** — arquétipos da polarização brasileira (um inspirado em Lula, outro em Bolsonaro) como opções jogáveis. Direção de arte: pixel-art fofo/minimalista, reconhecível sem descaracterizar (referências registradas no Documento de Memória).
 - **Coletável extra "dinheiro/propina"** (sátira "são todos iguais") como segundo colecionável, sem virar mecânica principal.
 - **Power-up "viralizou"** — publicação viral dá poder temporário e troca a música de fundo enquanto durar.
-- **Login social (Google/Facebook)** como upgrade da conta anônima para compartilhar score.
-- **Compartilhamento em redes sociais** — score e/ou clipe curto de melhor momento em formato story (Instagram, Facebook, WhatsApp, TikTok), disponível para jogador logado.
+- **Login Facebook** como 2º provider OAuth. *(Google entrou na v1.0 — D-13; Facebook adiado por exigir revisão da Meta.)*
+- **Vídeo da partida compartilhável** (íntegra <30s / timelapse até 30s, com frame + CTA) — adiado por risco aos 60fps ao gravar canvas em mobile (D-12). **Próximo passo definido: spike técnico de 1 dia (MediaRecorder no celular real) pós-v1.0.** *(A IMAGEM de share entrou na v1.0 — RF-16.)*
+- **Pagamentos reais** — continues (R$1/3, R$5/20, R$10/50), skins (R$5–10), "remover ads" (R$5), banner de ads após 5 partidas, botões de funding de jogos futuros na landing → Fase 9, após retenção validada (D-11). Pré-requisito sem código: aplicação no AdSense + escolha de gateway (Pix/cartão).
+- **Sync de carteira de gemas cross-device** — na v1.0 a carteira é local por aparelho (D-11).
+- **Dificuldade adaptativa (DDA)** — só se a telemetria da v1.0 provar necessidade, e nunca na curva que pontua (D-10).
 - **Obstáculos móveis / inimigos (Enemy — cortado do MVP em D-06)** — entram conforme a dificuldade sobe: no chão, vindo contra o player, "eleitores cobrando promessas" e "repórteres com perguntas" (o candidato se esquiva); no ar, ameaças voadoras (tema a definir — ex.: drone de fake news) para pressionar o slide/timing.
-- **Múltiplos mundos/temas**, cada um introduzindo 1 mecânica nova.
+- **Múltiplos mundos/temas**, cada um introduzindo 1 mecânica nova. *(Versão light — "cidades da campanha" SP→RJ→Brasília só por paleta — entrou na v1.0, T07B-01/D-14.)*
 - **Modo Desafio** (no-hit, speed run, alvo de votos).
 - **Ghost race assíncrono** contra fantasmas de amigos/global.
 - **Modo Kingdom** (base-building com os votos coletados).
