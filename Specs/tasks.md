@@ -53,13 +53,13 @@
 > T07-04 → coberto pelos critérios de unlock, achievements formais no backlog).
 > Teste no celular do dono ao fim de CADA sub-fase. Deploy só com OK explícito.
 
-### 7A — Game Feel, Onboarding & Quase-vitória
-- [ ] [P0] T07A-01: PROGRESS.md (visão não-técnica na raiz) + DECISIONS.md D-09…D-15 + specs atualizadas — *D-09*
-- [ ] [P0] T07A-02: Juice — partículas na coleta, screen shake na morte, squash/stretch no pulo/aterrissagem, transições — *RN-01*
-- [ ] [P0] T07A-03: Momento "uau" — linha de votos completa → combo + SFX especial + explosão visual + bônus no HUD — *RF-11*
-- [ ] [P0] T07A-04: Quase-vitória — marcador do recorde pessoal na pista + "faltaram Xm!" no game over + celebração de novo recorde — *D-10*
-- [ ] [P0] T07A-05: Curva de aquecimento fixa calibrada + telemetria leve via analytics (distância/causa da morte, duração); sem DB novo, sem tocar Edge Function — *D-10, RN-08*
-- [ ] [P0] T07A-06: Micro-onboarding first-run mobile (tap/hold/swipe↓), some após 1ª interação; critério: executável em ≤5s no mobile Safari — *RF-15, RN-02*
+### 7A — Game Feel, Onboarding & Quase-vitória ✅ (aguardando validação do dono no celular)
+- [x] [P0] T07A-01: PROGRESS.md (visão não-técnica na raiz) + DECISIONS.md D-09…D-15 + specs atualizadas — *D-09*
+- [x] [P0] T07A-02: Juice — partículas na coleta, screen shake na morte, squash/stretch no pulo/aterrissagem, transições — *RN-01*
+- [x] [P0] T07A-03: Momento "uau" — linha de votos completa → combo + SFX especial + explosão visual + bônus (em votos, fórmula anti-cheat preservada) — *RF-11*
+- [x] [P0] T07A-04: Quase-vitória — marcador do recorde pessoal na pista + "faltaram Xm!"/empate no game over + celebração de novo recorde — *D-10*
+- [x] [P0] T07A-05: Curva de aquecimento fixa (220→260 + FIRST_GAP) + telemetria leve (deathCause + run_end via Vercel Analytics com gate; amostra local p/ calibração); sem DB novo, sem tocar Edge Function — *D-10, RN-08*
+- [x] [P0] T07A-06: Micro-onboarding first-run (tap/hold/swipe↓ ou teclado), some na 1ª interação ou 6s; 1x por aparelho — *RF-15, RN-02*
 
 ### 7B — Meta-progressão
 - [ ] [P0] T07B-01: Cidades da campanha (SP→RJ→Brasília) — 3 paletas + banner de transição; silhueta/hitbox intocadas (`SIZES` congelado) — *D-14*

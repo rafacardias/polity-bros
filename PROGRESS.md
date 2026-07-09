@@ -46,13 +46,13 @@ quando sente que *a culpa da derrota foi dele, a vitória estava perto, e a pró
 tentativa pode ser melhor*). Quatro blocos, nesta ordem, com teste no celular do dono
 ao fim de cada um:
 
-### 7A — Sensação de jogo + "quase consegui" *(em andamento)*
-- [ ] Este documento + registro das decisões ⏳
-- [ ] Efeitos visuais de impacto: partículas ao coletar voto, tela treme na morte, personagem "estica e amassa" no pulo
-- [ ] Momento "uau": completar uma linha de votos difícil → som especial + explosão visual + bônus
-- [ ] Quase-vitória: marca do seu recorde visível na pista + "faltaram Xm pro seu recorde!" ao morrer
-- [ ] Curva de início de partida calibrada (fixa e justa para todos) + medição anônima de onde os jogadores morrem
-- [ ] Mini-tutorial de primeira partida (tap = pulo, segurar = pulo alto, deslizar dedo = escorregar) — some sozinho depois
+### 7A — Sensação de jogo + "quase consegui" *(✅ implementada em 2026-07-09 — falta seu teste no celular)*
+- [x] Este documento + registro das decisões
+- [x] Efeitos visuais de impacto: partículas ao coletar voto, tela treme na morte, personagem "estica e amassa" no pulo
+- [x] Momento "uau": completar uma linha de votos → "LINHA PERFEITA! +20" + som especial + explosão visual
+- [x] Quase-vitória: bandeira 🏁 do seu recorde visível na pista + "faltaram Xm pro seu recorde!" (ou "empatou!") ao morrer + festa de novo recorde
+- [x] Curva de início de partida calibrada (fixa e justa para todos) + medição anônima de onde os jogadores morrem (desligada até você ativar o Analytics — tarefa 6 da seção 6)
+- [x] Mini-tutorial de primeira partida (tap = pulo, segurar = pulo alto, deslizar dedo = escorregar) — aparece 1x e some sozinho
 
 ### 7B — Progresso que fica (mesmo perdendo)
 - [ ] "Cidades da campanha": o cenário muda de cor/clima conforme você avança — **SP → RJ → Brasília** (chegar ao Planalto é o clímax)
