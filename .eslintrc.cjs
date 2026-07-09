@@ -57,12 +57,13 @@ module.exports = {
       settings: { react: { version: 'detect' } },
       rules: { 'react/react-in-jsx-scope': 'off' },
     },
-    // Edge Functions (Deno)
+    // Edge Functions (Deno) — specifiers (jsr:, npm:, import_map) não são
+    // resolvíveis pelo resolver Node/TS do ESLint; deno check já garante os tipos.
     {
       files: ['supabase/functions/**/*.ts'],
       env: { browser: false, node: false, es2022: true },
       globals: { Deno: 'readonly' },
-      rules: { 'no-console': 'off' },
+      rules: { 'no-console': 'off', 'import/no-unresolved': 'off' },
     },
   ],
 };

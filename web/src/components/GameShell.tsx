@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
-import { createGame, emitGameEvent, SHELL_EVENTS } from 'game';
+import { createGame, emitGameEvent, GAME_EVENTS, onGameEvent, SHELL_EVENTS } from 'game';
+import type { GameEventPayload } from 'game';
+import { submitScore } from '../lib/submitScore';
 
 interface GameShellProps {
   onExit: () => void;
@@ -18,9 +20,15 @@ export function GameShell({ onExit }: GameShellProps) {
     game.events.once('ready', () => {
       if (!disposed) emitGameEvent(SHELL_EVENTS.PLAY);
     });
-    // Escuta de game:gameover + envio à Edge Function entram na T05-04 (D-08)
+
+    // T05-04/D-08: ao morrer, envia o score pra Edge Function (JWT + elapsedSec)
+    const offGameOver = onGameEvent<GameEventPayload>(GAME_EVENTS.GAME_OVER, (payload) => {
+      void submitScore(payload);
+    });
+
     return () => {
       disposed = true;
+      offGameOver();
       game.destroy(true);
     };
   }, []);

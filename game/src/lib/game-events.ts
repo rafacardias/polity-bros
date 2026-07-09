@@ -11,11 +11,14 @@ export const SHELL_EVENTS = {
   RESTART: 'menu:restart',
 } as const;
 
-// Payload dos eventos Phaser → React (game:score, game:gameover)
+// Payload dos eventos Phaser → React (game:score, game:gameover).
+// elapsedSec só vem preenchido no game:gameover (T05-04) — a Edge Function
+// submit-score usa esse tempo pro teto de plausibilidade (RN-04).
 export interface GameEventPayload {
   score: number;
   votes: number;
   distance: number;
+  elapsedSec?: number;
 }
 
 export function emitGameEvent(evt: string, detail?: unknown): void {

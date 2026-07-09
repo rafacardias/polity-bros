@@ -27,6 +27,7 @@ export class GameScene extends Phaser.Scene {
   private score!: ScoreSystem;
   private progression!: ProgressionSystem;
   private emitAccumulator = 0;
+  private elapsedMs = 0;
   private isGameOver = false;
 
   constructor() {
@@ -76,6 +77,7 @@ export class GameScene extends Phaser.Scene {
 
     this.progression = new ProgressionSystem();
     this.emitAccumulator = 0;
+    this.elapsedMs = 0;
     this.isGameOver = false;
   }
 
@@ -112,6 +114,7 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     if (this.isGameOver) return;
+    this.elapsedMs += delta;
     this.inputSystem.update();
     this.progression.update(delta); // dificuldade crescente (RF-09)
     const speed = this.progression.speed;
@@ -152,7 +155,10 @@ export class GameScene extends Phaser.Scene {
     this.player.setTint(0x94a3b8);
 
     const snapshot = this.score.getSnapshot();
-    emitGameEvent(GAME_EVENTS.GAME_OVER, snapshot);
+    // elapsedSec (T05-04): a Edge Function submit-score usa pra teto de
+    // plausibilidade (RN-04) — não faz parte do ScoreSnapshot em si.
+    const elapsedSec = this.elapsedMs / 1000;
+    emitGameEvent(GAME_EVENTS.GAME_OVER, { ...snapshot, elapsedSec });
     // beat curto para a morte "registrar" antes da troca de tela
     this.time.delayedCall(450, () => this.scene.start('GameOverScene', snapshot));
   }
