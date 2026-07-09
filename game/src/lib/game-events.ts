@@ -14,11 +14,13 @@ export const SHELL_EVENTS = {
 // Payload dos eventos Phaser → React (game:score, game:gameover).
 // elapsedSec só vem preenchido no game:gameover (T05-04) — a Edge Function
 // submit-score usa esse tempo pro teto de plausibilidade (RN-04).
+// deathCause (T07A-05, D-10): telemetria leve — qual tipo de obstáculo matou.
 export interface GameEventPayload {
   score: number;
   votes: number;
   distance: number;
   elapsedSec?: number;
+  deathCause?: 'obstacle-high' | 'obstacle-low';
 }
 
 export function emitGameEvent(evt: string, detail?: unknown): void {

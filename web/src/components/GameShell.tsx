@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { createGame, emitGameEvent, GAME_EVENTS, onGameEvent, SHELL_EVENTS } from 'game';
 import type { GameEventPayload } from 'game';
 import { submitScore } from '../lib/submitScore';
+import { trackRunEnd } from '../lib/telemetry';
 
 interface GameShellProps {
   onExit: () => void;
@@ -24,6 +25,7 @@ export function GameShell({ onExit }: GameShellProps) {
     // T05-04/D-08: ao morrer, envia o score pra Edge Function (JWT + elapsedSec)
     const offGameOver = onGameEvent<GameEventPayload>(GAME_EVENTS.GAME_OVER, (payload) => {
       void submitScore(payload);
+      trackRunEnd(payload); // telemetria leve (T07A-05, D-10)
     });
 
     return () => {

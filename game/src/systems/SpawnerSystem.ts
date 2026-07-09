@@ -22,7 +22,9 @@ export class SpawnerSystem {
 
   update(distance: number, speed: number): void {
     const gap = Math.max(SPAWN.GAP_MIN, SPAWN.GAP_BASE - distance * SPAWN.GAP_TIGHTEN);
-    if (distance - this.lastSpawnX >= gap) {
+    // 1º obstáculo usa FIRST_GAP (T07A-05): respiro de leitura pro novato
+    const target = this.lastSpawnX === 0 ? SPAWN.FIRST_GAP : gap;
+    if (distance - this.lastSpawnX >= target) {
       this.spawnObstacle(speed, gap);
       this.lastSpawnX = distance;
     }

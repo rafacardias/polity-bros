@@ -99,6 +99,9 @@ do runner (decisão do dono, 2026-07-09).
 3. Decidir/registrar o domínio **brazukagames.com.br** (aparece no convite da imagem de share).
 4. Limpar scores de teste no painel do Supabase (poluem o ranking real).
 5. Autorizar o app do GitHub na Vercel (opcional; melhora o fluxo de deploy).
+6. Ativar **Web Analytics** no painel da Vercel (projeto → Analytics → Enable).
+   Depois disso o Claude liga a variável `VITE_ENABLE_ANALYTICS=true` no deploy —
+   sem essa dupla ativação a telemetria fica desligada de propósito (evita erros).
 
 ## 7. Como testar em casa
 

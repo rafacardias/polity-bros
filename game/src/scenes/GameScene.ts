@@ -78,7 +78,9 @@ export class GameScene extends Phaser.Scene {
     this.spawner = new SpawnerSystem(this, this.obstacles, this.votes);
 
     // RF-07: qualquer contato com obstáculo encerra a partida
-    this.physics.add.overlap(this.player, this.obstacles, () => this.gameOver());
+    this.physics.add.overlap(this.player, this.obstacles, (_p, o) =>
+      this.gameOver(o as Obstacle),
+    );
     // RF-11: coletar voto incrementa o contador do HUD
     this.physics.add.overlap(this.player, this.votes, (_p, v) =>
       this.collectVote(v as Collectible),
@@ -272,7 +274,7 @@ export class GameScene extends Phaser.Scene {
 
   // RF-07 + contrato D-05: congela o mundo, avisa o shell (game:gameover)
   // e passa o resultado para a GameOverScene (RF-03)
-  private gameOver(): void {
+  private gameOver(killer?: Obstacle): void {
     if (this.isGameOver) return;
     this.isGameOver = true;
     this.physics.pause();
@@ -287,7 +289,11 @@ export class GameScene extends Phaser.Scene {
     // elapsedSec (T05-04): a Edge Function submit-score usa pra teto de
     // plausibilidade (RN-04) — não faz parte do ScoreSnapshot em si.
     const elapsedSec = this.elapsedMs / 1000;
-    emitGameEvent(GAME_EVENTS.GAME_OVER, { ...snapshot, elapsedSec });
+    // deathCause (T07A-05): telemetria de onde/como se morre — calibra a
+    // curva fixa com dados reais em vez de achismo (D-10)
+    const deathCause =
+      killer?.getData('kind') === 'low' ? 'obstacle-low' : 'obstacle-high';
+    emitGameEvent(GAME_EVENTS.GAME_OVER, { ...snapshot, elapsedSec, deathCause });
 
     // quase-vitória (T07A-04): salva os novos máximos e leva o recorde
     // ANTERIOR para a GameOverScene calcular o "faltaram Xm"

@@ -14,6 +14,7 @@ export const PHYSICS = {
 } as const;
 
 export const SPAWN = {
+  FIRST_GAP: 560, // 1º obstáculo mais longe: respiro pro novato ler os controles
   GAP_BASE: 420,
   GAP_MIN: 220,
   GAP_TIGHTEN: 0.02,
@@ -26,6 +27,11 @@ export const SPAWN = {
 } as const;
 
 export const PROGRESSION = {
+  // Aquecimento FIXO e igual pra todos (T07A-05, D-10): largada mais lenta
+  // subindo linearmente até SPEED_BASE em WARMUP_DISTANCE px (~3s). Depois,
+  // degraus normais. Nada disso é adaptativo — fairness do ranking (RN-08).
+  SPEED_START: 220,
+  WARMUP_DISTANCE: 700,
   SPEED_BASE: 260,
   SPEED_INC: 15,
   SPEED_INTERVAL: 500,
