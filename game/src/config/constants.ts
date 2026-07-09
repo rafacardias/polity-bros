@@ -39,7 +39,7 @@ export const SCORE = {
 
 export const AUDIO = {
   SFX_VOLUME: 0.5,
-  MUSIC_VOLUME: 0.25,
+  MUSIC_VOLUME: 0.4,
 } as const;
 
 export const INPUT = {
