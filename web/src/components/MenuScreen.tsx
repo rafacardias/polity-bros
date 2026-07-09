@@ -1,10 +1,11 @@
 interface MenuScreenProps {
   onPlay: () => void;
+  onRanking: () => void;
 }
 
 // Menu principal da PLATAFORMA (Polity Games) — vive no React, nunca em
 // Scene Phaser (D-07). Cada jogo futuro da plataforma vira um card aqui (RF-01).
-export function MenuScreen({ onPlay }: MenuScreenProps) {
+export function MenuScreen({ onPlay, onRanking }: MenuScreenProps) {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-slate-900 p-6 text-white">
       <header className="text-center">
@@ -24,6 +25,13 @@ export function MenuScreen({ onPlay }: MenuScreenProps) {
             className="mt-6 w-full rounded-xl bg-green-500 py-4 text-lg font-bold text-slate-900 transition hover:bg-green-400 active:scale-95"
           >
             Jogar
+          </button>
+          <button
+            type="button"
+            onClick={onRanking}
+            className="mt-3 w-full rounded-xl border border-slate-600 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-700 active:scale-95"
+          >
+            Ver ranking
           </button>
         </article>
       </section>
