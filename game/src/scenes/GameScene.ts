@@ -5,6 +5,7 @@ import { Collectible } from '../entities/Collectible';
 import { InputSystem } from '../systems/InputSystem';
 import { SpawnerSystem } from '../systems/SpawnerSystem';
 import { ScoreSystem } from '../systems/ScoreSystem';
+import { BestScoreSystem, type BestRecord } from '../systems/BestScoreSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS } from '../lib/game-events';
@@ -32,6 +33,10 @@ export class GameScene extends Phaser.Scene {
   private voteBurst!: Phaser.GameObjects.Particles.ParticleEmitter;
   private comboText!: Phaser.GameObjects.Text;
   private comboTween?: Phaser.Tweens.Tween;
+  private bestRecord!: BestRecord;
+  private recordLine!: Phaser.GameObjects.Rectangle;
+  private recordLabel!: Phaser.GameObjects.Text;
+  private recordCelebrated = false;
   private emitAccumulator = 0;
   private elapsedMs = 0;
   private isGameOver = false;
@@ -94,6 +99,9 @@ export class GameScene extends Phaser.Scene {
 
     this.score = new ScoreSystem();
     this.createHud(width);
+    this.bestRecord = BestScoreSystem.load();
+    this.recordCelebrated = false;
+    this.createRecordMarker();
     this.audio.startMusic();
     this.cameras.main.fadeIn(JUICE.FADE_IN_MS, 0, 0, 0);
 
@@ -174,16 +182,57 @@ export class GameScene extends Phaser.Scene {
     this.score.addLineBonus();
     this.audio.combo();
     this.voteBurst.explode(JUICE.COMBO_BURST_COUNT, x, y);
+    this.showFloatingText(x, y - 24, `LINHA PERFEITA! +${SCORE.LINE_BONUS_VOTES * SCORE.VOTE_POINTS}`);
+  }
+
+  // texto flutuante compartilhado (combo, novo recorde): UM objeto, um tween
+  private showFloatingText(x: number, y: number, msg: string): void {
     this.comboTween?.stop();
-    this.comboText.setPosition(x, y - 24).setAlpha(1).setVisible(true);
+    this.comboText.setText(msg).setPosition(x, y).setAlpha(1).setVisible(true);
     this.comboTween = this.tweens.add({
       targets: this.comboText,
-      y: y - 72,
+      y: y - 48,
       alpha: 0,
       duration: JUICE.COMBO_TEXT_MS,
       ease: 'Cubic.easeOut',
       onComplete: () => this.comboText.setVisible(false),
     });
+  }
+
+  // Marcador do recorde pessoal na pista (T07A-04, D-10): a "linha de
+  // chegada" do seu melhor run se aproxima — quase-vitória visível, sem
+  // mexer em dificuldade. Invisível na primeira partida (sem recorde).
+  private createRecordMarker(): void {
+    const groundTop = this.scale.height - SIZES.GROUND_H;
+    this.recordLine = this.add
+      .rectangle(0, groundTop, 3, 140, 0xfacc15, 0.7)
+      .setOrigin(0.5, 1)
+      .setDepth(4)
+      .setVisible(false);
+    this.recordLabel = this.add
+      .text(0, groundTop - 146, '🏁 RECORDE', {
+        fontFamily: 'monospace',
+        fontSize: '12px',
+        color: '#facc15',
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(4)
+      .setVisible(false);
+  }
+
+  private updateRecordMarker(): void {
+    if (this.bestRecord.distance <= 0) return; // primeira partida: sem marcador
+    const bestPx = this.bestRecord.distance * SCORE.PX_PER_M;
+    const x = SIZES.PLAYER.SCREEN_X + (bestPx - this.score.getDistancePx());
+    const visible = x > -24 && x < this.scale.width + 48;
+    this.recordLine.setVisible(visible).setX(x);
+    this.recordLabel.setVisible(visible).setX(x);
+
+    if (!this.recordCelebrated && this.score.getDistancePx() > bestPx) {
+      this.recordCelebrated = true; // 1x por partida
+      this.audio.combo();
+      this.showFloatingText(SIZES.PLAYER.SCREEN_X + 70, this.scale.height * 0.35, 'NOVO RECORDE!');
+    }
   }
 
   update(time: number, delta: number): void {
@@ -199,6 +248,7 @@ export class GameScene extends Phaser.Scene {
     this.syncWorldSpeed(speed);
     this.player.update(time, delta);
     this.updateHud();
+    this.updateRecordMarker();
 
     // contrato D-05: score periódico para o shell React (throttled)
     this.emitAccumulator += delta;
@@ -238,7 +288,18 @@ export class GameScene extends Phaser.Scene {
     // plausibilidade (RN-04) — não faz parte do ScoreSnapshot em si.
     const elapsedSec = this.elapsedMs / 1000;
     emitGameEvent(GAME_EVENTS.GAME_OVER, { ...snapshot, elapsedSec });
+
+    // quase-vitória (T07A-04): salva os novos máximos e leva o recorde
+    // ANTERIOR para a GameOverScene calcular o "faltaram Xm"
+    const prevBest = BestScoreSystem.update(snapshot);
+    const gameOverData = {
+      ...snapshot,
+      newBestScore: snapshot.score > prevBest.score,
+      tiedRecord: prevBest.score > 0 && snapshot.score === prevBest.score,
+      distanceGapM: Math.max(0, prevBest.distance - snapshot.distance),
+      scoreGap: Math.max(0, prevBest.score - snapshot.score),
+    };
     // beat curto para a morte "registrar" antes da troca de tela
-    this.time.delayedCall(450, () => this.scene.start('GameOverScene', snapshot));
+    this.time.delayedCall(450, () => this.scene.start('GameOverScene', gameOverData));
   }
 }

@@ -24,6 +24,12 @@ export class ScoreSystem {
     this.distancePx += px;
   }
 
+  // px cru (não floored) — o marcador de recorde na pista (T07A-04) precisa
+  // de posição contínua; metros floored fariam o marcador andar em saltos
+  getDistancePx(): number {
+    return this.distancePx;
+  }
+
   addVote(): void {
     this.votes += 1;
   }

@@ -2,6 +2,15 @@ import Phaser from 'phaser';
 import { onGameEvent, SHELL_EVENTS } from '../lib/game-events';
 import type { ScoreSnapshot } from '../systems/ScoreSystem';
 
+// snapshot + contexto de quase-vitória (T07A-04), calculado pela GameScene
+// contra o recorde ANTERIOR à partida
+export interface GameOverData extends ScoreSnapshot {
+  newBestScore?: boolean;
+  tiedRecord?: boolean;
+  distanceGapM?: number;
+  scoreGap?: number;
+}
+
 // Fim de partida (RF-03). O game:gameover é emitido pela GameScene no
 // momento da morte; aqui exibimos o resultado e aceitamos reinício por
 // toque/Espaço OU pelo shell React via menu:restart (contrato D-05).
@@ -13,7 +22,7 @@ export class GameOverScene extends Phaser.Scene {
     super({ key: 'GameOverScene' });
   }
 
-  create(data: ScoreSnapshot): void {
+  create(data: GameOverData): void {
     const { width, height } = this.scale;
     this.restarted = false;
 
@@ -29,6 +38,7 @@ export class GameOverScene extends Phaser.Scene {
         { ...style, fontSize: '20px' },
       )
       .setOrigin(0.5);
+    this.createNearMissLine(data, width, height, style);
     this.add
       .text(width / 2, height * 0.62, 'toque para jogar de novo', {
         ...style,
@@ -46,6 +56,43 @@ export class GameOverScene extends Phaser.Scene {
       this.input.once('pointerdown', () => this.restart());
       this.input.keyboard!.once('keydown-SPACE', () => this.restart());
     });
+  }
+
+  // Quase-vitória (T07A-04, D-10): recorde novo celebra; derrota mostra o
+  // quão PERTO ficou — combustível do "só mais uma" sem tocar dificuldade.
+  private createNearMissLine(
+    data: GameOverData,
+    width: number,
+    height: number,
+    style: { fontFamily: string; color: string; align: 'center' },
+  ): void {
+    let msg = '';
+    let color = '#94a3b8';
+    if (data.newBestScore) {
+      msg = '🏆 NOVO RECORDE!';
+      color = '#facc15';
+    } else if (data.tiedRecord) {
+      msg = 'empatou com seu recorde!';
+    } else if ((data.distanceGapM ?? 0) > 0) {
+      msg = `faltaram ${data.distanceGapM}m pro seu recorde!`;
+    } else if ((data.scoreGap ?? 0) > 0) {
+      msg = `faltaram ${data.scoreGap} pontos pro seu recorde!`;
+    }
+    if (!msg) return;
+
+    const line = this.add
+      .text(width / 2, height * 0.52, msg, { ...style, fontSize: '16px', color })
+      .setOrigin(0.5);
+    if (data.newBestScore) {
+      this.tweens.add({
+        targets: line,
+        scale: 1.12,
+        duration: 380,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
   }
 
   private restart(): void {
