@@ -283,10 +283,17 @@ export class GameScene extends Phaser.Scene {
     this.recordLine.setVisible(visible).setX(x);
     this.recordLabel.setVisible(visible).setX(x);
 
+    // texto diz DISTÂNCIA de propósito: o "recorde" oficial (game over e
+    // ranking) é por SCORE — celebrar "NOVO RECORDE!" aqui contradiria a
+    // tela de morte quando a distância cresce mas o score não (review 7A)
     if (!this.recordCelebrated && this.score.getDistancePx() > bestPx) {
       this.recordCelebrated = true; // 1x por partida
       this.audio.combo();
-      this.showFloatingText(SIZES.PLAYER.SCREEN_X + 70, this.scale.height * 0.35, 'NOVO RECORDE!');
+      this.showFloatingText(
+        SIZES.PLAYER.SCREEN_X + 70,
+        this.scale.height * 0.35,
+        'DISTÂNCIA RECORDE!',
+      );
     }
   }
 
@@ -343,9 +350,13 @@ export class GameScene extends Phaser.Scene {
     // plausibilidade (RN-04) — não faz parte do ScoreSnapshot em si.
     const elapsedSec = this.elapsedMs / 1000;
     // deathCause (T07A-05): telemetria de onde/como se morre — calibra a
-    // curva fixa com dados reais em vez de achismo (D-10)
-    const deathCause =
-      killer?.getData('kind') === 'low' ? 'obstacle-low' : 'obstacle-high';
+    // curva fixa com dados reais (D-10). Sem killer identificado → 'unknown',
+    // nunca um palpite que polua a calibração.
+    const deathCause = killer
+      ? killer.getData('kind') === 'low'
+        ? ('obstacle-low' as const)
+        : ('obstacle-high' as const)
+      : ('unknown' as const);
     emitGameEvent(GAME_EVENTS.GAME_OVER, { ...snapshot, elapsedSec, deathCause });
 
     // quase-vitória (T07A-04): salva os novos máximos e leva o recorde

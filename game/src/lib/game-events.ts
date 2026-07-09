@@ -20,7 +20,7 @@ export interface GameEventPayload {
   votes: number;
   distance: number;
   elapsedSec?: number;
-  deathCause?: 'obstacle-high' | 'obstacle-low';
+  deathCause?: 'obstacle-high' | 'obstacle-low' | 'unknown';
 }
 
 export function emitGameEvent(evt: string, detail?: unknown): void {

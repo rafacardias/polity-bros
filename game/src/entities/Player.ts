@@ -93,6 +93,10 @@ export class Player extends Entity {
     this.sliding = active;
     const body = this.body as Phaser.Physics.Arcade.Body;
     if (active) {
+      // um stretch de pulo ainda em curso (swipe-cancel dentro da janela)
+      // não pode escalar a hitbox do slide — invariante de fairness
+      this.juiceTween?.stop();
+      this.setScale(1, 1);
       this.setTexture('player-slide');
       body.setSize(SIZES.PLAYER.W, SIZES.PLAYER.SLIDE_H, false);
       body.setOffset(0, 0);

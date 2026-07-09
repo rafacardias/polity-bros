@@ -10,10 +10,13 @@ import type { Database } from "./database.types.ts";
 
 const GAME_ID = "polity-bros";
 const VOTE_POINTS = 10; // SCORE.VOTE_POINTS em game/src/config/constants.ts
-// Tetos de plausibilidade (RN-04): generosos acima do limite físico do jogo
-// (speed máx 460px/s = 46m/s; throughput máx de votos do spawner ~10.5/s).
+// Tetos de plausibilidade (RN-04): generosos acima do limite físico do jogo.
+// Distância: speed máx 460px/s = 46m/s. Votos: pior caso físico pós-7A é
+// 10 votos/obstáculo (2 linhas × 3 coletados + 2×2 de bônus LINE_BONUS_VOTES,
+// T07A-03) × ~2.09 obstáculos/s no pico ≈ 20.9/s — teto em 25 mantém o
+// invariante "nenhum payload legítimo é rejeitado" com folga.
 const MAX_DISTANCE_M_PER_SEC = 50;
-const MAX_VOTES_PER_SEC = 15;
+const MAX_VOTES_PER_SEC = 25;
 // Rate limit por player_id (RN-04).
 const MIN_SUBMIT_INTERVAL_SEC = 2;
 const MAX_SUBMITS_PER_WINDOW = 30;
