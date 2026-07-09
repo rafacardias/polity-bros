@@ -25,6 +25,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.audio('sfx-jump', 'assets/audio/sfx-jump.wav');
     this.load.audio('sfx-vote', 'assets/audio/sfx-vote.wav');
     this.load.audio('sfx-death', 'assets/audio/sfx-death.wav');
+    this.load.audio('sfx-combo', 'assets/audio/sfx-combo.wav');
     this.load.audio('music', 'assets/audio/music.wav');
   }
 

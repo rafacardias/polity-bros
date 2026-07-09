@@ -35,6 +35,10 @@ export const PROGRESSION = {
 export const SCORE = {
   VOTE_POINTS: 10, // pontos por voto coletado (RF-11)
   PX_PER_M: 10, // conversão px → "metros" exibidos/pontuados (RF-08)
+  // Bônus por linha COMPLETA de votos (T07A-03), concedido EM VOTOS: a Edge
+  // Function valida score === distance + votes × VOTE_POINTS (RN-04) — pontos
+  // fora dessa fórmula seriam rejeitados como trapaça.
+  LINE_BONUS_VOTES: 2,
 } as const;
 
 export const AUDIO = {
@@ -54,6 +58,8 @@ export const JUICE = {
   SQUASH_SCALE: 0.12, // ±12% por ~90ms no pulo/aterrissagem
   SQUASH_DURATION_MS: 90,
   FADE_IN_MS: 200, // transição de entrada da GameScene
+  COMBO_BURST_COUNT: 20, // explosão maior no momento "uau" (T07A-03)
+  COMBO_TEXT_MS: 750, // duração do texto flutuante "LINHA PERFEITA!"
 } as const;
 
 export const INPUT = {

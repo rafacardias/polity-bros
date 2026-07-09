@@ -9,6 +9,10 @@ type Kind = 'high' | 'low'; // high = pular por cima; low/suspenso = deslizar po
 // maxSize, get() reutiliza instâncias desativadas — nunca new/destroy no loop.
 export class SpawnerSystem {
   private lastSpawnX = 0;
+  // ledger das linhas de voto (T07A-03): lineId → progresso. Entrada some na
+  // primeira quebra (voto perdido) ou na completude — não cresce sem limite.
+  private lineLedger = new Map<number, { total: number; collected: number }>();
+  private nextLineId = 1;
 
   constructor(
     private scene: Phaser.Scene,
@@ -22,6 +26,32 @@ export class SpawnerSystem {
       this.spawnObstacle(speed, gap);
       this.lastSpawnX = distance;
     }
+    this.recycleMissedVotes();
+  }
+
+  // Voto que saiu da tela sem coleta: quebra a linha no ledger e devolve ao
+  // pool. O ciclo de vida de "miss" vive AQUI (junto do ledger), por isso o
+  // Collectible não se auto-desativa mais.
+  private recycleMissedVotes(): void {
+    this.votes.children.iterate((child) => {
+      const vote = child as Collectible;
+      if (vote.active && vote.x < -vote.width) {
+        this.lineLedger.delete(vote.getData('lineId') as number);
+        vote.deactivate();
+      }
+      return true;
+    });
+  }
+
+  // Chamado pela GameScene ao coletar; true = a linha INTEIRA foi coletada
+  // (momento "uau"). Linha já quebrada por miss não tem entrada → false.
+  onVoteCollected(vote: Collectible): boolean {
+    const entry = this.lineLedger.get(vote.getData('lineId') as number);
+    if (!entry) return false;
+    entry.collected += 1;
+    if (entry.collected < entry.total) return false;
+    this.lineLedger.delete(vote.getData('lineId') as number);
+    return true;
   }
 
   private spawnObstacle(speed: number, gap: number): void {
@@ -59,15 +89,21 @@ export class SpawnerSystem {
   }
 
   private spawnVoteLine(startX: number, y: number, speed: number): void {
+    const lineId = this.nextLineId++;
+    let spawned = 0;
     for (let i = 0; i < SPAWN.VOTE_COUNT; i++) {
       const vote = this.votes.get(startX + i * SPAWN.VOTE_SPACING, y) as Collectible | null;
-      if (!vote) return; // pool exausto — não criar além do maxSize
+      if (!vote) break; // pool exausto — não criar além do maxSize
       vote.setTexture('vote');
       vote.setOrigin(0.5, 0.5);
       vote.reset(startX + i * SPAWN.VOTE_SPACING, y);
       const body = vote.body as Phaser.Physics.Arcade.Body;
       body.setAllowGravity(false);
       vote.setVelocityX(-speed);
+      vote.setData('lineId', lineId);
+      spawned += 1;
     }
+    // 1 voto sozinho não é "linha" — sem fanfarra por coleta trivial
+    if (spawned >= 2) this.lineLedger.set(lineId, { total: spawned, collected: 0 });
   }
 }

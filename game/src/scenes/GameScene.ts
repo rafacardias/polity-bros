@@ -8,7 +8,7 @@ import { ScoreSystem } from '../systems/ScoreSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS } from '../lib/game-events';
-import { JUICE, SIZES } from '../config/constants';
+import { JUICE, SCORE, SIZES } from '../config/constants';
 
 const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
 
@@ -30,6 +30,8 @@ export class GameScene extends Phaser.Scene {
   private audio!: AudioSystem;
   private muteButton!: Phaser.GameObjects.Text;
   private voteBurst!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private comboText!: Phaser.GameObjects.Text;
+  private comboTween?: Phaser.Tweens.Tween;
   private emitAccumulator = 0;
   private elapsedMs = 0;
   private isGameOver = false;
@@ -120,6 +122,20 @@ export class GameScene extends Phaser.Scene {
 
     // mute (T05-06/RN-02): canto oposto ao botão "← Menu" do shell React,
     // fora da área de ação do polegar
+    // texto flutuante do combo (T07A-03): UM objeto reutilizado por tween —
+    // nada de criar/destruir texto dentro do loop (RN-01)
+    this.comboText = this.add
+      .text(0, 0, `LINHA PERFEITA! +${SCORE.LINE_BONUS_VOTES * SCORE.VOTE_POINTS}`, {
+        ...style,
+        fontSize: '18px',
+        color: '#facc15',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(10)
+      .setVisible(false);
+
     this.muteButton = this.add
       .text(width - 12, this.scale.height - 10, this.sound.mute ? '🔇' : '🔊', {
         ...style,
@@ -143,11 +159,31 @@ export class GameScene extends Phaser.Scene {
 
   private collectVote(vote: Collectible): void {
     const { x, y } = vote;
+    const lineComplete = this.spawner.onVoteCollected(vote); // antes do deactivate
     vote.deactivate(); // pooling: nunca destroy (RN-01)
     this.score.addVote();
-    this.votesText.setText(`VOTOS ${this.score.getSnapshot().votes}`);
     this.audio.vote();
     this.voteBurst.explode(JUICE.VOTE_BURST_COUNT, x, y); // T07A-02
+    if (lineComplete) this.celebrateLine(x, y); // momento "uau" (T07A-03)
+    this.votesText.setText(`VOTOS ${this.score.getSnapshot().votes}`);
+  }
+
+  // linha inteira coletada: bônus (em votos — ver SCORE.LINE_BONUS_VOTES),
+  // fanfarra, explosão maior e texto flutuante
+  private celebrateLine(x: number, y: number): void {
+    this.score.addLineBonus();
+    this.audio.combo();
+    this.voteBurst.explode(JUICE.COMBO_BURST_COUNT, x, y);
+    this.comboTween?.stop();
+    this.comboText.setPosition(x, y - 24).setAlpha(1).setVisible(true);
+    this.comboTween = this.tweens.add({
+      targets: this.comboText,
+      y: y - 72,
+      alpha: 0,
+      duration: JUICE.COMBO_TEXT_MS,
+      ease: 'Cubic.easeOut',
+      onComplete: () => this.comboText.setVisible(false),
+    });
   }
 
   update(time: number, delta: number): void {

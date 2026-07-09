@@ -24,6 +24,11 @@ export class AudioSystem {
     this.scene.sound.play('sfx-death', { volume: AUDIO.SFX_VOLUME });
   }
 
+  // fanfarra curta do momento "uau" — linha de votos completa (T07A-03)
+  combo(): void {
+    this.scene.sound.play('sfx-combo', { volume: AUDIO.SFX_VOLUME });
+  }
+
   startMusic(): void {
     if (this.scene.sound.get('music')) return; // já tocando (restart de cena)
     this.scene.sound.play('music', { loop: true, volume: AUDIO.MUSIC_VOLUME });

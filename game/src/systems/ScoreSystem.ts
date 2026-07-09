@@ -28,6 +28,12 @@ export class ScoreSystem {
     this.votes += 1;
   }
 
+  // linha completa de votos (T07A-03): bônus em VOTOS, não em pontos avulsos —
+  // mantém a fórmula validada pela Edge Function (ver SCORE.LINE_BONUS_VOTES)
+  addLineBonus(): void {
+    this.votes += SCORE.LINE_BONUS_VOTES;
+  }
+
   getSnapshot(): ScoreSnapshot {
     const distance = Math.floor(this.distancePx / SCORE.PX_PER_M);
     return {
