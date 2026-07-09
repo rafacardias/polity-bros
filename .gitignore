@@ -104,3 +104,5 @@ deno.lock
 # Keep tracked templates/docs/specs
 # ---------------------------------------------------------
 !.env.example
+.vercel
+.env*
