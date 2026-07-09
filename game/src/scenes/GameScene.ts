@@ -8,7 +8,7 @@ import { ScoreSystem } from '../systems/ScoreSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS } from '../lib/game-events';
-import { SIZES } from '../config/constants';
+import { JUICE, SIZES } from '../config/constants';
 
 const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
 
@@ -29,6 +29,7 @@ export class GameScene extends Phaser.Scene {
   private progression!: ProgressionSystem;
   private audio!: AudioSystem;
   private muteButton!: Phaser.GameObjects.Text;
+  private voteBurst!: Phaser.GameObjects.Particles.ParticleEmitter;
   private emitAccumulator = 0;
   private elapsedMs = 0;
   private isGameOver = false;
@@ -76,9 +77,23 @@ export class GameScene extends Phaser.Scene {
       this.collectVote(v as Collectible),
     );
 
+    // emitter ÚNICO criado fora do loop; explode() reutiliza partículas do
+    // pool interno do Phaser (RN-01 — nada de new/destroy por coleta)
+    this.voteBurst = this.add.particles(0, 0, 'vote', {
+      emitting: false,
+      lifespan: JUICE.VOTE_BURST_LIFESPAN_MS,
+      speed: { min: 80, max: 220 },
+      angle: { min: 200, max: 340 }, // leque pra cima (o mundo corre pra esquerda)
+      gravityY: 600,
+      scale: { start: 0.7, end: 0 },
+      quantity: JUICE.VOTE_BURST_COUNT,
+    });
+    this.voteBurst.setDepth(5);
+
     this.score = new ScoreSystem();
     this.createHud(width);
     this.audio.startMusic();
+    this.cameras.main.fadeIn(JUICE.FADE_IN_MS, 0, 0, 0);
 
     this.progression = new ProgressionSystem();
     this.emitAccumulator = 0;
@@ -127,10 +142,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private collectVote(vote: Collectible): void {
+    const { x, y } = vote;
     vote.deactivate(); // pooling: nunca destroy (RN-01)
     this.score.addVote();
     this.votesText.setText(`VOTOS ${this.score.getSnapshot().votes}`);
     this.audio.vote();
+    this.voteBurst.explode(JUICE.VOTE_BURST_COUNT, x, y); // T07A-02
   }
 
   update(time: number, delta: number): void {
@@ -175,6 +192,10 @@ export class GameScene extends Phaser.Scene {
     this.physics.pause();
     this.player.setTint(0x94a3b8);
     this.audio.death();
+    // impacto legível (T07A-02): shake + flash curtos, dentro do beat de
+    // 450ms que já segura a troca de cena — morte "registra" antes da UI
+    this.cameras.main.shake(JUICE.SHAKE_DURATION_MS, JUICE.SHAKE_INTENSITY);
+    this.cameras.main.flash(JUICE.FLASH_DURATION_MS, 239, 68, 68);
 
     const snapshot = this.score.getSnapshot();
     // elapsedSec (T05-04): a Edge Function submit-score usa pra teto de

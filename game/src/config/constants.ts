@@ -42,6 +42,20 @@ export const AUDIO = {
   MUSIC_VOLUME: 0.4,
 } as const;
 
+// Game feel (T07A-02, D-09). Amplitudes de squash/stretch são pequenas e
+// curtas de propósito: o corpo físico do Arcade acompanha a escala do sprite,
+// então valores altos distorceriam a hitbox percebida (fairness > estética).
+export const JUICE = {
+  VOTE_BURST_COUNT: 8, // partículas por voto coletado
+  VOTE_BURST_LIFESPAN_MS: 350,
+  SHAKE_DURATION_MS: 200, // screen shake na morte
+  SHAKE_INTENSITY: 0.012,
+  FLASH_DURATION_MS: 120, // flash vermelho na morte
+  SQUASH_SCALE: 0.12, // ±12% por ~90ms no pulo/aterrissagem
+  SQUASH_DURATION_MS: 90,
+  FADE_IN_MS: 200, // transição de entrada da GameScene
+} as const;
+
 export const INPUT = {
   HOLD_MAX_MS: 220, // janela do pulo variável (RF-05)
   // Gesto touch (RN-02/RN-08): o toque no chão pula IMEDIATAMENTE (mesmo

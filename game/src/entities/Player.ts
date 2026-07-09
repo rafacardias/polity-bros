@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Entity } from './Entity';
-import { PHYSICS, SIZES } from '../config/constants';
+import { JUICE, PHYSICS, SIZES } from '../config/constants';
 
 // Auto-run (RF-04, D-03): o avanço é do CENÁRIO (world-scroll) — o Player
 // fica em X fixo na tela e só controla o eixo vertical (pulo/slide).
@@ -8,6 +8,8 @@ import { PHYSICS, SIZES } from '../config/constants';
 // no chão sem matemática de offset.
 export class Player extends Entity {
   private sliding = false;
+  private wasOnGround = true;
+  private juiceTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'player'); // placeholder retângulo (RN-07)
@@ -30,7 +32,33 @@ export class Player extends Entity {
     if (!this.onGround) return false;
     this.slide(false); // pular cancela o slide
     this.setVelocityY(PHYSICS.JUMP_VELOCITY);
+    this.playStretch(); // game feel: alonga ao sair do chão (T07A-02)
     return true;
+  }
+
+  // squash & stretch (T07A-02): âncora nos pés (origin 0.5,1) faz a
+  // deformação "brotar" do chão. Yoyo curto volta a escala a 1 — e com ela
+  // a hitbox, que no Arcade acompanha a escala (ver JUICE em constants).
+  private playStretch(): void {
+    this.playJuiceTween(1 - JUICE.SQUASH_SCALE, 1 + JUICE.SQUASH_SCALE);
+  }
+
+  private playSquash(): void {
+    this.playJuiceTween(1 + JUICE.SQUASH_SCALE, 1 - JUICE.SQUASH_SCALE);
+  }
+
+  private playJuiceTween(scaleX: number, scaleY: number): void {
+    this.juiceTween?.stop();
+    this.setScale(1, 1); // baseline estável mesmo interrompendo o tween anterior
+    this.juiceTween = this.scene.tweens.add({
+      targets: this,
+      scaleX,
+      scaleY,
+      duration: JUICE.SQUASH_DURATION_MS,
+      yoyo: true,
+      ease: 'Sine.easeOut',
+      onComplete: () => this.setScale(1, 1),
+    });
   }
 
   // chamado a cada frame ENQUANTO segura, dentro da janela (pulo variável)
@@ -79,5 +107,11 @@ export class Player extends Entity {
   update(_time: number, _delta: number): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
     if (body.velocity.y > PHYSICS.MAX_FALL_SPEED) this.setVelocityY(PHYSICS.MAX_FALL_SPEED);
+
+    // aterrissagem (transição ar→chão) → squash. Fora do slide: a hitbox do
+    // slide é intencional e não pode ser tocada pela escala do juice.
+    const grounded = this.onGround;
+    if (grounded && !this.wasOnGround && !this.sliding) this.playSquash();
+    this.wasOnGround = grounded;
   }
 }
