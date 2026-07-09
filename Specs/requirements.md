@@ -67,7 +67,7 @@ scores id uuid pk player_id uuid -> auth.users (escrita SÓ via Edge Function/se
 - [ ] Funciona no celular real a ~60fps, jogável com uma mão. (não testado em device físico — ambiente sem celular disponível)
 - [ ] Pulo variável perceptível (segurar pula mais alto). (calibrado na Fase 4, T04-06 — não re-verificado nesta sessão)
 - [x] Score falso (ex.: 999999 instantâneo) é REJEITADO pela Edge Function.
-- [ ] Zero erro de console; deploy verde na Vercel. (zero erro de console verificado; deploy Vercel é escopo da Fase 6, ainda não feito)
+- [x] Zero erro de console; deploy verde na Vercel. (https://polity-bros.vercel.app — loop completo verificado contra o deploy de produção)
 
 ## 8. Visão Futura (backlog — NÃO implementar no MVP)
 > Inspirado em Super Mario Run. Registrado para não perder ideias. Cada item

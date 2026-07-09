@@ -39,14 +39,14 @@
 - [x] [P0] T05-05: Tela de ranking React (Top 10, leitura pública) — *RF-13*
 - [x] [P0] T05-06: AudioSystem (SFX + música, respeita autoplay) — *RF-10*
 - [x] [P0] T05-07: Menu principal da plataforma — **card Polity Bros dentro do MenuScreen React** (ver T04-03) — *RF-01, D-07*
-- [ ] [P0] T05-08: **✅ Gate de MVP** — loop completo funciona + score falso rejeitado pela Edge Function + deploy verde — *Critérios seção 7, D-08* (bloqueado: falta o deploy Vercel da Fase 6 — resto já verificado)
+- [x] [P0] T05-08: **✅ Gate de MVP** — loop completo funciona + score falso rejeitado pela Edge Function + deploy verde — *Critérios seção 7, D-08*
 
 ## Fase 6 — Deploy inicial + entrega mínima
-- [ ] [P0] T06-01: Deploy Vercel (game + web) com env vars corretas (inclui `SUPABASE_SERVICE_ROLE_KEY` só na Edge Function) — *D-08*
-- [ ] [P0] T06-02: README ("como rodar") + `docs/adding-games.md` (contrato CustomEvents)
-- [ ] [P1] T06-03: Landing page (hero + CTA)
-- [ ] [P1] T06-04: SEO (meta tags, OG, sitemap)
-- [ ] [P1] T06-05: PWA (manifest, service worker, ícones)
+- [x] [P0] T06-01: Deploy Vercel (game + web) com env vars corretas (inclui `SUPABASE_SERVICE_ROLE_KEY` só na Edge Function) — *D-08*
+- [x] [P0] T06-02: README ("como rodar") + `docs/adding-games.md` (contrato CustomEvents)
+- [x] [P1] T06-03: Landing page (hero + CTA)
+- [x] [P1] T06-04: SEO (meta tags, OG, sitemap)
+- [x] [P1] T06-05: PWA (manifest, service worker, ícones)
 
 ## Fase 7 — Polish (só APÓS o MVP validar diversão)
 - [ ] [P1] T07-01: Juice (partículas, screen shake, transições)
