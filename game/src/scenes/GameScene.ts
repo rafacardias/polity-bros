@@ -6,6 +6,7 @@ import { InputSystem } from '../systems/InputSystem';
 import { SpawnerSystem } from '../systems/SpawnerSystem';
 import { ScoreSystem } from '../systems/ScoreSystem';
 import { BestScoreSystem, type BestRecord } from '../systems/BestScoreSystem';
+import { OnboardingSystem } from '../systems/OnboardingSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS } from '../lib/game-events';
@@ -37,6 +38,8 @@ export class GameScene extends Phaser.Scene {
   private recordLine!: Phaser.GameObjects.Rectangle;
   private recordLabel!: Phaser.GameObjects.Text;
   private recordCelebrated = false;
+  private onboardingHint?: Phaser.GameObjects.Text;
+  private onboardingPulse?: Phaser.Tweens.Tween;
   private emitAccumulator = 0;
   private elapsedMs = 0;
   private isGameOver = false;
@@ -104,6 +107,7 @@ export class GameScene extends Phaser.Scene {
     this.bestRecord = BestScoreSystem.load();
     this.recordCelebrated = false;
     this.createRecordMarker();
+    this.createOnboardingHint();
     this.audio.startMusic();
     this.cameras.main.fadeIn(JUICE.FADE_IN_MS, 0, 0, 0);
 
@@ -220,6 +224,55 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setDepth(4)
       .setVisible(false);
+  }
+
+  // Micro-onboarding (T07A-06, RF-15): hint de controles UMA vez por
+  // aparelho, mínimo e não-bloqueante. Some na 1ª interação (o jogador agiu
+  // = entendeu) ou sozinho após 6s. FIRST_GAP + aquecimento (T07A-05) dão o
+  // respiro de leitura antes do 1º obstáculo. Critério: entender em ≤5s.
+  private createOnboardingHint(): void {
+    if (OnboardingSystem.isDone()) return;
+    const touch = this.sys.game.device.input.touch;
+    const lines = touch
+      ? 'TOQUE = pular\nSEGURE = pular mais alto\nDESLIZE ↓ = escorregar'
+      : 'ESPAÇO ou ↑ = pular\nSEGURE = pular mais alto\n↓ = deslizar';
+    this.onboardingHint = this.add
+      .text(this.scale.width / 2, this.scale.height * 0.3, lines, {
+        fontFamily: 'monospace',
+        fontSize: '15px',
+        color: '#ffffff',
+        align: 'center',
+        backgroundColor: '#0f172abf',
+        padding: { x: 14, y: 10 },
+      })
+      .setOrigin(0.5)
+      .setDepth(11);
+    this.onboardingPulse = this.tweens.add({
+      targets: this.onboardingHint,
+      alpha: 0.75,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    this.input.once('pointerdown', () => this.dismissOnboarding(900));
+    this.input.keyboard?.once('keydown', () => this.dismissOnboarding(900));
+    this.time.delayedCall(6000, () => this.dismissOnboarding(500));
+  }
+
+  private dismissOnboarding(fadeMs: number): void {
+    if (!this.onboardingHint) return;
+    const hint = this.onboardingHint;
+    this.onboardingHint = undefined; // idempotente (toque + timer)
+    this.onboardingPulse?.stop();
+    OnboardingSystem.markDone();
+    this.tweens.add({
+      targets: hint,
+      alpha: 0,
+      duration: fadeMs,
+      onComplete: () => hint.setVisible(false),
+    });
   }
 
   private updateRecordMarker(): void {
