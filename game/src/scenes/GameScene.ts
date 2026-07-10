@@ -592,7 +592,7 @@ export class GameScene extends Phaser.Scene {
     });
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     body.stop();
-    this.player.clearTint();
+    this.player.applySkinTint(); // desfaz o cinza da morte → cor da skin
     this.audio.gem();
     this.isGameOver = false;
     this.physics.resume();

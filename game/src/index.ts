@@ -7,6 +7,10 @@ import { GameOverScene } from './scenes/GameOverScene';
 
 export { GAME_EVENTS, SHELL_EVENTS, emitGameEvent, onGameEvent } from './lib/game-events';
 export type { GameEventPayload } from './lib/game-events';
+// Skins (T07B-04): catálogo/estado no pacote 'game' (fonte única);
+// o MenuScreen React consome daqui — nunca duplicar o catálogo no /web.
+export { SKINS, isSkinUnlocked, buySkin, getSelectedSkin, selectSkin, gemBalance } from './lib/skins';
+export type { SkinDef } from './lib/skins';
 
 // Entrada PÚBLICA do pacote 'game' (design.md §6/§9).
 // Cada chamada cria uma instância NOVA — o shell React controla o ciclo de

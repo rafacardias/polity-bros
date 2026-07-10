@@ -4,8 +4,10 @@ import Phaser from 'phaser';
 // Na Fase 3 estes keys passam a apontar para sprites reais carregados
 // via this.load.* — os keys ('player', 'obstacle', 'vote') NÃO mudam.
 const PLACEHOLDERS = [
-  { key: 'player', width: 44, height: 64, color: 0x4ade80 },
-  { key: 'player-slide', width: 44, height: 32, color: 0x4ade80 },
+  // player é BRANCO: a cor real vem do tint da skin selecionada (T07B-04) —
+  // branco × tint = cor exata, sem gerar uma textura por skin
+  { key: 'player', width: 44, height: 64, color: 0xffffff },
+  { key: 'player-slide', width: 44, height: 32, color: 0xffffff },
   { key: 'obstacle-high', width: 44, height: 72, color: 0xef4444 },
   { key: 'obstacle-low', width: 44, height: 160, color: 0xf97316 },
   { key: 'vote', width: 24, height: 24, color: 0xfacc15 },

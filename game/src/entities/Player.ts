@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Entity } from './Entity';
 import { JUICE, PHYSICS, SIZES } from '../config/constants';
+import { getSelectedSkin } from '../lib/skins';
 
 // Auto-run (RF-04, D-03): o avanço é do CENÁRIO (world-scroll) — o Player
 // fica em X fixo na tela e só controla o eixo vertical (pulo/slide).
@@ -12,10 +13,17 @@ export class Player extends Entity {
   private juiceTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'player'); // placeholder retângulo (RN-07)
+    super(scene, x, y, 'player'); // placeholder retângulo BRANCO (RN-07)
     this.setOrigin(0.5, 1);
     // gravidade vem do GAME_CONFIG (arcade.gravity.y) — não duplicar aqui
     this.setCollideWorldBounds(true);
+    this.applySkinTint(); // cor da skin selecionada (T07B-04)
+  }
+
+  // tint da skin — também usado pelo revive (T07B-03), que precisa desfazer
+  // o cinza da morte voltando à COR DA SKIN, não ao branco de clearTint()
+  applySkinTint(): void {
+    this.setTint(getSelectedSkin().color);
   }
 
   get isSliding(): boolean {

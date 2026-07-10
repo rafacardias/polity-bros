@@ -8,17 +8,22 @@ const BEST_STORAGE_KEY = 'polity-bros:best';
 export interface BestRecord {
   score: number;
   distance: number;
+  votes: number; // votos em UMA partida — critério de unlock de skin (T07B-04)
 }
 
 export class BestScoreSystem {
   static load(): BestRecord {
     try {
       const raw = localStorage.getItem(BEST_STORAGE_KEY);
-      if (!raw) return { score: 0, distance: 0 };
+      if (!raw) return { score: 0, distance: 0, votes: 0 };
       const parsed = JSON.parse(raw) as Partial<BestRecord>;
-      return { score: parsed.score ?? 0, distance: parsed.distance ?? 0 };
+      return {
+        score: parsed.score ?? 0,
+        distance: parsed.distance ?? 0,
+        votes: parsed.votes ?? 0, // registros pré-7B não tinham votes
+      };
     } catch {
-      return { score: 0, distance: 0 }; // storage bloqueado/corrompido → sem recorde
+      return { score: 0, distance: 0, votes: 0 }; // storage bloqueado → sem recorde
     }
   }
 
@@ -32,6 +37,7 @@ export class BestScoreSystem {
         JSON.stringify({
           score: Math.max(prev.score, result.score),
           distance: Math.max(prev.distance, result.distance),
+          votes: Math.max(prev.votes, result.votes),
         }),
       );
     } catch {
