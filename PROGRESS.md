@@ -119,10 +119,11 @@ ao fim de cada um:
    - Votos → desbloqueiam SKINS (exceto as de compra)
    - Gemas → MOEDA (compra continues e skins)
 
-**Perguntas abertas (bloqueiam implementação):** o que existe depois da fase
-3 / onde vive o ranking global; fases com layout FIXO (determinístico) para
-"coletar todos" fazer sentido; comprimento-alvo de cada fase; o que é a
-"compra de votos" citada no item 2.
+**Perguntas fechadas em 2026-07-10 (viraram D-16…D-20 no DECISIONS.md):**
+só 3 fases com fim na v1.0 (sem modo infinito — risco de empate no teto do
+ranking aceito conscientemente pelo dono; modo infinito no backlog); layouts
+FIXOS confirmados; SP 600m / RJ 900m / Brasília 1200m; loja futura = comprar
+GEMAS com dinheiro real (Fase 9). Implementação: seção 7C do specs/tasks.md.
 
 ## 4. Decisões importantes já tomadas (o "porquê" completo em `docs/DECISIONS.md`)
 

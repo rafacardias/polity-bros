@@ -67,16 +67,23 @@
 - [x] [P0] T07B-03: Continue por gemas — oferta arcade in-scene (countdown 4s, botão tremendo), revive 1x/partida com pista limpa + 1.5s invencível; `game:gameover`/submit só na morte FINAL; oferta pausada não conta em elapsedSec — *D-11, RN-04*
 - [x] [P0] T07B-04: Skins por variante de cor (verde/azul/rosa/dourado) — unlock por recorde, votos numa partida ou 10 gemas; catálogo único no pacote game; picker no MenuScreen; ids neutros — *D-11*
 
-### 7C — Identidade & Social
-- [ ] [P0] T07C-01: Google OAuth como upgrade da conta anônima (`linkIdentity`); pré-requisito: credencial OAuth do dono — *D-13, RF-14*
-- [ ] [P0] T07C-02: Migration `profiles` (username) + RLS + edição de nome + ranking exibe nome — *RN-04*
-- [ ] [P0] T07C-03: Pop-up final — replay fixo desde o frame 1; ranking em spotlight ~3s (atual + top-7 pessoal + top-7 global + posição), recolhe animado — *D-15, RN-02, RN-03*
-- [ ] [P1] T07C-04: Imagem de share para todos — canvas (screenshot + frame + score + CTA) via Web Share API + fallback download/galeria — *D-12, RF-16*
+### 7C — Mundos, Estrelas & Economia (2º brainstorm — D-16…D-20)
+- [ ] [P0] T07C-01: LevelSystem — 3 mundos com FIM e layout FIXO (semente por mundo): SP 600m / RJ 900m / BSB 1200m; countdown "faltam Xm" no HUD; linha de chegada + estado de vitória; dificuldade por mundo (SP mais suave); paleta por mundo (reuso CITIES); persistência de mundos desbloqueados — *D-16*
+- [ ] [P0] T07C-02: Barra flutuante (gema em cima / votos embaixo) com posições fixas; NUNCA gema impossível; 1ª gema fácil; coleção de gemas persistente por mundo (não reaparece) — *D-18*
+- [ ] [P0] T07C-03: Estrelas + score v2 — critérios ⭐/⭐⭐/⭐⭐⭐, multiplicador; Edge Function v2 (fórmula ×stars, tetos por mundo) + migration `scores` (stars, continue_used, world); ranking exibe ⭐ e selo "🏅 sem continue" — *D-17, RN-04*
+- [ ] [P0] T07C-04: Pop-up de fim (vitória E derrota) — animação de vitória, estrelas, desbloqueio do próximo mundo, educação da 1ª gema; replay imediato preservado — *D-15, D-16, D-18*
+- [ ] [P0] T07C-05: Menu hub — botões cidades (seleção de mundo), skins (galeria: amplia + nome, cinza "offline") e continue/gemas (contagem + loja futura desabilitada); skins por votos acumulados POR MUNDO — *D-19, D-20*
 
-### 7D — Robustez & fechamento
-- [ ] [P0] T07D-01: Resiliência de rede — partida carregada roda 100% local; submit de score em fila com reenvio ao reconectar (sem prometer boot offline completo) — *RN-01*
-- [ ] [P0] T07D-02: Revisão de segurança da superfície nova (profiles RLS, OAuth, submit-score com continues) — *RN-04*
-- [ ] [P0] T07D-03: 🎮 Gate da Fase 7 — build/lint/typecheck verdes + E2E Playwright + celular real + deploy com OK explícito (inclui fix de música 6485f9e)
+### 7D — Identidade & Social
+- [ ] [P0] T07D-01: Google OAuth como upgrade da conta anônima (`linkIdentity`); pré-requisito: credencial OAuth do dono — *D-13, RF-14*
+- [ ] [P0] T07D-02: Migration `profiles` (username) + RLS + edição de nome + ranking exibe nome — *RN-04*
+- [ ] [P0] T07D-03: Pop-up final social — ranking em spotlight ~3s (atual + top-7 pessoal + top-7 global + posição), recolhe animado; integra com o pop-up de fim da 7C — *D-15, RN-02, RN-03*
+- [ ] [P1] T07D-04: Imagem de share para todos — canvas (screenshot + frame + score + CTA) via Web Share API + fallback download/galeria — *D-12, RF-16*
+
+### 7E — Robustez & fechamento
+- [ ] [P0] T07E-01: Resiliência de rede — partida carregada roda 100% local; submit de score em fila com reenvio ao reconectar (sem prometer boot offline completo) — *RN-01*
+- [ ] [P0] T07E-02: Revisão de segurança da superfície nova (profiles RLS, OAuth, Edge Function v2) — *RN-04*
+- [ ] [P0] T07E-03: 🎮 Gate da Fase 7 — build/lint/typecheck verdes + E2E Playwright + celular real + deploy com OK explícito
 
 ## Fase 8 — QA
 - [ ] [P0] T08-01: Teste cross-device (5+ dispositivos)

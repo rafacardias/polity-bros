@@ -24,6 +24,11 @@
 | D-13 | Login social = só Google na v1.0 (upgrade da conta anônima); Facebook adiado | ✅ Ativa |
 | D-14 | 3 "cidades da campanha" (SP→RJ→Brasília) só por paleta; silhueta/hitbox intocadas | ✅ Ativa |
 | D-15 | Game over: ranking em spotlight ~3s, mas replay disponível desde o frame 1 | ✅ Ativa |
+| D-16 | Fases/mundos com FIM e layout FIXO (SP 600m → RJ 900m → BSB 1200m); sem modo infinito na v1.0 | ✅ Ativa |
+| D-17 | Estrelas ×1/×2/×3 multiplicam o score; fórmula v2 na Edge Function + schema v2 | ✅ Ativa |
+| D-18 | Gema = moeda (continues/skins); spawn seguro em barra flutuante; coleção persistente por mundo | ✅ Ativa |
+| D-19 | 1 skin desbloqueável POR MUNDO (votos acumulados no mundo); galeria com cinza "offline" | ✅ Ativa |
+| D-20 | Menu vira hub: botões cidades/skins/continue(gemas); supersede parcial D-14 (cidade = mundo, não transição) | ✅ Ativa |
 
 ---
 
@@ -107,6 +112,26 @@
 **Contexto:** dono desenhou pop-up final com ranking dominando ~3s. RN-03 exige "morrer e recomeçar em 1 toque" — o spotlight não pode travar o loop.
 **Decisão:** "**Jogar de novo**" fica fixo e clicável **desde o primeiro frame** do game over. O card de ranking (partida atual no topo; top-7 pessoal com destaque e posição global; top-7 global) brilha acima por ~3s e recolhe animado num botão; um toque pula a animação. Demais ações: login Google (se anônimo), CONTINUE por gemas, compartilhar, perfil.
 **Consequência:** recompensa emocional + loop rápido coexistem; layout mobile de 1 mão (RN-02).
+
+## D-16 — Fases/mundos com fim e layout fixo (2º brainstorm, 2026-07-10)
+**Contexto:** dono testou a 7B e pediu o pivô: corrida infinita → fases com FIM (modelo Super Mario Run, a inspiração original do §8). Transição de cidade in-run pareceu "entardeceu, continuo na mesma fase" — sem recompensa.
+**Decisão:** 3 mundos selecionáveis no menu, com FIM: **SP 600m → RJ 900m → Brasília 1200m**. Layout **FIXO** por mundo (geração com semente — pré-requisito de "coletar todos" e do replay estratégico; o sorteio atual fica para um futuro modo infinito). Countdown regressivo no HUD ("faltam Xm"). Próximo mundo desbloqueia ao TERMINAR o anterior. Dificuldade cresce por mundo; fase 1 um pouco mais fácil que o atual. **Sem modo infinito na v1.0** — escolha consciente do dono, ciente do risco de empate no teto do ranking quando os melhores gabaritarem (mitigação: desempate por precedência; revisão com telemetria na Fase 10; modo infinito no backlog §8).
+**Consequência:** supersede parcial de D-14 (paletas viram TEMA de cada mundo, não transição in-run — a transição pode permanecer como detalhe estético dentro de um mundo se couber).
+
+## D-17 — Estrelas multiplicam o score (fórmula v2)
+**Decisão:** fim de partida classifica: ⭐ morreu no caminho · ⭐⭐ chegou ao fim vivo (mín. de coletáveis) · ⭐⭐⭐ chegou ao fim com TODOS os coletáveis (a escolha gema-vs-voto na barra flutuante NÃO penaliza — "todos" considera a exclusividade). Score final = base × estrelas.
+**Consequência:** Edge Function v2 (`score === (distance + votes×10) × stars`, tetos por mundo) + migration em `scores` (colunas `stars`, `continue_used`, `world`). Ranking exibe estrelas e o selo **"🏅 sem continue"** (nomeado assim — "anti-cheat" acusaria quem pagou o preço justo em gemas).
+
+## D-18 — Gema: moeda do jogo, spawn seguro, coleção persistente
+**Contexto:** gemas nasciam em posições IMPOSSÍVEIS (ex.: após obstáculo de deslizar). Difícil ≠ impossível.
+**Decisão:** gema vive em **barra horizontal flutuante** (gema em cima, votos embaixo — decisão forçada, replay para pegar o resto). Posições FIXAS por mundo; gema coletada **não reaparece** (coleção persistente por mundo). 1ª gema do jogo é fácil; pop-up pós-morte educa ("3 💎 = 1 continue"). Gema é a MOEDA: compra continues (3) e skins de compra. Loja futura (Fase 9): **gemas por dinheiro real** (desabilitada na v1.0). Dono quer renomear o objeto no futuro (conceito mantido).
+
+## D-19 — Skins: 1 desbloqueável por mundo
+**Contexto:** a skin rosa (30 votos/partida) saiu fácil demais.
+**Decisão:** 1 skin desbloqueável POR MUNDO, por **votos acumulados jogando aquele mundo** (farming do mundo); skins de compra continuam por gemas. Galeria no menu: skin clicada amplia com nome; bloqueadas em **tons de cinza "offline"** (sem cadeado).
+
+## D-20 — Menu vira hub
+**Decisão:** menu ganha três botões: **cidades** (seleção/desbloqueio de mundos, ícone de mapa), **skins** (galeria, ícone de personagem) e **continue** (ícone de gema + contagem; ali viverá a loja de gemas por R$ da Fase 9, desabilitada).
 
 ---
 
