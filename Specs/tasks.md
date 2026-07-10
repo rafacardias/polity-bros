@@ -61,11 +61,11 @@
 - [x] [P0] T07A-05: Curva de aquecimento fixa (220→260 + FIRST_GAP) + telemetria leve (deathCause + run_end via Vercel Analytics com gate; amostra local p/ calibração); sem DB novo, sem tocar Edge Function — *D-10, RN-08*
 - [x] [P0] T07A-06: Micro-onboarding first-run (tap/hold/swipe↓ ou teclado), some na 1ª interação ou 6s; 1x por aparelho — *RF-15, RN-02*
 
-### 7B — Meta-progressão
-- [ ] [P0] T07B-01: Cidades da campanha (SP→RJ→Brasília) — 3 paletas + banner de transição; silhueta/hitbox intocadas (`SIZES` congelado) — *D-14*
-- [ ] [P0] T07B-02: Gema rara — entity pooled, 1–2/partida em rota de risco, SFX próprio; carteira local (localStorage) — *D-11, RN-01*
-- [ ] [P0] T07B-03: Continue por gemas — revive 1x/partida; `elapsedSec` segue contando (anti-cheat OK) — *D-11, RN-04*
-- [ ] [P0] T07B-04: Skins desbloqueáveis (variantes de cor) + critérios de unlock + seleção; identificadores neutros no código — *D-11*
+### 7B — Meta-progressão ✅ (aguardando validação do dono no celular)
+- [x] [P0] T07B-01: Cidades da campanha (SP em 0m → RJ em 500m → Brasília em 1200m) — paleta + banner; silhueta/hitbox intocadas (`SIZES` congelado) — *D-14*
+- [x] [P0] T07B-02: Gema rara — pooled, spawn sorteado em 2 janelas/partida em rota de pulo alto (GEM_HEIGHT), SFX próprio; carteira local (WalletSystem) — *D-11, RN-01*
+- [x] [P0] T07B-03: Continue por gemas — oferta arcade in-scene (countdown 4s, botão tremendo), revive 1x/partida com pista limpa + 1.5s invencível; `game:gameover`/submit só na morte FINAL; oferta pausada não conta em elapsedSec — *D-11, RN-04*
+- [x] [P0] T07B-04: Skins por variante de cor (verde/azul/rosa/dourado) — unlock por recorde, votos numa partida ou 10 gemas; catálogo único no pacote game; picker no MenuScreen; ids neutros — *D-11*
 
 ### 7C — Identidade & Social
 - [ ] [P0] T07C-01: Google OAuth como upgrade da conta anônima (`linkIdentity`); pré-requisito: credencial OAuth do dono — *D-13, RF-14*

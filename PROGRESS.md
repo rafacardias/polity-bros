@@ -55,11 +55,11 @@ ao fim de cada um:
 - [x] Curva de início de partida calibrada (fixa e justa para todos) + medição anônima de onde os jogadores morrem (desligada até você ativar o Analytics — tarefa 6 da seção 6)
 - [x] Mini-tutorial de primeira partida (tap = pulo, segurar = pulo alto, deslizar dedo = escorregar) — aparece 1x e some sozinho
 
-### 7B — Progresso que fica (mesmo perdendo)
-- [ ] "Cidades da campanha": o cenário muda de cor/clima conforme você avança — **SP → RJ → Brasília** (chegar ao Planalto é o clímax)
-- [ ] **Gema rara**: aparece 1-2x por partida em rota arriscada; é colecionável e fica guardada
-- [ ] **Continue**: gastar gemas para continuar a partida de onde morreu (1x por partida)
-- [ ] **Skins desbloqueáveis**: novas cores de personagem por conquistas (score, votos, gemas)
+### 7B — Progresso que fica (mesmo perdendo) *(✅ implementada em 2026-07-10 — falta seu teste no celular)*
+- [x] "Cidades da campanha": o cenário muda de cor/clima — **SP (largada) → RJ (500m) → Brasília (1200m)**, com banner de chegada
+- [x] **Gema rara 💎**: 1-2x por partida, em rota de pulo alto arriscado; vai direto pra sua carteira (mesmo morrendo depois)
+- [x] **Continue**: ao morrer com 3+ gemas, aparece o botão CONTINUE (4s pra decidir); gasta 3 gemas, limpa a pista e revive — 1x por partida
+- [x] **Skins**: 4 cores de personagem no menu — Azul (recorde 500+), Rosa (30 votos numa partida), Dourado (compra por 10 gemas)
 
 ### 7C — Identidade e compartilhamento
 - [ ] Login com **Google** em 2 cliques (sem perder o histórico anônimo)
