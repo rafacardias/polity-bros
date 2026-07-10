@@ -11,7 +11,7 @@ import { WalletSystem } from '../systems/WalletSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS } from '../lib/game-events';
-import { CITIES, JUICE, SCORE, SIZES } from '../config/constants';
+import { CITIES, ECONOMY, JUICE, SCORE, SIZES } from '../config/constants';
 
 const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
 
@@ -51,6 +51,11 @@ export class GameScene extends Phaser.Scene {
   private emitAccumulator = 0;
   private elapsedMs = 0;
   private isGameOver = false;
+  private continueUsed = false;
+  private invulnerableUntil = 0;
+  private continueUi: Phaser.GameObjects.GameObject[] = [];
+  private continueTimers: Phaser.Time.TimerEvent[] = [];
+  private continueTapHandler?: (p: Phaser.Input.Pointer) => void;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -146,6 +151,8 @@ export class GameScene extends Phaser.Scene {
     this.emitAccumulator = 0;
     this.elapsedMs = 0;
     this.isGameOver = false;
+    this.continueUsed = false;
+    this.invulnerableUntil = 0;
   }
 
   // HUD (RF-03/T04-12): score, votos e distância sempre visíveis, fora da
@@ -467,19 +474,145 @@ export class GameScene extends Phaser.Scene {
     this.gems.children.iterate(sync);
   }
 
-  // RF-07 + contrato D-05: congela o mundo, avisa o shell (game:gameover)
-  // e passa o resultado para a GameOverScene (RF-03)
+  // RF-07: morte. Com saldo e continue ainda não usado, abre a oferta
+  // arcade (T07B-03) ANTES de finalizar — o game:gameover (e o submit de
+  // score) só acontecem na morte definitiva.
   private gameOver(killer?: Obstacle): void {
     if (this.isGameOver) return;
+    if (this.time.now < this.invulnerableUntil) return; // carência pós-revive
     this.isGameOver = true;
     this.physics.pause();
+    this.inputSystem.setEnabled(false);
     this.player.setTint(0x94a3b8);
     this.audio.death();
-    // impacto legível (T07A-02): shake + flash curtos, dentro do beat de
-    // 450ms que já segura a troca de cena — morte "registra" antes da UI
+    // impacto legível (T07A-02): shake + flash curtos — morte "registra"
     this.cameras.main.shake(JUICE.SHAKE_DURATION_MS, JUICE.SHAKE_INTENSITY);
     this.cameras.main.flash(JUICE.FLASH_DURATION_MS, 239, 68, 68);
 
+    const canContinue =
+      !this.continueUsed && WalletSystem.balance() >= ECONOMY.CONTINUE_COST;
+    if (canContinue) {
+      this.time.delayedCall(500, () => this.offerContinue(killer)); // beat da morte
+      return;
+    }
+    this.finalizeGameOver(killer);
+  }
+
+  // Oferta de continue (T07B-03, D-11): botão tremendo + countdown. Aceitar
+  // gasta gemas e revive no lugar; recusar/estourar o tempo finaliza.
+  private offerContinue(killer?: Obstacle): void {
+    const { width, height } = this.scale;
+    const dim = this.add
+      .rectangle(width / 2, height / 2, width, height, 0x000000, 0.55)
+      .setDepth(20);
+    const btn = this.add
+      .text(width / 2, height * 0.45, `▶ CONTINUE — ${ECONOMY.CONTINUE_COST} 💎`, {
+        fontFamily: 'monospace',
+        fontSize: '22px',
+        color: '#0f172a',
+        backgroundColor: '#facc15',
+        padding: { x: 18, y: 12 },
+      })
+      .setOrigin(0.5)
+      .setDepth(21);
+    const countdown = this.add
+      .text(width / 2, height * 0.56, `some em ${ECONOMY.CONTINUE_OFFER_SEC}s…`, {
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        color: '#94a3b8',
+      })
+      .setOrigin(0.5)
+      .setDepth(21);
+    this.continueUi = [dim, btn, countdown];
+
+    // "tremida rápida a cada 0.5s" (pedido do dono no brainstorm)
+    this.tweens.add({
+      targets: btn,
+      x: '+=4',
+      duration: 50,
+      yoyo: true,
+      repeat: -1,
+      repeatDelay: 450,
+    });
+
+    let remaining = ECONOMY.CONTINUE_OFFER_SEC;
+    this.continueTimers = [
+      this.time.addEvent({
+        delay: 1000,
+        repeat: ECONOMY.CONTINUE_OFFER_SEC - 1,
+        callback: () => {
+          remaining -= 1;
+          countdown.setText(`some em ${remaining}s…`);
+        },
+      }),
+      this.time.delayedCall(ECONOMY.CONTINUE_OFFER_SEC * 1000, () => {
+        this.closeContinueOffer();
+        this.finalizeGameOver(killer);
+      }),
+    ];
+
+    // Aceite via pointerdown de CENA + bounds do botão (mesmo pipeline dos
+    // pulos, que é comprovado em mouse E touch) — o hit-test por GameObject
+    // falhou com mouse no harness. Bounds inflados p/ dedo no mobile (RN-02).
+    // Toque FORA do botão é ignorado: recusar é só deixar o tempo estourar.
+    const onTap = (p: Phaser.Input.Pointer): void => {
+      const hitArea = Phaser.Geom.Rectangle.Inflate(btn.getBounds(), 16, 16);
+      if (!hitArea.contains(p.x, p.y)) return;
+      this.input.off('pointerdown', onTap);
+      this.closeContinueOffer();
+      if (!WalletSystem.spend(ECONOMY.CONTINUE_COST)) {
+        this.finalizeGameOver(killer);
+        return;
+      }
+      this.revive();
+    };
+    this.input.on('pointerdown', onTap);
+    this.continueTapHandler = onTap;
+  }
+
+  private closeContinueOffer(): void {
+    if (this.continueTapHandler) {
+      this.input.off('pointerdown', this.continueTapHandler);
+      this.continueTapHandler = undefined;
+    }
+    this.continueTimers.forEach((t) => t.remove());
+    this.continueTimers = [];
+    this.continueUi.forEach((o) => o.destroy()); // fora do game loop — ok (RN-01)
+    this.continueUi = [];
+  }
+
+  private revive(): void {
+    this.continueUsed = true; // 1x por partida
+    this.gemText.setText(`💎 ${WalletSystem.balance()}`);
+    // pista limpa à frente: revive nunca pode ser morte instantânea injusta
+    this.obstacles.children.iterate((child) => {
+      const sprite = child as Phaser.Physics.Arcade.Sprite;
+      if (sprite.active) (sprite as Obstacle).deactivate();
+      return true;
+    });
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    body.stop();
+    this.player.clearTint();
+    this.audio.gem();
+    this.isGameOver = false;
+    this.physics.resume();
+    this.inputSystem.setEnabled(true);
+    // carência com blink: invencível por 1.5s para reentrar no flow
+    this.invulnerableUntil = this.time.now + 1500;
+    this.tweens.add({
+      targets: this.player,
+      alpha: 0.3,
+      duration: 140,
+      yoyo: true,
+      repeat: 4,
+      onComplete: () => this.player.setAlpha(1),
+    });
+    // elapsedMs NÃO andou durante a oferta (update retorna cedo no game
+    // over) — o teto de plausibilidade da Edge Function segue coerente
+  }
+
+  // contrato D-05: emite game:gameover (submit de score) e vai à GameOverScene
+  private finalizeGameOver(killer?: Obstacle): void {
     const snapshot = this.score.getSnapshot();
     // elapsedSec (T05-04): a Edge Function submit-score usa pra teto de
     // plausibilidade (RN-04) — não faz parte do ScoreSnapshot em si.

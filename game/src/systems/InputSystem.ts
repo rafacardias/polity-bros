@@ -16,6 +16,7 @@ import type { AudioSystem } from './AudioSystem';
 //   - segurar após o swipe → continua deslizando; soltar → completa SLIDE_MS
 //   - tap com o player no ar → descida rápida (fast-fall)
 export class InputSystem {
+  private enabled = true;
   private holding = false;
   private holdStart = 0;
   private touchDownY = 0;
@@ -47,7 +48,22 @@ export class InputSystem {
     scene.input.on('pointerup', (p: Phaser.Input.Pointer) => this.onPointerUp(p));
   }
 
+  // Oferta de CONTINUE (T07B-03): o gameplay-input desliga durante a morte
+  // para o toque no botão não virar pulo fantasma no revive; estado
+  // transitório é zerado para não vazar entre a morte e a volta.
+  setEnabled(on: boolean): void {
+    this.enabled = on;
+    if (!on) {
+      this.holding = false;
+      this.touchJumping = false;
+      this.swipeHold = false;
+      this.airDive = false;
+      this.cancelSlideTimer();
+    }
+  }
+
   private onPointerDown(p: Phaser.Input.Pointer): void {
+    if (!this.enabled) return;
     if (!this.player.onGround) {
       // no ar não há ambiguidade: tap = descida rápida imediata (RF-05)
       this.airDive = true;
@@ -61,6 +77,7 @@ export class InputSystem {
   }
 
   private onPointerMove(p: Phaser.Input.Pointer): void {
+    if (!this.enabled) return;
     if (this.touchJumping && this.isSwipeDown(p)) {
       this.touchJumping = false;
       this.holding = false;
@@ -70,6 +87,7 @@ export class InputSystem {
   }
 
   private onPointerUp(p: Phaser.Input.Pointer): void {
+    if (!this.enabled) return;
     if (this.airDive) {
       this.airDive = false;
       this.player.slide(false);
@@ -100,6 +118,7 @@ export class InputSystem {
   }
 
   private beginJump(): void {
+    if (!this.enabled) return;
     this.cancelSlideTimer();
     this.swipeHold = false;
     this.player.slide(false);
@@ -117,6 +136,7 @@ export class InputSystem {
   }
 
   private beginSlide(timed: boolean): void {
+    if (!this.enabled) return;
     this.cancelSlideTimer();
     this.player.slide(true);
     if (timed) {
