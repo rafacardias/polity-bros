@@ -68,11 +68,12 @@
 - [x] [P0] T07B-04: Skins por variante de cor (verde/azul/rosa/dourado) — unlock por recorde, votos numa partida ou 10 gemas; catálogo único no pacote game; picker no MenuScreen; ids neutros — *D-11*
 
 ### 7C — Mundos, Estrelas & Economia (2º brainstorm — D-16…D-20)
-- [ ] [P0] T07C-01: LevelSystem — 3 mundos com FIM e layout FIXO (semente por mundo): SP 600m / RJ 900m / BSB 1200m; countdown "faltam Xm" no HUD; linha de chegada + estado de vitória; dificuldade por mundo (SP mais suave); paleta por mundo (reuso CITIES); persistência de mundos desbloqueados — *D-16*
-- [ ] [P0] T07C-02: Barra flutuante (gema em cima / votos embaixo) com posições fixas; NUNCA gema impossível; 1ª gema fácil; coleção de gemas persistente por mundo (não reaparece) — *D-18*
+- [x] [P0] T07C-01: LevelSystem — 3 mundos com FIM e layout FIXO (semente por mundo): SP 600m / RJ 900m / BSB 1200m; countdown "faltam Xm" no HUD; linha de chegada + estado de vitória; dificuldade por mundo (SP mais suave); paleta por mundo (reuso CITIES); persistência de mundos desbloqueados — *D-16*
+- [x] [P0] T07C-02: Barra flutuante (gema em cima / votos embaixo) com posições fixas; NUNCA gema impossível; 1ª gema fácil; coleção de gemas persistente por mundo (não reaparece) — *D-18* ✅ aprovada pelo dono 2026-07-10
+- [ ] [P0] T07C-02b: Feedback do dono (D-21..D-23) — (a) gema vira **PROPINA**: nota verde com $ e textos 💵 (ids de código seguem `gem`); (b) bloco flutuante vira **plataforma-obstáculo**: subir em cima ok, laterais/fundo matam (`deathCause: 'block'`); (c) marcador de recorde vira **fantasma da skin** com 10% de opacidade — *D-21, D-22, D-23*
 - [ ] [P0] T07C-03: Estrelas + score v2 — critérios ⭐/⭐⭐/⭐⭐⭐, multiplicador; Edge Function v2 (fórmula ×stars, tetos por mundo) + migration `scores` (stars, continue_used, world); ranking exibe ⭐ e selo "🏅 sem continue" — *D-17, RN-04*
-- [ ] [P0] T07C-04: Pop-up de fim (vitória E derrota) — animação de vitória, estrelas, desbloqueio do próximo mundo, educação da 1ª gema; replay imediato preservado — *D-15, D-16, D-18*
-- [ ] [P0] T07C-05: Menu hub — botões cidades (seleção de mundo), skins (galeria: amplia + nome, cinza "offline") e continue/gemas (contagem + loja futura desabilitada); skins por votos acumulados POR MUNDO — *D-19, D-20*
+- [ ] [P0] T07C-04: Pop-up de fim (vitória E derrota) — animação de vitória, estrelas, desbloqueio do próximo mundo, educação da 1ª propina; replay imediato preservado — *D-15, D-16, D-18, D-21*
+- [ ] [P0] T07C-05: Menu hub v2 — Jogar fixo embaixo (sempre clicável); acima, na ordem: Fases · Ranking · Skins · Continue; Continue com ícone de propina + contagem e tremidinha a cada 1s quando ≥3 propinas; skins (galeria: amplia + nome, cinza "offline"); skins por votos acumulados POR MUNDO — *D-19, D-20, D-24*
 
 ### 7D — Identidade & Social
 - [ ] [P0] T07D-01: Google OAuth como upgrade da conta anônima (`linkIdentity`); pré-requisito: credencial OAuth do dono — *D-13, RF-14*

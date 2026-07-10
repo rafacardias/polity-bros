@@ -125,6 +125,22 @@ ranking aceito conscientemente pelo dono; modo infinito no backlog); layouts
 FIXOS confirmados; SP 600m / RJ 900m / Brasília 1200m; loja futura = comprar
 GEMAS com dinheiro real (Fase 9). Implementação: seção 7C do specs/tasks.md.
 
+**Feedback do dono em 2026-07-10 (após aprovar T07C-01/02) — virou D-21…D-24:**
+1. **A gema agora se chama PROPINA** 💵: nota verde com $ no centro (era o
+   losango roxo). Todos os textos do jogo passam a dizer propina/propinas.
+   (No código-fonte os identificadores continuam `gem` — convenção técnica.)
+2. **Bloco flutuante vira obstáculo-plataforma:** mais espesso; o player PODE
+   subir em cima (e pegar a propina); bater nas LATERAIS ou no FUNDO do bloco
+   MATA (igual aos obstáculos verticais). Referência: imagem enviada pelo dono.
+3. **Marcador do recorde vira "fantasma":** a barra do recorde é substituída
+   pela skin do player com 10% de opacidade parada no ponto do recorde.
+4. **Menu hub (mockup do dono):** botão JOGAR fixo no canto inferior,
+   pressionável a qualquer momento; acima dele os menus na ordem
+   Fases · Ranking · Skins · Continue; o menu Continue treme a cada 1s
+   quando o jogador tem 3+ propinas.
+> Obs.: um texto colado na mensagem do dono ("[Pasted text #1]", 3 linhas) não
+> chegou ao assistente — se continha algo além do digitado, precisa ser reenviado.
+
 ## 4. Decisões importantes já tomadas (o "porquê" completo em `docs/DECISIONS.md`)
 
 | Decisão | Resumo |

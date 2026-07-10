@@ -29,6 +29,10 @@
 | D-18 | Gema = moeda (continues/skins); spawn seguro em barra flutuante; coleção persistente por mundo | ✅ Ativa |
 | D-19 | 1 skin desbloqueável POR MUNDO (votos acumulados no mundo); galeria com cinza "offline" | ✅ Ativa |
 | D-20 | Menu vira hub: botões cidades/skins/continue(gemas); supersede parcial D-14 (cidade = mundo, não transição) | ✅ Ativa |
+| D-21 | Gema renomeada para **PROPINA** (nota verde com $); ids de código continuam `gem` | ✅ Ativa |
+| D-22 | Bloco flutuante vira plataforma-obstáculo: subir em cima = ok; laterais/fundo = morte | ✅ Ativa |
+| D-23 | Marcador de recorde = "fantasma" da skin do player com 10% de opacidade | ✅ Ativa |
+| D-24 | Menu hub v2: Jogar fixo embaixo (sempre clicável); Fases/Ranking/Skins/Continue acima; tremidinha no Continue com ≥3 propinas | ✅ Ativa |
 
 ---
 
@@ -132,6 +136,26 @@
 
 ## D-20 — Menu vira hub
 **Decisão:** menu ganha três botões: **cidades** (seleção/desbloqueio de mundos, ícone de mapa), **skins** (galeria, ícone de personagem) e **continue** (ícone de gema + contagem; ali viverá a loja de gemas por R$ da Fase 9, desabilitada).
+
+## D-21 — Colecionável raro = "PROPINA" (2026-07-10, feedback do dono sobre a 7C)
+**Contexto:** D-18 previa renome futuro da gema. O dono decidiu: o losango vira uma **nota verde com $ no centro**, chamada **propina** — sátira perfeitamente alinhada ao tema do jogo (propina compra "continue"… e skins).
+**Decisão:** todo texto visível ao jogador usa **propina/propinas** (💵). Identificadores de código, keys de textura e chaves de localStorage **continuam `gem`** (convenção: código em inglês neutro; renomear chaves quebraria carteiras existentes).
+**Consequência:** placeholder muda de losango roxo para nota verde; textos de HUD, oferta de continue, menu e educação da 1ª propina atualizados. Loja da Fase 9 vende PROPINAS por dinheiro real.
+
+## D-22 — Bloco flutuante é plataforma-obstáculo (supersede parcial D-18)
+**Contexto:** na T07C-02 a barra era um divisor VISUAL (não colidia). O dono quer bloco sólido estilo Mario: **mais espesso, o player pode SUBIR em cima**; colidir com as **laterais ou o fundo mata**.
+**Decisão:** o bloco entra no grupo de colisão: pouso por cima = plataforma (dá para correr sobre ele e pegar a propina); contato lateral ou por baixo = morte (mesma regra dos obstáculos). Geometria mantém a escolha de rota: propina em cima (pulo alto + pouso), votos embaixo (passar reto por baixo, sem pular).
+**Consequência:** nova causa de morte `block` na telemetria; tensão nova — pular debaixo do bloco é erro fatal legível (bloco tem cara de obstáculo, não de cenário).
+
+## D-23 — Recorde vira "fantasma" do player
+**Contexto:** o marcador do recorde pessoal (T07A-04) era uma linha vertical abstrata.
+**Decisão:** substituir a linha pela **silhueta da skin atual do player com 10% de opacidade** parada no ponto do recorde — "você de ontem" te esperando na pista. Celebração "DISTÂNCIA RECORDE!" ao ultrapassar permanece.
+**Consequência:** leitura emocional mais forte (competir consigo mesmo é literal). Opacidade é ajustável em constants se 10% ficar ilegível em alguma paleta.
+
+## D-24 — Menu hub v2: layout e tremidinha (detalha D-20)
+**Contexto:** dono enviou mockup do menu (2026-07-10).
+**Decisão:** botão **Jogar** fixo no canto inferior, **pressionável a qualquer momento** (RN-03 vale no menu). Acima dele, nesta ordem: **Fases · Ranking · Skins · Continue**. O botão Continue mostra ícone de propina + contagem e, quando o jogador tem **≥3 propinas**, ganha animação de "tremidinha" a cada 1s (chamado pro uso da moeda).
+**Consequência:** T07C-05 implementa este layout; a loja futura (Fase 9, desabilitada) vive dentro de Continue.
 
 ---
 
