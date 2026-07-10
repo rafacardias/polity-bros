@@ -23,6 +23,8 @@ export interface GameEventPayload {
   deathCause?: 'obstacle-high' | 'obstacle-low' | 'unknown';
   gems?: number; // gemas coletadas NA run (T07B-02) — carteira fica no WalletSystem
   continueUsed?: boolean; // run teve revive (T07B-03) — telemetria/calibração
+  world?: string; // id do mundo jogado (D-16)
+  won?: boolean; // true = cruzou a linha de chegada (D-16); false/ausente = morreu
 }
 
 export function emitGameEvent(evt: string, detail?: unknown): void {

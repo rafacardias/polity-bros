@@ -28,14 +28,9 @@ export const SPAWN = {
 
 export const PROGRESSION = {
   // Aquecimento FIXO e igual pra todos (T07A-05, D-10): largada mais lenta
-  // subindo linearmente até SPEED_BASE em WARMUP_DISTANCE px (~3s). Depois,
-  // degraus normais. Nada disso é adaptativo — fairness do ranking (RN-08).
-  SPEED_START: 220,
+  // subindo linearmente até a BASE do mundo em WARMUP_DISTANCE px (~3s).
+  // As curvas de velocidade em si vivem POR MUNDO em WORLDS (D-16).
   WARMUP_DISTANCE: 700,
-  SPEED_BASE: 260,
-  SPEED_INC: 15,
-  SPEED_INTERVAL: 500,
-  SPEED_MAX: 460,
 } as const;
 
 export const SCORE = {
@@ -93,16 +88,49 @@ export const ECONOMY = {
   CONTINUE_OFFER_SEC: 4, // janela da oferta de continue no game over
 } as const;
 
-// Cidades da campanha (T07B-01, D-14): SP → RJ → Brasília, clímax no
-// Planalto. SÓ paleta/atmosfera muda — silhueta e hitbox dos obstáculos são
-// sagradas (SIZES congelado; tints de obstáculo quase-brancos, multiplicam
-// a textura sem alterar leitura de risco). Fundos frios/escuros mantêm
-// contraste com os obstáculos quentes (vermelho/laranja) em toda paleta.
-export const CITIES = [
-  { name: 'São Paulo', atDistanceM: 0, bg: 0x1e293b, groundTint: 0xffffff, obstacleTint: 0xffffff },
-  { name: 'Rio de Janeiro', atDistanceM: 500, bg: 0x134e4a, groundTint: 0xf5deb3, obstacleTint: 0xffe8cc },
-  { name: 'Brasília', atDistanceM: 1200, bg: 0x312e81, groundTint: 0xc7d2fe, obstacleTint: 0xe4e4ff },
+// Mundos/fases da campanha (D-16, supersede D-14): cada cidade é um MUNDO
+// selecionável com FIM e layout FIXO (semente). Paleta = tema do mundo —
+// silhueta/hitbox dos obstáculos seguem sagradas (SIZES congelado; tints
+// quase-brancos). Dificuldade cresce por mundo; SP é mais suave que o
+// balanceamento antigo (pedido do dono). Trocar o seed = trocar o layout —
+// versionar no sufixo ('-v1') para invalidar coleções antigas se preciso.
+export const WORLDS = [
+  {
+    id: 'sp',
+    name: 'São Paulo',
+    lengthM: 600,
+    seed: 'sp-v1',
+    bg: 0x1e293b,
+    groundTint: 0xffffff,
+    obstacleTint: 0xffffff,
+    speed: { START: 210, BASE: 250, INC: 12, INTERVAL: 550, MAX: 380 },
+  },
+  {
+    id: 'rj',
+    name: 'Rio de Janeiro',
+    lengthM: 900,
+    seed: 'rj-v1',
+    bg: 0x134e4a,
+    groundTint: 0xf5deb3,
+    obstacleTint: 0xffe8cc,
+    speed: { START: 230, BASE: 270, INC: 15, INTERVAL: 500, MAX: 430 },
+  },
+  {
+    id: 'bsb',
+    name: 'Brasília',
+    lengthM: 1200,
+    seed: 'bsb-v1',
+    bg: 0x312e81,
+    groundTint: 0xc7d2fe,
+    obstacleTint: 0xe4e4ff,
+    speed: { START: 240, BASE: 290, INC: 16, INTERVAL: 480, MAX: 460 },
+  },
 ] as const;
+export type WorldDef = (typeof WORLDS)[number];
+
+// reta final limpa: os últimos metros antes da linha de chegada não têm
+// obstáculos — a vitória se CELEBRA, não se rouba no último frame
+export const FINISH_CLEAR_M = 60;
 
 // Dimensões dos placeholders/hitboxes (RN-07 — trocam de arte, não de tamanho)
 export const SIZES = {

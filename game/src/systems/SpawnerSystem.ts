@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Obstacle } from '../entities/Obstacle';
 import { Collectible } from '../entities/Collectible';
-import { ECONOMY, SCORE, SPAWN, SIZES } from '../config/constants';
+import { ECONOMY, FINISH_CLEAR_M, SCORE, SPAWN, SIZES } from '../config/constants';
 
 type Kind = 'high' | 'low'; // high = pular por cima; low/suspenso = deslizar por baixo
 
@@ -16,25 +16,37 @@ export class SpawnerSystem {
   // paleta da cidade atual (T07B-01, D-14): tint quase-branco, atmosfera
   // sem tocar silhueta/hitbox
   private obstacleTint = 0xffffff;
-  // Gema rara (T07B-02, D-11): um ponto sorteado dentro de cada janela —
-  // a gema nasce no PRIMEIRO obstáculo após o ponto, em rota de alto risco.
-  // Sorteio por partida = "talvez agora venha algo raro".
-  private gemTargetsM: number[] = ECONOMY.GEM_WINDOWS_M.map(
-    ([min, max]) => min + Math.random() * (max - min),
-  );
+  // Gema rara (T07B-02, D-11/D-18): pontos definidos pelo RNG SEMEADO do
+  // mundo — mesmas posições em toda partida (layout fixo, D-16). Só janelas
+  // que cabem ANTES da reta final entram.
+  private gemTargetsM: number[];
 
+  // rng SEMEADO por mundo (D-16): todo sorteio de layout passa por ele —
+  // mesma fase para todos os jogadores, em todas as partidas
   constructor(
     private scene: Phaser.Scene,
     private obstacles: Phaser.Physics.Arcade.Group,
     private votes: Phaser.Physics.Arcade.Group,
     private gems: Phaser.Physics.Arcade.Group,
-  ) {}
+    private rng: Phaser.Math.RandomDataGenerator,
+    private worldLengthPx: number,
+  ) {
+    const playableEndM = worldLengthPx / SCORE.PX_PER_M - FINISH_CLEAR_M;
+    this.gemTargetsM = ECONOMY.GEM_WINDOWS_M.filter(([min]) => min < playableEndM).map(
+      ([min, max]) => min + this.rng.frac() * (Math.min(max, playableEndM) - min),
+    );
+  }
 
   update(distance: number, speed: number): void {
     const gap = Math.max(SPAWN.GAP_MIN, SPAWN.GAP_BASE - distance * SPAWN.GAP_TIGHTEN);
     // 1º obstáculo usa FIRST_GAP (T07A-05): respiro de leitura pro novato
     const target = this.lastSpawnX === 0 ? SPAWN.FIRST_GAP : gap;
-    if (distance - this.lastSpawnX >= target) {
+    // reta final limpa (D-16): nada spawna com base além do fim jogável.
+    // O spawn nasce ~1 tela à frente do player, então desconta a largura.
+    const spawnAheadPx = this.scene.scale.width - SIZES.PLAYER.SCREEN_X;
+    const playableEndPx = this.worldLengthPx - FINISH_CLEAR_M * SCORE.PX_PER_M;
+    const canSpawn = distance + spawnAheadPx < playableEndPx;
+    if (canSpawn && distance - this.lastSpawnX >= target) {
       this.spawnObstacle(speed, gap, distance);
       this.lastSpawnX = distance;
     }
@@ -80,7 +92,7 @@ export class SpawnerSystem {
   private spawnObstacle(speed: number, gap: number, distancePx: number): void {
     const { width, height } = this.scene.scale;
     const groundTop = height - SIZES.GROUND_H;
-    const kind: Kind = Math.random() < 0.5 ? 'high' : 'low';
+    const kind: Kind = this.rng.frac() < 0.5 ? 'high' : 'low';
     const spec = kind === 'high' ? SIZES.OBSTACLE_HIGH : SIZES.OBSTACLE_LOW;
     // âncora nos pés (origin 0.5,1): y é a BASE do obstáculo
     const y = kind === 'high' ? groundTop : groundTop - SIZES.OBSTACLE_LOW.CLEARANCE;
@@ -111,11 +123,11 @@ export class SpawnerSystem {
 
     // rota de risco/recompensa: linha de votos logo após o obstáculo, alta —
     // exige manter o pulo (high) ou pular logo depois do slide (low) (RF-11)
-    if (Math.random() < SPAWN.VOTE_LINE_CHANCE) {
+    if (this.rng.frac() < SPAWN.VOTE_LINE_CHANCE) {
       this.spawnVoteLine(x + 60, y - SPAWN.VOTE_RISK_HEIGHT, speed);
     }
     // linha fácil no meio do vão: recompensa constante ao longo da fase (RF-11)
-    if (Math.random() < SPAWN.EASY_VOTE_CHANCE) {
+    if (this.rng.frac() < SPAWN.EASY_VOTE_CHANCE) {
       this.spawnVoteLine(x + gap / 2, groundTop - SPAWN.VOTE_EASY_HEIGHT, speed);
     }
   }

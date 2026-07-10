@@ -30,6 +30,8 @@ export function trackRunEnd(payload: GameEventPayload): void {
     death_cause: payload.deathCause ?? 'unknown',
     gems: payload.gems ?? 0,
     continue_used: payload.continueUsed ?? false, // review 7B: calibração
+    world: payload.world ?? 'unknown', // D-16
+    won: payload.won ?? false, // D-16: terminou a fase vs morreu
   });
 }
 

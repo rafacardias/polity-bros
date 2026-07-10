@@ -1,5 +1,22 @@
-import { BestScoreSystem } from '../systems/BestScoreSystem';
+import { BestScoreSystem, type BestRecord } from '../systems/BestScoreSystem';
 import { WalletSystem } from '../systems/WalletSystem';
+import { WORLDS } from '../config/constants';
+
+// TRANSITÓRIO até T07C-05 (D-19: 1 skin por mundo): critérios de score/votos
+// olham o MELHOR registro entre todos os mundos
+function bestAcrossWorlds(): BestRecord {
+  return WORLDS.reduce<BestRecord>(
+    (acc, w) => {
+      const b = BestScoreSystem.load(w.id);
+      return {
+        score: Math.max(acc.score, b.score),
+        distance: Math.max(acc.distance, b.distance),
+        votes: Math.max(acc.votes, b.votes),
+      };
+    },
+    { score: 0, distance: 0, votes: 0 },
+  );
+}
 
 // Skins desbloqueáveis (T07B-04, D-11): variantes de COR do placeholder —
 // sem pay-to-win (cor não muda física nem hitbox). Identificadores NEUTROS
@@ -75,9 +92,9 @@ export function isSkinUnlocked(def: SkinDef): boolean {
     case 'default':
       return true;
     case 'score':
-      return BestScoreSystem.load().score >= def.unlock.value;
+      return bestAcrossWorlds().score >= def.unlock.value;
     case 'votes':
-      return BestScoreSystem.load().votes >= def.unlock.value;
+      return bestAcrossWorlds().votes >= def.unlock.value;
     case 'gems':
       return ownedIds().includes(def.id);
   }

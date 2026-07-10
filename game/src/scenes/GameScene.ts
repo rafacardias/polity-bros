@@ -11,7 +11,8 @@ import { WalletSystem } from '../systems/WalletSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS, type GameEventPayload } from '../lib/game-events';
-import { CITIES, ECONOMY, JUICE, SCORE, SIZES } from '../config/constants';
+import { ECONOMY, JUICE, SCORE, SIZES, type WorldDef } from '../config/constants';
+import { WorldSystem } from '../systems/WorldSystem';
 
 const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
 
@@ -45,9 +46,12 @@ export class GameScene extends Phaser.Scene {
   private recordCelebrated = false;
   private onboardingHint?: Phaser.GameObjects.Text;
   private onboardingPulse?: Phaser.Tweens.Tween;
-  private cityIndex = 0;
-  private cityBanner!: Phaser.GameObjects.Text;
-  private currentBg = 0;
+  private world!: WorldDef;
+  private won = false;
+  private unlockedWorldName: string | null = null;
+  private announceBanner!: Phaser.GameObjects.Text;
+  private finishLine!: Phaser.GameObjects.Rectangle;
+  private finishLabel!: Phaser.GameObjects.Text;
   private emitAccumulator = 0;
   private elapsedMs = 0;
   private isGameOver = false;
@@ -101,7 +105,20 @@ export class GameScene extends Phaser.Scene {
       maxSize: 4, // no máx. 2 por partida (ECONOMY.GEM_WINDOWS_M) + folga
       runChildUpdate: true,
     });
-    this.spawner = new SpawnerSystem(this, this.obstacles, this.votes, this.gems);
+    // mundo selecionado (D-16): layout FIXO via RNG semeado — a mesma fase
+    // para todos os jogadores, em todas as partidas
+    this.world = WorldSystem.selected();
+    this.won = false;
+    this.unlockedWorldName = null;
+    const rng = new Phaser.Math.RandomDataGenerator([this.world.seed]);
+    this.spawner = new SpawnerSystem(
+      this,
+      this.obstacles,
+      this.votes,
+      this.gems,
+      rng,
+      this.world.lengthM * SCORE.PX_PER_M,
+    );
 
     // RF-07: qualquer contato com obstáculo encerra a partida
     this.physics.add.overlap(this.player, this.obstacles, (_p, o) =>
@@ -143,16 +160,16 @@ export class GameScene extends Phaser.Scene {
 
     this.score = new ScoreSystem();
     this.createHud(width);
-    this.bestRecord = BestScoreSystem.load();
+    this.bestRecord = BestScoreSystem.load(this.world.id);
     this.recordCelebrated = false;
     this.createRecordMarker();
+    this.createFinishMarker();
     this.createOnboardingHint();
-    this.cityIndex = 0;
-    this.applyCityPalette(0, false); // largada em São Paulo (D-14)
+    this.applyWorldPalette();
     this.audio.startMusic();
     this.cameras.main.fadeIn(JUICE.FADE_IN_MS, 0, 0, 0);
 
-    this.progression = new ProgressionSystem();
+    this.progression = new ProgressionSystem(this.world.speed);
     this.emitAccumulator = 0;
     this.elapsedMs = 0;
     this.isGameOver = false;
@@ -208,8 +225,8 @@ export class GameScene extends Phaser.Scene {
       .setDepth(10)
       .setVisible(false);
 
-    // banner de chegada em cidade (T07B-01): um objeto reutilizado
-    this.cityBanner = this.add
+    // banner central reutilizado (vitória de fase, anúncios) — um objeto só
+    this.announceBanner = this.add
       .text(width / 2, this.scale.height * 0.42, '', {
         ...style,
         fontSize: '20px',
@@ -238,7 +255,9 @@ export class GameScene extends Phaser.Scene {
   private updateHud(): void {
     const snap = this.score.getSnapshot();
     this.scoreText.setText(`SCORE ${snap.score}`);
-    this.distanceText.setText(`${snap.distance}m`);
+    // countdown regressivo (D-16): "faltam Xm" cria o senso de FIM DO MUNDO
+    // ("cheguei tão perto, na próxima eu consigo") — pedido do 2º brainstorm
+    this.distanceText.setText(`faltam ${Math.max(0, this.world.lengthM - snap.distance)}m`);
     // votesText atualiza em collectVote (evento raro, não a cada frame)
   }
 
@@ -359,75 +378,70 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // Cidades da campanha (T07B-01, D-14): marcos de distância trocam a
-  // ATMOSFERA (fundo, chão, tint sutil dos obstáculos) — nunca a silhueta.
-  // Progresso visível e objetivo de médio prazo ("chegar em Brasília").
-  private updateCityProgress(): void {
-    const next = CITIES[this.cityIndex + 1];
-    if (!next || this.score.getSnapshot().distance < next.atDistanceM) return;
-    this.cityIndex += 1;
-    this.applyCityPalette(this.cityIndex, true);
-    this.announceCity(next.name);
+  // Paleta = TEMA do mundo (D-16, supersede D-14): aplicada uma vez na
+  // largada — fundo, chão e tint sutil dos obstáculos. Silhueta sagrada.
+  private applyWorldPalette(): void {
+    this.cameras.main.setBackgroundColor(this.world.bg);
+    this.groundTile.setTint(this.world.groundTint);
+    this.spawner.setObstacleTint(this.world.obstacleTint);
   }
 
-  private applyCityPalette(index: number, animate: boolean): void {
-    const city = CITIES[index];
-    this.groundTile.setTint(city.groundTint);
-    this.spawner.setObstacleTint(city.obstacleTint);
-    // retinta os obstáculos já em tela — consistência imediata da paleta
-    this.obstacles.children.iterate((child) => {
-      const sprite = child as Phaser.Physics.Arcade.Sprite;
-      if (sprite.active) sprite.setTint(city.obstacleTint);
-      return true;
-    });
-
-    if (!animate) {
-      this.currentBg = city.bg;
-      this.cameras.main.setBackgroundColor(city.bg);
-      return;
-    }
-    const fromColor = Phaser.Display.Color.ValueToColor(this.currentBg);
-    const toColor = Phaser.Display.Color.ValueToColor(city.bg);
-    this.currentBg = city.bg;
-    this.tweens.addCounter({
-      from: 0,
-      to: 100,
-      duration: 900,
-      onUpdate: (tw) => {
-        const c = Phaser.Display.Color.Interpolate.ColorWithColor(
-          fromColor,
-          toColor,
-          100,
-          tw.getValue() ?? 0,
-        );
-        this.cameras.main.setBackgroundColor(Phaser.Display.Color.GetColor(c.r, c.g, c.b));
-      },
-    });
+  // Linha de chegada (D-16): quadriculada, se aproxima como o marcador de
+  // recorde — o "fim do mundo" é VISÍVEL, não abstrato
+  private createFinishMarker(): void {
+    const groundTop = this.scale.height - SIZES.GROUND_H;
+    this.finishLine = this.add
+      .rectangle(0, groundTop, 6, 220, 0xffffff, 0.9)
+      .setOrigin(0.5, 1)
+      .setDepth(4)
+      .setVisible(false);
+    this.finishLabel = this.add
+      .text(0, groundTop - 226, '🏁 CHEGADA', {
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(4)
+      .setVisible(false);
   }
 
-  private announceCity(name: string): void {
+  private updateFinishMarker(): void {
+    const x =
+      SIZES.PLAYER.SCREEN_X + (this.world.lengthM * SCORE.PX_PER_M - this.score.getDistancePx());
+    const visible = x > -24 && x < this.scale.width + 48;
+    this.finishLine.setVisible(visible).setX(x);
+    this.finishLabel.setVisible(visible).setX(x);
+  }
+
+  // Vitória (D-16): cruzou a linha — celebração + desbloqueio do próximo
+  // mundo. Estrelas/multiplicador entram na T07C-03.
+  private finishWorld(): void {
+    if (this.isGameOver) return;
+    this.isGameOver = true;
+    this.won = true;
+    this.inputSystem.setEnabled(false);
+    this.physics.pause();
     this.audio.combo();
-    this.cityBanner
-      .setText(`🏙️ Você chegou em ${name}!`)
+    this.voteBurst.explode(24, this.player.x, this.player.y - 40);
+    this.gemBurst.explode(10, this.player.x, this.player.y - 60);
+    this.announceBanner
+      .setText('🏁 FASE COMPLETA!')
       .setAlpha(0)
       .setScale(0.8)
       .setVisible(true);
     this.tweens.add({
-      targets: this.cityBanner,
+      targets: this.announceBanner,
       alpha: 1,
-      scale: 1,
-      duration: 300,
+      scale: 1.1,
+      duration: 350,
       ease: 'Back.easeOut',
-      onComplete: () => {
-        this.tweens.add({
-          targets: this.cityBanner,
-          alpha: 0,
-          delay: 1400,
-          duration: 500,
-          onComplete: () => this.cityBanner.setVisible(false),
-        });
-      },
     });
+
+    this.unlockedWorldName = WorldSystem.unlockNext(this.world.id)?.name ?? null;
+    this.pendingGameOverPayload = this.buildGameOverPayload();
+    this.time.delayedCall(1500, () => this.finalizeGameOver());
   }
 
   private updateRecordMarker(): void {
@@ -466,7 +480,9 @@ export class GameScene extends Phaser.Scene {
     this.player.update(time, delta);
     this.updateHud();
     this.updateRecordMarker();
-    this.updateCityProgress();
+    this.updateFinishMarker();
+    // fim do mundo (D-16): cruzou a distância da fase → vitória
+    if (this.score.getSnapshot().distance >= this.world.lengthM) this.finishWorld();
 
     // contrato D-05: score periódico para o shell React (throttled)
     this.emitAccumulator += delta;
@@ -529,9 +545,11 @@ export class GameScene extends Phaser.Scene {
     return {
       ...snapshot,
       elapsedSec: this.elapsedMs / 1000,
-      deathCause,
+      deathCause: this.won ? undefined : deathCause, // vitória não tem killer
       gems: this.runGems, // T07B-02: gemas desta run
       continueUsed: this.continueUsed, // T07B-03: run com revive (telemetria)
+      world: this.world.id, // D-16
+      won: this.won, // D-16: cruzou a linha de chegada
     };
   }
 
@@ -689,15 +707,18 @@ export class GameScene extends Phaser.Scene {
     emitGameEvent(GAME_EVENTS.GAME_OVER, payload);
     const snapshot = this.score.getSnapshot();
 
-    // quase-vitória (T07A-04): salva os novos máximos e leva o recorde
-    // ANTERIOR para a GameOverScene calcular o "faltaram Xm"
-    const prevBest = BestScoreSystem.update(snapshot);
+    // quase-vitória (T07A-04): salva os novos máximos DO MUNDO e leva o
+    // recorde ANTERIOR para a GameOverScene calcular o "faltaram Xm"
+    const prevBest = BestScoreSystem.update(this.world.id, snapshot);
     const gameOverData = {
       ...snapshot,
       newBestScore: snapshot.score > prevBest.score,
       tiedRecord: prevBest.score > 0 && snapshot.score === prevBest.score,
       distanceGapM: Math.max(0, prevBest.distance - snapshot.distance),
       scoreGap: Math.max(0, prevBest.score - snapshot.score),
+      won: this.won, // D-16: muda o pop-up (vitória vs derrota)
+      worldName: this.world.name,
+      unlockedWorld: this.unlockedWorldName, // D-16: anúncio de desbloqueio
     };
     // beat curto para a morte "registrar" antes da troca de tela
     this.time.delayedCall(450, () => this.scene.start('GameOverScene', gameOverData));
