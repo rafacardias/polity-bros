@@ -66,9 +66,10 @@ export class SpawnerSystem {
     this.recycleMissedVotes();
   }
 
-  // Barra flutuante (D-18): divisor de rota no meio de um vão limpo —
-  // gema em cima (pulo alto comprometido) OU votos embaixo (rota segura).
-  // Escolha forçada pela geometria; replay para pegar o que ficou.
+  // Bloco flutuante (D-18, D-22): plataforma-obstáculo no meio de um vão
+  // limpo — propina em cima (pulo alto + pouso), votos embaixo (rota segura,
+  // passando reto por baixo). A GameScene registra um COLLIDER com o player:
+  // pousar no topo é seguro; laterais/fundo matam (kind 'block').
   private spawnGemBar(speed: number, target: { index: number; collected: boolean }): void {
     const { width, height } = this.scene.scale;
     const groundTop = height - SIZES.GROUND_H;
@@ -81,18 +82,23 @@ export class SpawnerSystem {
       bar.setOrigin(0.5, 1);
       bar.reset(x, barY);
       bar.setAngle(0);
+      bar.setData('kind', 'block'); // deathCause 'block' na telemetria (D-22)
       const body = bar.body as Phaser.Physics.Arcade.Body;
+      body.setSize(GEM_BAR.WIDTH, GEM_BAR.HEIGHT, false);
+      body.setOffset(0, 0);
       body.setAllowGravity(false);
-      // corpo ativo só para SCROLLAR — o grupo de barras não tem overlap
-      // registrado com o player: divisor visual, não colide nem mata
+      body.immovable = true; // plataforma: o player pousa e o bloco não cede
+      // friction 0: o bloco em movimento NÃO arrasta o player junto — no
+      // world-scroll o player "corre" sobre o bloco ficando no X fixo da tela
+      body.friction.set(0, 0);
       bar.setVelocityX(-speed);
     }
 
-    // gema sobre a barra — só se ainda não coletada neste aparelho
+    // propina sobre o bloco — só se ainda não coletada neste aparelho
     if (!target.collected) {
       this.spawnGem(x, barY - GEM_BAR.HEIGHT - GEM_BAR.GEM_ABOVE_BAR, speed, target.index);
     }
-    // votos sob a barra: a rota "segura" que compete com a gema
+    // votos sob o bloco: a rota "segura" que compete com a propina
     this.spawnVoteLine(
       x - SPAWN.VOTE_SPACING,
       groundTop - GEM_BAR.VOTES_BELOW_GROUND_H,
@@ -198,10 +204,10 @@ export class SpawnerSystem {
   private spawnGem(x: number, y: number, speed: number, gemIndex: number): void {
     const gem = this.gems.get(x, y) as Collectible | null;
     if (!gem) return;
-    gem.setTexture('gem');
+    gem.setTexture('gem'); // visual = nota de PROPINA (D-21); key segue 'gem'
     gem.setOrigin(0.5, 0.5);
     gem.reset(x, y);
-    gem.setAngle(45); // losango — leitura de "item especial" mesmo em placeholder
+    gem.setAngle(0); // nota reta — o losango era da era "gema"
     gem.setData('gemIndex', gemIndex); // coleção persistente por mundo (D-18)
     const body = gem.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);

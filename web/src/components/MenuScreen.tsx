@@ -53,11 +53,11 @@ export function MenuScreen({ onPlay, onRanking }: MenuScreenProps) {
             Ver ranking
           </button>
 
-          {/* Skins (T07B-04, D-11): desbloqueio por conquista ou gemas.
-              A dourada é o "sink" da economia — motivo pra caçar gemas. */}
+          {/* Skins (T07B-04, D-11): desbloqueio por conquista ou propinas
+              (D-21). A dourada é o "sink" da economia — motivo pra caçar 💵. */}
           <div className="mt-6 border-t border-slate-700 pt-4">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Personagem <span className="float-right normal-case">💎 {gemBalance()}</span>
+              Personagem <span className="float-right normal-case">💵 {gemBalance()}</span>
             </p>
             <div className="mt-3 flex justify-between gap-2">
               {SKINS.map((skin) => {

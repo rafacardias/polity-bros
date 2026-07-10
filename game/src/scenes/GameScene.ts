@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
+import { Entity } from '../entities/Entity';
 import { Obstacle } from '../entities/Obstacle';
 import { Collectible } from '../entities/Collectible';
+import { getSelectedSkin } from '../lib/skins';
 import { InputSystem } from '../systems/InputSystem';
 import { SpawnerSystem } from '../systems/SpawnerSystem';
 import { ScoreSystem } from '../systems/ScoreSystem';
@@ -43,7 +45,7 @@ export class GameScene extends Phaser.Scene {
   private comboText!: Phaser.GameObjects.Text;
   private comboTween?: Phaser.Tweens.Tween;
   private bestRecord!: BestRecord;
-  private recordLine!: Phaser.GameObjects.Rectangle;
+  private recordGhost!: Phaser.GameObjects.Image;
   private recordLabel!: Phaser.GameObjects.Text;
   private recordCelebrated = false;
   private onboardingHint?: Phaser.GameObjects.Text;
@@ -109,7 +111,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.bars = this.physics.add.group({
       classType: Collectible,
-      maxSize: 3, // barras flutuantes (D-18) — divisor visual, sem overlap
+      maxSize: 3, // blocos flutuantes (D-18/D-22) — plataforma-obstáculo
       runChildUpdate: true,
     });
     // mundo selecionado (D-16): layout FIXO via RNG semeado — a mesma fase
@@ -141,6 +143,14 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.gems, (_p, g) =>
       this.collectGem(g as Collectible),
     );
+    // D-22: bloco flutuante é plataforma-obstáculo — COLLIDER (separa os
+    // corpos, dá pra ficar em pé no topo). Pouso por cima é seguro; contato
+    // pelas laterais ou pelo fundo mata, como nos obstáculos verticais.
+    this.physics.add.collider(this.player, this.bars, (_p, b) => {
+      const body = this.player.body as Phaser.Physics.Arcade.Body;
+      const safeLanding = body.touching.down && !body.touching.up && !body.touching.right;
+      if (!safeLanding) this.gameOver(b as Collectible);
+    });
 
     // emitter ÚNICO criado fora do loop; explode() reutiliza partículas do
     // pool interno do Phaser (RN-01 — nada de new/destroy por coleta)
@@ -208,9 +218,9 @@ export class GameScene extends Phaser.Scene {
       .text(width - 12, 10, 'VOTOS 0', { ...style, color: '#facc15' })
       .setOrigin(1, 0)
       .setDepth(10);
-    // carteira de gemas (T07B-02): saldo TOTAL do aparelho, não só da run
+    // carteira de propinas (T07B-02, D-21): saldo TOTAL do aparelho
     this.gemText = this.add
-      .text(width - 12, 32, `💎 ${WalletSystem.balance()}`, { ...style, color: '#c084fc' })
+      .text(width - 12, 32, `💵 ${WalletSystem.balance()}`, { ...style, color: '#4ade80' })
       .setOrigin(1, 0)
       .setDepth(10);
     this.distanceText = this.add
@@ -281,20 +291,20 @@ export class GameScene extends Phaser.Scene {
     this.votesText.setText(`VOTOS ${this.score.getSnapshot().votes}`);
   }
 
-  // gema rara (T07B-02, D-11): vai DIRETO pra carteira persistente — mesmo
-  // morrendo, a run deixou algo pra trás ("mesmo assim avancei")
+  // propina (T07B-02, D-11, D-21): vai DIRETO pra carteira persistente —
+  // mesmo morrendo, a run deixou algo pra trás ("mesmo assim avancei")
   private collectGem(gem: Collectible): void {
     const { x, y } = gem;
-    // coleção persistente por mundo (D-18): esta gema não renasce
+    // coleção persistente por mundo (D-18): esta propina não renasce
     const gemIndex = gem.getData('gemIndex') as number | undefined;
     if (gemIndex !== undefined) GemCollectionSystem.markCollected(this.world.id, gemIndex);
     gem.deactivate();
     this.runGems += 1;
     const balance = WalletSystem.add(1);
-    this.gemText.setText(`💎 ${balance}`);
+    this.gemText.setText(`💵 ${balance}`);
     this.audio.gem();
     this.gemBurst.explode(14, x, y);
-    this.showFloatingText(x, y - 24, 'GEMA RARA! 💎');
+    this.showFloatingText(x, y - 24, 'PROPINA! 💵');
   }
 
   // linha inteira coletada: bônus (em votos — ver SCORE.LINE_BONUS_VOTES),
@@ -320,18 +330,21 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // Marcador do recorde pessoal na pista (T07A-04, D-10): a "linha de
-  // chegada" do seu melhor run se aproxima — quase-vitória visível, sem
-  // mexer em dificuldade. Invisível na primeira partida (sem recorde).
+  // Marcador do recorde pessoal na pista (T07A-04, D-10, D-23): o "você de
+  // ontem" — a skin atual do player parada no ponto do recorde, com 10% de
+  // opacidade (fantasma). Quase-vitória visível, sem mexer em dificuldade.
+  // Invisível na primeira partida (sem recorde).
   private createRecordMarker(): void {
     const groundTop = this.scale.height - SIZES.GROUND_H;
-    this.recordLine = this.add
-      .rectangle(0, groundTop, 3, 140, 0xfacc15, 0.7)
+    this.recordGhost = this.add
+      .image(0, groundTop, 'player')
       .setOrigin(0.5, 1)
+      .setTint(getSelectedSkin().color)
+      .setAlpha(JUICE.RECORD_GHOST_ALPHA)
       .setDepth(4)
       .setVisible(false);
     this.recordLabel = this.add
-      .text(0, groundTop - 146, '🏁 RECORDE', {
+      .text(0, groundTop - SIZES.PLAYER.H - 8, '🏁 RECORDE', {
         fontFamily: 'monospace',
         fontSize: '12px',
         color: '#facc15',
@@ -461,7 +474,7 @@ export class GameScene extends Phaser.Scene {
     const bestPx = this.bestRecord.distance * SCORE.PX_PER_M;
     const x = SIZES.PLAYER.SCREEN_X + (bestPx - this.score.getDistancePx());
     const visible = x > -24 && x < this.scale.width + 48;
-    this.recordLine.setVisible(visible).setX(x);
+    this.recordGhost.setVisible(visible).setX(x);
     this.recordLabel.setVisible(visible).setX(x);
 
     // texto diz DISTÂNCIA de propósito: o "recorde" oficial (game over e
@@ -520,8 +533,9 @@ export class GameScene extends Phaser.Scene {
 
   // RF-07: morte. Com saldo e continue ainda não usado, abre a oferta
   // arcade (T07B-03) ANTES de finalizar — o game:gameover (e o submit de
-  // score) só acontecem na morte definitiva.
-  private gameOver(killer?: Obstacle): void {
+  // score) só acontecem na morte definitiva. killer é Entity: obstáculo
+  // vertical OU bloco flutuante (D-22) — o tipo vem do data 'kind'.
+  private gameOver(killer?: Entity): void {
     if (this.isGameOver) return;
     if (this.time.now < this.invulnerableUntil) return; // carência pós-revive
     this.isGameOver = true;
@@ -546,15 +560,18 @@ export class GameScene extends Phaser.Scene {
     this.finalizeGameOver(killer);
   }
 
-  private buildGameOverPayload(killer?: Obstacle): GameEventPayload {
+  private buildGameOverPayload(killer?: Entity): GameEventPayload {
     const snapshot = this.score.getSnapshot();
     // elapsedSec: teto de plausibilidade da Edge Function (RN-04).
     // deathCause: telemetria (D-10) — sem killer identificado → 'unknown'.
-    const deathCause = killer
-      ? killer.getData('kind') === 'low'
-        ? ('obstacle-low' as const)
-        : ('obstacle-high' as const)
-      : ('unknown' as const);
+    const kind = killer?.getData('kind') as string | undefined;
+    const deathCause: GameEventPayload['deathCause'] = !killer
+      ? 'unknown'
+      : kind === 'low'
+        ? 'obstacle-low'
+        : kind === 'block'
+          ? 'block' // laterais/fundo do bloco flutuante (D-22)
+          : 'obstacle-high';
     return {
       ...snapshot,
       elapsedSec: this.elapsedMs / 1000,
@@ -567,15 +584,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   // Oferta de continue (T07B-03, D-11): botão tremendo + countdown. Aceitar
-  // gasta gemas e revive no lugar; recusar/estourar o tempo finaliza.
-  private offerContinue(killer?: Obstacle): void {
+  // gasta propinas e revive no lugar; recusar/estourar o tempo finaliza.
+  private offerContinue(killer?: Entity): void {
     const { width, height } = this.scale;
     const dim = this.add
       .rectangle(width / 2, height / 2, width, height, 0x000000, 0.55)
       .setDepth(20)
       .setInteractive(); // absorve o hit-test de objetos sob a oferta (ex.: mute)
     const btn = this.add
-      .text(width / 2, height * 0.45, `▶ CONTINUE — ${ECONOMY.CONTINUE_COST} 💎`, {
+      .text(width / 2, height * 0.45, `▶ CONTINUE — ${ECONOMY.CONTINUE_COST} 💵`, {
         fontFamily: 'monospace',
         fontSize: '22px',
         color: '#0f172a',
@@ -685,11 +702,18 @@ export class GameScene extends Phaser.Scene {
     // review 7B: morrer DESLIZANDO deixava a postura de slide congelada
     // (hitbox 32px "de graça" contra obstáculos baixos — fere RN-08)
     this.player.slide(false);
-    this.gemText.setText(`💎 ${WalletSystem.balance()}`);
-    // pista limpa à frente: revive nunca pode ser morte instantânea injusta
+    this.gemText.setText(`💵 ${WalletSystem.balance()}`);
+    // pista limpa à frente: revive nunca pode ser morte instantânea injusta —
+    // vale para obstáculos verticais E blocos flutuantes (D-22, que matam
+    // pelas laterais e chegariam voando no player recém-revivido)
     this.obstacles.children.iterate((child) => {
       const sprite = child as Phaser.Physics.Arcade.Sprite;
       if (sprite.active) (sprite as Obstacle).deactivate();
+      return true;
+    });
+    this.bars.children.iterate((child) => {
+      const bar = child as Collectible;
+      if (bar.active) bar.deactivate();
       return true;
     });
     const body = this.player.body as Phaser.Physics.Arcade.Body;
@@ -714,7 +738,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   // contrato D-05: emite game:gameover (submit de score) e vai à GameOverScene
-  private finalizeGameOver(killer?: Obstacle): void {
+  private finalizeGameOver(killer?: Entity): void {
     const payload = this.pendingGameOverPayload ?? this.buildGameOverPayload(killer);
     this.pendingGameOverPayload = undefined; // emitido aqui, não no SHUTDOWN
     emitGameEvent(GAME_EVENTS.GAME_OVER, payload);

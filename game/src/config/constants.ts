@@ -61,6 +61,9 @@ export const JUICE = {
   FADE_IN_MS: 200, // transição de entrada da GameScene
   COMBO_BURST_COUNT: 20, // explosão maior no momento "uau" (T07A-03)
   COMBO_TEXT_MS: 750, // duração do texto flutuante "LINHA PERFEITA!"
+  // D-23: o marcador de recorde é a skin do player em 10% de opacidade —
+  // "você de ontem" parado na pista. Subir se ficar ilegível numa paleta.
+  RECORD_GHOST_ALPHA: 0.1,
 } as const;
 
 export const INPUT = {
@@ -87,15 +90,16 @@ export const ECONOMY = {
   CONTINUE_OFFER_SEC: 4, // janela da oferta de continue no game over
 } as const;
 
-// Barra flutuante (D-18): divisor de rota — gema EM CIMA (pulo alto
-// comprometido), votos EMBAIXO (rota segura). Geometria força a ESCOLHA:
-// não dá pra pegar os dois na mesma passada.
+// Bloco flutuante (D-18, D-22): PLATAFORMA-OBSTÁCULO divisor de rota —
+// propina EM CIMA (pulo alto + pouso no bloco), votos EMBAIXO (rota segura,
+// coletados correndo por baixo, sem pular). Pousar em cima é seguro; bater
+// nas LATERAIS ou no FUNDO mata (mesma regra dos obstáculos verticais).
 export const GEM_BAR = {
   WIDTH: 120,
-  HEIGHT: 10,
-  BAR_ABOVE_GROUND: 104, // topo da barra
-  GEM_ABOVE_BAR: 42, // gema flutua sobre a barra (~146px do chão; apex ≈ 230)
-  VOTES_BELOW_GROUND_H: 46, // linha de votos sob a barra (altura do pulinho)
+  HEIGHT: 24, // espesso como obstáculo (D-22) — leitura de "bloco sólido"
+  BAR_ABOVE_GROUND: 104, // base do bloco: player (64px) passa por baixo com folga
+  GEM_ABOVE_BAR: 42, // propina flutua sobre o topo (~170px do chão; apex ≈ 230)
+  VOTES_BELOW_GROUND_H: 46, // linha de votos sob o bloco (na altura do corpo)
 } as const;
 
 // Mundos/fases da campanha (D-16, supersede D-14): cada cidade é um MUNDO

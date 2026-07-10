@@ -31,7 +31,10 @@ export class Player extends Entity {
   }
 
   get onGround(): boolean {
-    return (this.body as Phaser.Physics.Arcade.Body).blocked.down;
+    // blocked.down = chão do mundo; touching.down = em pé sobre o bloco
+    // flutuante (D-22, collider dinâmico) — nos dois casos pode pular
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    return body.blocked.down || body.touching.down;
   }
 
   // chamado ao iniciar o toque/tecla (RF-05); retorna se pulou de fato —

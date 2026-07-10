@@ -20,7 +20,7 @@ export interface GameEventPayload {
   votes: number;
   distance: number;
   elapsedSec?: number;
-  deathCause?: 'obstacle-high' | 'obstacle-low' | 'unknown';
+  deathCause?: 'obstacle-high' | 'obstacle-low' | 'block' | 'unknown';
   gems?: number; // gemas coletadas NA run (T07B-02) — carteira fica no WalletSystem
   continueUsed?: boolean; // run teve revive (T07B-03) — telemetria/calibração
   world?: string; // id do mundo jogado (D-16)

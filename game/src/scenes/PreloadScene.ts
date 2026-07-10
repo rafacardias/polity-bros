@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GEM_BAR } from '../config/constants';
 
 // Placeholders visuais (RN-07): retângulos coloridos gerados em runtime.
 // Na Fase 3 estes keys passam a apontar para sprites reais carregados
@@ -11,8 +12,9 @@ const PLACEHOLDERS = [
   { key: 'obstacle-high', width: 44, height: 72, color: 0xef4444 },
   { key: 'obstacle-low', width: 44, height: 160, color: 0xf97316 },
   { key: 'vote', width: 24, height: 24, color: 0xfacc15 },
-  { key: 'gem', width: 20, height: 20, color: 0xa855f7 }, // gema rara (T07B-02)
-  { key: 'gem-bar', width: 120, height: 10, color: 0x64748b }, // barra flutuante (D-18)
+  // bloco flutuante (D-22): plataforma-obstáculo — vermelho da família dos
+  // obstáculos ("pode matar"), player sobe em cima; laterais/fundo matam
+  { key: 'gem-bar', width: GEM_BAR.WIDTH, height: GEM_BAR.HEIGHT, color: 0xef4444 },
 ] as const;
 
 export class PreloadScene extends Phaser.Scene {
@@ -36,8 +38,31 @@ export class PreloadScene extends Phaser.Scene {
 
   create(): void {
     this.generatePlaceholderTextures();
+    this.generatePropinaTexture();
     this.generateGroundTexture();
     this.scene.start('GameScene');
+  }
+
+  // PROPINA (D-21): nota verde com $ no centro — o colecionável raro do jogo.
+  // Canvas texture (não Graphics) porque precisa desenhar TEXTO ($). O key
+  // segue 'gem' de propósito: renomear keys/ids quebraria carteiras e
+  // coleções já salvas — só o VISUAL e os textos mudam.
+  private generatePropinaTexture(): void {
+    if (this.textures.exists('gem')) return; // idempotente em restart
+    const canvas = this.textures.createCanvas('gem', 30, 18);
+    if (!canvas) return;
+    const ctx = canvas.context;
+    ctx.fillStyle = '#16a34a'; // verde nota
+    ctx.fillRect(0, 0, 30, 18);
+    ctx.strokeStyle = '#bbf7d0'; // filete claro = borda da cédula
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, 28, 16);
+    ctx.fillStyle = '#f0fdf4';
+    ctx.font = 'bold 13px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('$', 15, 10);
+    canvas.refresh();
   }
 
   private createProgressBar(): void {

@@ -73,7 +73,7 @@ export const SKINS: readonly SkinDef[] = [
     color: 0xfacc15,
     css: '#facc15',
     unlock: { type: 'gems', value: 10 },
-    requirement: '10 💎',
+    requirement: '10 💵',
   },
 ] as const;
 
