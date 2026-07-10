@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { onGameEvent, SHELL_EVENTS } from '../lib/game-events';
 import type { ScoreSnapshot } from '../systems/ScoreSystem';
+import { WalletSystem } from '../systems/WalletSystem';
+import { ECONOMY } from '../config/constants';
 
 // snapshot + contexto de quase-vitória (T07A-04), calculado pela GameScene
 // contra o recorde ANTERIOR à partida
@@ -11,9 +13,14 @@ export interface GameOverData extends ScoreSnapshot {
   scoreGap?: number;
   won?: boolean; // D-16: cruzou a linha de chegada
   stars?: number; // D-17: 1..3 — `score` já vem multiplicado
+  gems?: number; // propinas coletadas NA run (educação da 1ª — D-18)
   worldName?: string;
   unlockedWorld?: string | null; // nome do mundo recém-desbloqueado
 }
+
+// educação da 1ª propina (D-18/D-21): UMA vez por aparelho, na primeira
+// tela de fim após coletar a primeira propina da vida
+const GEM_EDUCATION_KEY = 'polity-bros:gem-education';
 
 // Fim de partida (RF-03). O game:gameover é emitido pela GameScene no
 // momento da morte; aqui exibimos o resultado e aceitamos reinício por
@@ -87,6 +94,7 @@ export class GameOverScene extends Phaser.Scene {
         color: '#94a3b8',
       })
       .setOrigin(0.5);
+    this.createGemEducation(data, width, height, style);
 
     // reinício vindo do shell React (botão "Jogar de novo" — T05)
     const offRestart = onGameEvent(SHELL_EVENTS.RESTART, () => this.restart());
@@ -171,6 +179,46 @@ export class GameOverScene extends Phaser.Scene {
           ease: 'Sine.easeInOut',
         });
       },
+    });
+  }
+
+  // 1ª propina da vida (D-18): explica a moeda no momento de maior atenção —
+  // a tela de fim logo após a coleta. "3 💵 = 1 continue" planta o objetivo
+  // ("faltam 2 pra eu voltar de onde morri") sem tutorial chato.
+  private createGemEducation(
+    data: GameOverData,
+    width: number,
+    height: number,
+    style: { fontFamily: string; color: string; align: 'center' },
+  ): void {
+    if (!data.gems || data.gems <= 0) return;
+    let seen = false;
+    try {
+      seen = localStorage.getItem(GEM_EDUCATION_KEY) === 'true';
+      if (!seen) localStorage.setItem(GEM_EDUCATION_KEY, 'true');
+    } catch {
+      // sem storage: mostra sempre — melhor repetir a dica que nunca dar
+    }
+    if (seen) return;
+
+    const balance = WalletSystem.balance();
+    const line = this.add
+      .text(
+        width / 2,
+        height * 0.76,
+        `💵 Você achou uma PROPINA!\nJunte ${ECONOMY.CONTINUE_COST} e compre 1 CONTINUE` +
+          ` pra voltar de onde morreu.\nVocê tem ${balance} 💵`,
+        { ...style, fontSize: '13px', color: '#4ade80', backgroundColor: '#0f172acc' },
+      )
+      .setOrigin(0.5)
+      .setPadding(12, 8, 12, 8)
+      .setScale(0);
+    this.tweens.add({
+      targets: line,
+      scale: 1,
+      duration: 420,
+      ease: 'Back.easeOut',
+      delay: 250,
     });
   }
 

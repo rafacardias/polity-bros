@@ -770,6 +770,7 @@ export class GameScene extends Phaser.Scene {
     const gameOverData = {
       ...finalSnapshot,
       stars, // D-17: exibidas na tela final
+      gems: this.runGems, // D-18: dispara a educação da 1ª propina
       newBestScore: finalSnapshot.score > prevBest.score,
       tiedRecord: prevBest.score > 0 && finalSnapshot.score === prevBest.score,
       distanceGapM: Math.max(0, prevBest.distance - finalSnapshot.distance),
