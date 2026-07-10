@@ -35,12 +35,23 @@ export function RankingScreen({ onBack }: RankingScreenProps) {
         {entries?.map((entry, i) => (
           <li
             key={`${entry.created_at}-${i}`}
-            className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-800 px-4 py-3"
+            className="flex items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 py-3"
           >
-            <span className="w-8 font-mono text-slate-400">#{i + 1}</span>
-            <span className="font-bold">{entry.score} pts</span>
-            <span className="text-sm text-slate-400">
-              {entry.votes} votos · {entry.distance}m
+            <span className="w-8 shrink-0 font-mono text-slate-400">#{i + 1}</span>
+            <span className="font-bold">
+              {entry.score} pts
+              {/* selo (D-17): recorde limpo, sem revive pago com propinas */}
+              {!entry.continue_used && (
+                <span title="sem continue" aria-label="sem continue">
+                  {' '}
+                  🏅
+                </span>
+              )}
+            </span>
+            <span className="text-right text-sm text-slate-400">
+              {'⭐'.repeat(entry.stars ?? 1)}
+              <br />
+              {entry.votes} votos · {entry.distance}m · {(entry.world ?? 'sp').toUpperCase()}
             </span>
           </li>
         ))}

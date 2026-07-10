@@ -25,6 +25,9 @@ export interface GameEventPayload {
   continueUsed?: boolean; // run teve revive (T07B-03) — telemetria/calibração
   world?: string; // id do mundo jogado (D-16)
   won?: boolean; // true = cruzou a linha de chegada (D-16); false/ausente = morreu
+  // D-17: ⭐ morreu · ⭐⭐ terminou · ⭐⭐⭐ terminou com todos os coletáveis.
+  // Presente no game:gameover; `score` já vem MULTIPLICADO (base × stars).
+  stars?: number;
 }
 
 export function emitGameEvent(evt: string, detail?: unknown): void {

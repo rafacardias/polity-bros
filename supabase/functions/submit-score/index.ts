@@ -17,33 +17,67 @@ const VOTE_POINTS = 10; // SCORE.VOTE_POINTS em game/src/config/constants.ts
 // invariante "nenhum payload legítimo é rejeitado" com folga.
 const MAX_DISTANCE_M_PER_SEC = 50;
 const MAX_VOTES_PER_SEC = 25;
+// Mundos com FIM (D-16): distância nunca passa do comprimento da fase
+// (folga de 5m para o frame de cruzamento). Espelha WORLDS em constants.ts.
+const WORLD_LENGTH_M: Record<string, number> = { sp: 600, rj: 900, bsb: 1200 };
+const WORLD_LENGTH_SLACK_M = 5;
 // Rate limit por player_id (RN-04).
 const MIN_SUBMIT_INTERVAL_SEC = 2;
 const MAX_SUBMITS_PER_WINDOW = 30;
 const WINDOW_MINUTES = 10;
 
+// v2 (D-17): stars/continueUsed/world são OPCIONAIS com default — o app v1
+// em produção (que não os envia) continua aceito durante a transição.
 interface ScorePayload {
   score: number;
   votes: number;
   distance: number;
   elapsedSec: number;
+  stars: number; // 1..3 — score deve ser (distance + votes×10) × stars
+  continueUsed: boolean; // selo "🏅 sem continue" no ranking (D-17)
+  world: string; // 'sp' | 'rj' | 'bsb' (D-16)
+  // false = payload do app v1 (sem mundos): tetos por fase não se aplicam —
+  // o app antigo tem corridas legitimamente mais longas que 600m
+  worldProvided: boolean;
 }
 
 function isNonNegInt(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 0;
 }
 
-function isValidPayload(body: unknown): body is ScorePayload {
-  if (!body || typeof body !== "object") return false;
+function parsePayload(body: unknown): ScorePayload | null {
+  if (!body || typeof body !== "object") return null;
   const b = body as Record<string, unknown>;
-  return (
+  const base =
     isNonNegInt(b.score) &&
     isNonNegInt(b.votes) &&
     isNonNegInt(b.distance) &&
     typeof b.elapsedSec === "number" &&
     Number.isFinite(b.elapsedSec) &&
-    b.elapsedSec > 0
-  );
+    b.elapsedSec > 0;
+  if (!base) return null;
+
+  const stars = b.stars === undefined ? 1 : b.stars;
+  if (!isNonNegInt(stars) || stars < 1 || stars > 3) return null;
+  const continueUsed = b.continueUsed === undefined ? false : b.continueUsed;
+  if (typeof continueUsed !== "boolean") return null;
+  const worldProvided = b.world !== undefined;
+  const world = worldProvided ? b.world : "sp";
+  if (typeof world !== "string" || !(world in WORLD_LENGTH_M)) return null;
+  // stars > 1 sem declarar o mundo = payload forjado tentando escapar do
+  // teto "só quem cruza a linha multiplica" — rejeitar na entrada
+  if (stars > 1 && !worldProvided) return null;
+
+  return {
+    score: b.score as number,
+    votes: b.votes as number,
+    distance: b.distance as number,
+    elapsedSec: b.elapsedSec as number,
+    stars,
+    continueUsed,
+    world,
+    worldProvided,
+  };
 }
 
 function json(body: unknown, status = 200): Response {
@@ -70,14 +104,32 @@ async function submitScore(req: Request, ctx: import("@supabase/server").Supabas
     return json({ error: "invalid_json" }, 400);
   }
 
-  if (!isValidPayload(body)) {
+  const payload = parsePayload(body);
+  if (!payload) {
     return json({ error: "invalid_payload" }, 400);
   }
-  const { score, votes, distance, elapsedSec } = body;
+  const { score, votes, distance, elapsedSec, stars, continueUsed, world, worldProvided } =
+    payload;
 
-  // consistência com a fórmula de ScoreSystem.getSnapshot()
-  if (score !== distance + votes * VOTE_POINTS) {
+  // fórmula v2 (D-17): score final = base × estrelas. Com stars=1 (app v1 ou
+  // morte) degrada para a fórmula original — retrocompatível.
+  if (score !== (distance + votes * VOTE_POINTS) * stars) {
     return json({ error: "score_mismatch" }, 400);
+  }
+
+  // teto por mundo (D-16), só para payloads v2 (worldProvided): distância
+  // limitada ao comprimento da fase; e 2-3 estrelas EXIGEM ter cruzado a
+  // linha (distance == comprimento da fase). A completude de coletáveis da
+  // 3ª estrela não é verificável no servidor (estado do cliente) — risco
+  // aceito e documentado (D-17); os demais tetos limitam o dano.
+  if (worldProvided) {
+    const lengthM = WORLD_LENGTH_M[world];
+    if (distance > lengthM + WORLD_LENGTH_SLACK_M) {
+      return json({ error: "implausible_score" }, 400);
+    }
+    if (stars > 1 && distance < lengthM) {
+      return json({ error: "implausible_score" }, 400);
+    }
   }
 
   if (
@@ -110,8 +162,17 @@ async function submitScore(req: Request, ctx: import("@supabase/server").Supabas
 
   const { data: inserted, error: insertError } = await ctx.supabaseAdmin
     .from("scores")
-    .insert({ player_id: playerId, game_id: GAME_ID, score, votes, distance })
-    .select("id, score, votes, distance, created_at")
+    .insert({
+      player_id: playerId,
+      game_id: GAME_ID,
+      score,
+      votes,
+      distance,
+      stars,
+      continue_used: continueUsed,
+      world,
+    })
+    .select("id, score, votes, distance, stars, continue_used, world, created_at")
     .single();
 
   if (insertError) {

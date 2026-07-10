@@ -10,6 +10,7 @@ export interface GameOverData extends ScoreSnapshot {
   distanceGapM?: number;
   scoreGap?: number;
   won?: boolean; // D-16: cruzou a linha de chegada
+  stars?: number; // D-17: 1..3 — `score` já vem multiplicado
   worldName?: string;
   unlockedWorld?: string | null; // nome do mundo recém-desbloqueado
 }
@@ -38,25 +39,49 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5);
     if (data.won && data.worldName) {
       this.add
-        .text(width / 2, height * 0.345, `Você atravessou ${data.worldName}!`, {
+        .text(width / 2, height * 0.335, `Você atravessou ${data.worldName}!`, {
           ...style,
           fontSize: '15px',
           color: '#94a3b8',
         })
         .setOrigin(0.5);
     }
+    // estrelas (D-17): a nota da fase + o multiplicador que ela valeu.
+    // Na derrota (1⭐) o convite mostra o caminho: terminar a fase = ×2.
+    const stars = data.stars ?? 1;
+    if (data.won) {
+      const starLine = this.add
+        .text(width / 2, height * 0.385, `${'⭐'.repeat(stars)}  score ×${stars}`, {
+          ...style,
+          fontSize: '20px',
+          color: '#facc15',
+        })
+        .setOrigin(0.5)
+        .setScale(0);
+      this.tweens.add({ targets: starLine, scale: 1, duration: 420, ease: 'Back.easeOut' });
+      if (stars < 3) {
+        this.add
+          .text(width / 2, height * 0.425, 'colete TUDO para ⭐⭐⭐ (×3)', {
+            ...style,
+            fontSize: '12px',
+            color: '#94a3b8',
+          })
+          .setOrigin(0.5);
+      }
+    }
     this.add
       .text(
         width / 2,
-        height * 0.42,
+        height * (data.won ? 0.47 : 0.42),
         `SCORE ${data.score ?? 0}\n\nVOTOS ${data.votes ?? 0} · ${data.distance ?? 0}m`,
         { ...style, fontSize: '20px' },
       )
       .setOrigin(0.5);
-    this.createNearMissLine(data, width, height, style);
-    this.createUnlockLine(data, width, height, style);
+    // na vitória, as linhas de estrelas empurram o layout para baixo
+    this.createNearMissLine(data, width, height, style, data.won ? 0.555 : 0.52);
+    this.createUnlockLine(data, width, height, style, data.won ? 0.61 : 0.58);
     this.add
-      .text(width / 2, height * 0.62, 'toque para jogar de novo', {
+      .text(width / 2, height * (data.won ? 0.665 : 0.62), 'toque para jogar de novo', {
         ...style,
         fontSize: '16px',
         color: '#94a3b8',
@@ -81,6 +106,7 @@ export class GameOverScene extends Phaser.Scene {
     width: number,
     height: number,
     style: { fontFamily: string; color: string; align: 'center' },
+    yFrac = 0.52,
   ): void {
     let msg = '';
     let color = '#94a3b8';
@@ -98,7 +124,7 @@ export class GameOverScene extends Phaser.Scene {
     if (!msg) return;
 
     const line = this.add
-      .text(width / 2, height * 0.52, msg, { ...style, fontSize: '16px', color })
+      .text(width / 2, height * yFrac, msg, { ...style, fontSize: '16px', color })
       .setOrigin(0.5);
     if (data.newBestScore) {
       this.tweens.add({
@@ -119,10 +145,11 @@ export class GameOverScene extends Phaser.Scene {
     width: number,
     height: number,
     style: { fontFamily: string; color: string; align: 'center' },
+    yFrac = 0.58,
   ): void {
     if (!data.unlockedWorld) return;
     const line = this.add
-      .text(width / 2, height * 0.58, `🔓 ${data.unlockedWorld} desbloqueado!`, {
+      .text(width / 2, height * yFrac, `🔓 ${data.unlockedWorld} desbloqueado!`, {
         ...style,
         fontSize: '18px',
         color: '#facc15',

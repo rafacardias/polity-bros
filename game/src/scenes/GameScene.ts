@@ -52,6 +52,7 @@ export class GameScene extends Phaser.Scene {
   private onboardingPulse?: Phaser.Tweens.Tween;
   private world!: WorldDef;
   private won = false;
+  private stars = 1; // D-17: ⭐ morreu · ⭐⭐ terminou · ⭐⭐⭐ terminou com tudo
   private unlockedWorldName: string | null = null;
   private announceBanner!: Phaser.GameObjects.Text;
   private finishLine!: Phaser.GameObjects.Rectangle;
@@ -118,6 +119,7 @@ export class GameScene extends Phaser.Scene {
     // para todos os jogadores, em todas as partidas
     this.world = WorldSystem.selected();
     this.won = false;
+    this.stars = 1;
     this.unlockedWorldName = null;
     const rng = new Phaser.Math.RandomDataGenerator([this.world.seed]);
     this.spawner = new SpawnerSystem(
@@ -297,7 +299,10 @@ export class GameScene extends Phaser.Scene {
     const { x, y } = gem;
     // coleção persistente por mundo (D-18): esta propina não renasce
     const gemIndex = gem.getData('gemIndex') as number | undefined;
-    if (gemIndex !== undefined) GemCollectionSystem.markCollected(this.world.id, gemIndex);
+    if (gemIndex !== undefined) {
+      GemCollectionSystem.markCollected(this.world.id, gemIndex);
+      this.spawner.onGemCollected(gemIndex); // bloco resolvido p/ 3⭐ (D-17)
+    }
     gem.deactivate();
     this.runGems += 1;
     const balance = WalletSystem.add(1);
@@ -441,18 +446,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   // Vitória (D-16): cruzou a linha — celebração + desbloqueio do próximo
-  // mundo. Estrelas/multiplicador entram na T07C-03.
+  // mundo + estrelas (D-17): ⭐⭐ por terminar, ⭐⭐⭐ por terminar com TODOS
+  // os coletáveis (a escolha propina-vs-votos no bloco não penaliza).
   private finishWorld(): void {
     if (this.isGameOver) return;
     this.isGameOver = true;
     this.won = true;
+    // votos deixados para trás ainda ativos contam como perdidos ANTES de
+    // fechar a conta das estrelas
+    this.spawner.finalizeMisses(this.player.x - SIZES.PLAYER.W / 2);
+    this.stars = this.spawner.isPerfectRun() ? 3 : 2;
     this.inputSystem.setEnabled(false);
     this.physics.pause();
     this.audio.combo();
     this.voteBurst.explode(24, this.player.x, this.player.y - 40);
     this.gemBurst.explode(10, this.player.x, this.player.y - 60);
     this.announceBanner
-      .setText('🏁 FASE COMPLETA!')
+      .setText(`🏁 FASE COMPLETA!\n${'⭐'.repeat(this.stars)}`)
       .setAlpha(0)
       .setScale(0.8)
       .setVisible(true);
@@ -572,12 +582,17 @@ export class GameScene extends Phaser.Scene {
         : kind === 'block'
           ? 'block' // laterais/fundo do bloco flutuante (D-22)
           : 'obstacle-high';
+    // score v2 (D-17): o score FINAL (submetido/ranqueado) é base × estrelas.
+    // A Edge Function v2 valida score === (distance + votes×10) × stars.
+    const stars = this.won ? this.stars : 1;
     return {
       ...snapshot,
+      score: snapshot.score * stars,
+      stars,
       elapsedSec: this.elapsedMs / 1000,
       deathCause: this.won ? undefined : deathCause, // vitória não tem killer
       gems: this.runGems, // T07B-02: gemas desta run
-      continueUsed: this.continueUsed, // T07B-03: run com revive (telemetria)
+      continueUsed: this.continueUsed, // T07B-03: selo "sem continue" (D-17)
       world: this.world.id, // D-16
       won: this.won, // D-16: cruzou a linha de chegada
     };
@@ -742,17 +757,23 @@ export class GameScene extends Phaser.Scene {
     const payload = this.pendingGameOverPayload ?? this.buildGameOverPayload(killer);
     this.pendingGameOverPayload = undefined; // emitido aqui, não no SHUTDOWN
     emitGameEvent(GAME_EVENTS.GAME_OVER, payload);
+
+    // recorde e tela final usam o score FINAL (base × estrelas, D-17) — o
+    // mesmo número que vai pro ranking; comparar bases confundiria o jogador
+    const stars = this.won ? this.stars : 1;
     const snapshot = this.score.getSnapshot();
+    const finalSnapshot = { ...snapshot, score: snapshot.score * stars };
 
     // quase-vitória (T07A-04): salva os novos máximos DO MUNDO e leva o
     // recorde ANTERIOR para a GameOverScene calcular o "faltaram Xm"
-    const prevBest = BestScoreSystem.update(this.world.id, snapshot);
+    const prevBest = BestScoreSystem.update(this.world.id, finalSnapshot);
     const gameOverData = {
-      ...snapshot,
-      newBestScore: snapshot.score > prevBest.score,
-      tiedRecord: prevBest.score > 0 && snapshot.score === prevBest.score,
-      distanceGapM: Math.max(0, prevBest.distance - snapshot.distance),
-      scoreGap: Math.max(0, prevBest.score - snapshot.score),
+      ...finalSnapshot,
+      stars, // D-17: exibidas na tela final
+      newBestScore: finalSnapshot.score > prevBest.score,
+      tiedRecord: prevBest.score > 0 && finalSnapshot.score === prevBest.score,
+      distanceGapM: Math.max(0, prevBest.distance - finalSnapshot.distance),
+      scoreGap: Math.max(0, prevBest.score - finalSnapshot.score),
       won: this.won, // D-16: muda o pop-up (vitória vs derrota)
       worldName: this.world.name,
       unlockedWorld: this.unlockedWorldName, // D-16: anúncio de desbloqueio

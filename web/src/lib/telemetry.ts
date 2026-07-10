@@ -32,6 +32,7 @@ export function trackRunEnd(payload: GameEventPayload): void {
     continue_used: payload.continueUsed ?? false, // review 7B: calibração
     world: payload.world ?? 'unknown', // D-16
     won: payload.won ?? false, // D-16: terminou a fase vs morreu
+    stars: payload.stars ?? 1, // D-17: quantos ganham 3⭐ calibra a densidade
   });
 }
 

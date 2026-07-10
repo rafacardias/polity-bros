@@ -41,31 +41,40 @@ export type Database = {
     Tables: {
       scores: {
         Row: {
+          continue_used: boolean
           created_at: string
           distance: number
           game_id: string
           id: string
           player_id: string
           score: number
+          stars: number
           votes: number
+          world: string
         }
         Insert: {
+          continue_used?: boolean
           created_at?: string
           distance?: number
           game_id?: string
           id?: string
           player_id: string
           score: number
+          stars?: number
           votes?: number
+          world?: string
         }
         Update: {
+          continue_used?: boolean
           created_at?: string
           distance?: number
           game_id?: string
           id?: string
           player_id?: string
           score?: number
+          stars?: number
           votes?: number
+          world?: string
         }
         Relationships: []
       }

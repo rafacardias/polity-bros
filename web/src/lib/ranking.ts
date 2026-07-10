@@ -4,6 +4,9 @@ export interface RankingEntry {
   score: number;
   votes: number;
   distance: number;
+  stars: number;
+  continue_used: boolean;
+  world: string;
   created_at: string;
 }
 
@@ -11,7 +14,7 @@ export interface RankingEntry {
 export async function fetchTopScores(limit = 10): Promise<RankingEntry[]> {
   const { data, error } = await supabase
     .from('scores')
-    .select('score, votes, distance, created_at')
+    .select('score, votes, distance, stars, continue_used, world, created_at')
     .eq('game_id', 'polity-bros')
     .order('score', { ascending: false })
     .limit(limit)

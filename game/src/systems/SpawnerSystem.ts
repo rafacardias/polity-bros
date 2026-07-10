@@ -20,6 +20,14 @@ export class SpawnerSystem {
   // gemas já coletadas neste aparelho não renascem (coleção persistente) —
   // a barra e os votos de baixo continuam aparecendo.
   private gemTargets: { index: number; atM: number; collected: boolean }[];
+  // Contabilidade das 3 estrelas (D-17): "TODOS os coletáveis" = nenhum voto
+  // comum perdido E cada bloco flutuante resolvido (propina OU linha de
+  // votos completa — a exclusividade da rota não penaliza).
+  private missedVotes = 0;
+  private barOutcomes = new Map<
+    number,
+    { gemPresent: boolean; gemTaken: boolean; votesMissed: number }
+  >();
 
   // rng SEMEADO por mundo (D-16): todo sorteio de layout passa por ele —
   // mesma fase para todos os jogadores, em todas as partidas
@@ -76,6 +84,14 @@ export class SpawnerSystem {
     const x = width + GEM_BAR.WIDTH;
     const barY = groundTop - GEM_BAR.BAR_ABOVE_GROUND;
 
+    // estrela 3 (D-17): o bloco entra na contabilidade — satisfeito por
+    // propina coletada OU linha de baixo completa
+    this.barOutcomes.set(target.index, {
+      gemPresent: !target.collected,
+      gemTaken: false,
+      votesMissed: 0,
+    });
+
     const bar = this.bars.get(x, barY) as Collectible | null;
     if (bar) {
       bar.setTexture('gem-bar');
@@ -103,6 +119,7 @@ export class SpawnerSystem {
       x - SPAWN.VOTE_SPACING,
       groundTop - GEM_BAR.VOTES_BELOW_GROUND_H,
       speed,
+      target.index,
     );
   }
 
@@ -114,6 +131,7 @@ export class SpawnerSystem {
       const vote = child as Collectible;
       if (vote.active && vote.x < -vote.width) {
         this.lineLedger.delete(vote.getData('lineId') as number);
+        this.countMissedVote(vote); // contabilidade das 3 estrelas (D-17)
         vote.deactivate();
       }
       return true;
@@ -134,6 +152,50 @@ export class SpawnerSystem {
   // os já ativos são retintados pela GameScene para consistência visual
   setObstacleTint(tint: number): void {
     this.obstacleTint = tint;
+  }
+
+  // voto perdido: se pertencia a um bloco flutuante conta no desfecho do
+  // bloco (pode ser perdoado pela propina); senão é perda comum → sem 3⭐
+  private countMissedVote(vote: Collectible): void {
+    const barIndex = vote.getData('barIndex') as number | undefined;
+    if (barIndex !== undefined && barIndex >= 0) {
+      const outcome = this.barOutcomes.get(barIndex);
+      if (outcome) outcome.votesMissed += 1;
+      return;
+    }
+    this.missedVotes += 1;
+  }
+
+  // propina coletada → o bloco dela está resolvido (D-17)
+  onGemCollected(gemIndex: number): void {
+    const outcome = this.barOutcomes.get(gemIndex);
+    if (outcome) outcome.gemTaken = true;
+  }
+
+  // Chamado na vitória (D-16): votos ainda ativos que o player JÁ passou
+  // (ficaram para trás, incolectáveis) contam como perdidos — sem isso a
+  // reta final "engoliria" misses e daria 3⭐ indevida.
+  finalizeMisses(playerLeftX: number): void {
+    this.votes.children.iterate((child) => {
+      const vote = child as Collectible;
+      if (vote.active && vote.x < playerLeftX) {
+        this.countMissedVote(vote);
+        vote.deactivate();
+      }
+      return true;
+    });
+  }
+
+  // 3⭐ (D-17): nenhum voto comum perdido + cada bloco resolvido. Bloco com
+  // propina presente é perdoado dos votos SE a propina foi pega (rota de
+  // cima); sem propina (já coletada em run anterior) valem os votos.
+  isPerfectRun(): boolean {
+    if (this.missedVotes > 0) return false;
+    for (const outcome of this.barOutcomes.values()) {
+      const excusedByGem = outcome.gemPresent && outcome.gemTaken;
+      if (!excusedByGem && outcome.votesMissed > 0) return false;
+    }
+    return true;
   }
 
   // Chamado pela GameScene ao coletar; true = a linha INTEIRA foi coletada
@@ -182,7 +244,9 @@ export class SpawnerSystem {
     }
   }
 
-  private spawnVoteLine(startX: number, y: number, speed: number): void {
+  // barIndex: votos que vivem sob um bloco flutuante (D-17) — a perda deles
+  // pode ser perdoada pela propina; votos comuns passam undefined
+  private spawnVoteLine(startX: number, y: number, speed: number, barIndex?: number): void {
     const lineId = this.nextLineId++;
     let spawned = 0;
     for (let i = 0; i < SPAWN.VOTE_COUNT; i++) {
@@ -195,6 +259,7 @@ export class SpawnerSystem {
       body.setAllowGravity(false);
       vote.setVelocityX(-speed);
       vote.setData('lineId', lineId);
+      vote.setData('barIndex', barIndex ?? -1); // -1 = voto comum
       spawned += 1;
     }
     // 1 voto sozinho não é "linha" — sem fanfarra por coleta trivial
