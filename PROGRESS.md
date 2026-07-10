@@ -72,6 +72,58 @@ ao fim de cada um:
 - [ ] Revisão de segurança de tudo que é novo
 - [ ] Testes finais + deploy (sempre com OK explícito do dono)
 
+## 3.5 📌 REGISTRO DO 2º BRAINSTORM (2026-07-10) — Mundos, Estrelas e Economia
+> Solicitações do dono após testar a 7B. NADA daqui pode ser esquecido.
+> Status: EM DISCUSSÃO (algumas perguntas abertas abaixo). Quando fechadas,
+> viram D-16+ no DECISIONS.md e novas tasks na Fase 7.
+
+**Mudança estrutural pedida: de corrida infinita para FASES/MUNDOS com fim.**
+
+1. **Gema — correção urgente:** gemas estão nascendo em posições IMPOSSÍVEIS
+   (ex.: colada após obstáculo baixo — sem tempo de deslizar + saltar).
+   Difícil ≠ impossível. Primeira gema deve ser relativamente FÁCIL (longe de
+   obstáculos, cedo na fase). Nova ideia: "barra horizontal flutuante" com
+   gema EM CIMA e votos EMBAIXO — o jogador ESCOLHE um ou outro (replay para
+   pegar o resto). Gema coletada NÃO reaparece na mesma posição da fase
+   (coleção persistente por fase). Ao morrer após a 1ª gema: pop-up com
+   animação de vitória EXPLICANDO a gema (3 = 1 continue).
+2. **Gema = moeda do jogo:** compra continues e skins. No menu: botão com
+   ícone de gema + palavra "continue" (mostra contagem atual; ali entrará a
+   compra com dinheiro real, DESABILITADA por ora — Fase 9). Dono quer
+   RENOMEAR o objeto/conceito "gema" no futuro (manter mecânica).
+3. **Badge anti-cheat no ranking:** recordes SEM uso de continue ganham um
+   selo ao lado da pontuação (exige gravar continue_used no banco).
+4. **Cidades viram MUNDOS/FASES selecionáveis no menu** (botão "cidades" com
+   mapa): fase tem FIM; chegar ao fim = pop-up de vitória + desbloqueio do
+   próximo mundo (recompensa explícita — a transição atual pareceu
+   "entardeceu, continuo na mesma fase"). Transição visual pode até ficar,
+   mas o FIM DE FASE com pop-up animado é o essencial. Só se chega à fase 3
+   jogando a 2; cada fase ligeiramente mais difícil (fase 1 pode ficar um
+   pouco MAIS FÁCIL que o atual, mas não muito).
+5. **"FIM DO MUNDO" no HUD:** contagem REGRESSIVA de distância durante a fase
+   (senso de "cheguei tão perto do fim, na próxima eu consigo"). Distância
+   percorrida fica para o ranking.
+6. **Estrelas + multiplicador de score:** fim de fase dá classificação:
+   ⭐ morreu no caminho ("chegue até o final p/ 2-3 estrelas") · ⭐⭐ chegou ao
+   fim vivo com um mínimo de coletáveis ("colete todos p/ 3") · ⭐⭐⭐ chegou ao
+   fim com TODOS os coletáveis (escolha gema-vs-voto na barra NÃO penaliza).
+   Multiplicador: 2⭐ = score ×2, 3⭐ = score ×3. (Impacto técnico: fórmula da
+   Edge Function e schema de scores precisam de versão 2.)
+7. **Skins:** desbloqueio ficou fácil demais (rosa saiu rápido). Máximo
+   1 skin desbloqueável POR MUNDO (por votos/gemas naquele mundo). Menu:
+   botão com desenho de personagem + palavra "skins" → galeria; skin clicada
+   fica GRANDE com nome do personagem; bloqueadas em TONS DE CINZA
+   ("offline"), não cadeado.
+8. **Conexões da economia (modelo do dono):**
+   - Distância → desbloqueia MUNDOS (chegando ao fim da fase)
+   - Votos → desbloqueiam SKINS (exceto as de compra)
+   - Gemas → MOEDA (compra continues e skins)
+
+**Perguntas abertas (bloqueiam implementação):** o que existe depois da fase
+3 / onde vive o ranking global; fases com layout FIXO (determinístico) para
+"coletar todos" fazer sentido; comprimento-alvo de cada fase; o que é a
+"compra de votos" citada no item 2.
+
 ## 4. Decisões importantes já tomadas (o "porquê" completo em `docs/DECISIONS.md`)
 
 | Decisão | Resumo |
