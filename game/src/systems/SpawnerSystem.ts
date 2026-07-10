@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Obstacle } from '../entities/Obstacle';
 import { Collectible } from '../entities/Collectible';
-import { ECONOMY, FINISH_CLEAR_M, SCORE, SPAWN, SIZES } from '../config/constants';
+import { ECONOMY, FINISH_CLEAR_M, GEM_BAR, SCORE, SPAWN, SIZES } from '../config/constants';
 
 type Kind = 'high' | 'low'; // high = pular por cima; low/suspenso = deslizar por baixo
 
@@ -16,10 +16,10 @@ export class SpawnerSystem {
   // paleta da cidade atual (T07B-01, D-14): tint quase-branco, atmosfera
   // sem tocar silhueta/hitbox
   private obstacleTint = 0xffffff;
-  // Gema rara (T07B-02, D-11/D-18): pontos definidos pelo RNG SEMEADO do
-  // mundo — mesmas posições em toda partida (layout fixo, D-16). Só janelas
-  // que cabem ANTES da reta final entram.
-  private gemTargetsM: number[];
+  // Gemas em barras flutuantes (D-18): posições FIXAS (fração do mundo);
+  // gemas já coletadas neste aparelho não renascem (coleção persistente) —
+  // a barra e os votos de baixo continuam aparecendo.
+  private gemTargets: { index: number; atM: number; collected: boolean }[];
 
   // rng SEMEADO por mundo (D-16): todo sorteio de layout passa por ele —
   // mesma fase para todos os jogadores, em todas as partidas
@@ -28,13 +28,18 @@ export class SpawnerSystem {
     private obstacles: Phaser.Physics.Arcade.Group,
     private votes: Phaser.Physics.Arcade.Group,
     private gems: Phaser.Physics.Arcade.Group,
+    private bars: Phaser.Physics.Arcade.Group,
     private rng: Phaser.Math.RandomDataGenerator,
     private worldLengthPx: number,
+    collectedGemIndices: number[],
   ) {
-    const playableEndM = worldLengthPx / SCORE.PX_PER_M - FINISH_CLEAR_M;
-    this.gemTargetsM = ECONOMY.GEM_WINDOWS_M.filter(([min]) => min < playableEndM).map(
-      ([min, max]) => min + this.rng.frac() * (Math.min(max, playableEndM) - min),
-    );
+    const lengthM = worldLengthPx / SCORE.PX_PER_M;
+    const playableEndM = lengthM - FINISH_CLEAR_M;
+    this.gemTargets = ECONOMY.GEM_POSITIONS_FRAC.map((frac, index) => ({
+      index,
+      atM: Math.min(frac * lengthM, playableEndM - 20),
+      collected: collectedGemIndices.includes(index),
+    }));
   }
 
   update(distance: number, speed: number): void {
@@ -47,10 +52,52 @@ export class SpawnerSystem {
     const playableEndPx = this.worldLengthPx - FINISH_CLEAR_M * SCORE.PX_PER_M;
     const canSpawn = distance + spawnAheadPx < playableEndPx;
     if (canSpawn && distance - this.lastSpawnX >= target) {
-      this.spawnObstacle(speed, gap, distance);
+      // ponto de gema atingido → a barra flutuante OCUPA o slot do obstáculo
+      // (gema nunca nasce colada em obstáculo = nunca impossível — D-18)
+      const gemTarget = this.gemTargets.find((g) => distance / SCORE.PX_PER_M >= g.atM);
+      if (gemTarget) {
+        this.gemTargets = this.gemTargets.filter((g) => g !== gemTarget);
+        this.spawnGemBar(speed, gemTarget);
+      } else {
+        this.spawnObstacle(speed, gap);
+      }
       this.lastSpawnX = distance;
     }
     this.recycleMissedVotes();
+  }
+
+  // Barra flutuante (D-18): divisor de rota no meio de um vão limpo —
+  // gema em cima (pulo alto comprometido) OU votos embaixo (rota segura).
+  // Escolha forçada pela geometria; replay para pegar o que ficou.
+  private spawnGemBar(speed: number, target: { index: number; collected: boolean }): void {
+    const { width, height } = this.scene.scale;
+    const groundTop = height - SIZES.GROUND_H;
+    const x = width + GEM_BAR.WIDTH;
+    const barY = groundTop - GEM_BAR.BAR_ABOVE_GROUND;
+
+    const bar = this.bars.get(x, barY) as Collectible | null;
+    if (bar) {
+      bar.setTexture('gem-bar');
+      bar.setOrigin(0.5, 1);
+      bar.reset(x, barY);
+      bar.setAngle(0);
+      const body = bar.body as Phaser.Physics.Arcade.Body;
+      body.setAllowGravity(false);
+      // corpo ativo só para SCROLLAR — o grupo de barras não tem overlap
+      // registrado com o player: divisor visual, não colide nem mata
+      bar.setVelocityX(-speed);
+    }
+
+    // gema sobre a barra — só se ainda não coletada neste aparelho
+    if (!target.collected) {
+      this.spawnGem(x, barY - GEM_BAR.HEIGHT - GEM_BAR.GEM_ABOVE_BAR, speed, target.index);
+    }
+    // votos sob a barra: a rota "segura" que compete com a gema
+    this.spawnVoteLine(
+      x - SPAWN.VOTE_SPACING,
+      groundTop - GEM_BAR.VOTES_BELOW_GROUND_H,
+      speed,
+    );
   }
 
   // Voto que saiu da tela sem coleta: quebra a linha no ledger e devolve ao
@@ -68,6 +115,11 @@ export class SpawnerSystem {
     this.gems.children.iterate((child) => {
       const gem = child as Collectible;
       if (gem.active && gem.x < -gem.width) gem.deactivate();
+      return true;
+    });
+    this.bars.children.iterate((child) => {
+      const bar = child as Collectible;
+      if (bar.active && bar.x < -bar.width) bar.deactivate();
       return true;
     });
   }
@@ -89,7 +141,7 @@ export class SpawnerSystem {
     return true;
   }
 
-  private spawnObstacle(speed: number, gap: number, distancePx: number): void {
+  private spawnObstacle(speed: number, gap: number): void {
     const { width, height } = this.scene.scale;
     const groundTop = height - SIZES.GROUND_H;
     const kind: Kind = this.rng.frac() < 0.5 ? 'high' : 'low';
@@ -111,14 +163,6 @@ export class SpawnerSystem {
       obstacle.setVelocityX(-speed);
       obstacle.setData('kind', kind);
       obstacle.setTint(this.obstacleTint);
-    }
-
-    // gema rara (T07B-02): acima do obstáculo, altura que exige pulo alto
-    // comprometido — risco máximo, recompensa rara
-    const distanceM = distancePx / SCORE.PX_PER_M;
-    if (this.gemTargetsM.length > 0 && distanceM >= this.gemTargetsM[0]) {
-      this.gemTargetsM.shift();
-      this.spawnGem(x + 30, groundTop - ECONOMY.GEM_HEIGHT, speed);
     }
 
     // rota de risco/recompensa: linha de votos logo após o obstáculo, alta —
@@ -151,13 +195,14 @@ export class SpawnerSystem {
     if (spawned >= 2) this.lineLedger.set(lineId, { total: spawned, collected: 0 });
   }
 
-  private spawnGem(x: number, y: number, speed: number): void {
+  private spawnGem(x: number, y: number, speed: number, gemIndex: number): void {
     const gem = this.gems.get(x, y) as Collectible | null;
     if (!gem) return;
     gem.setTexture('gem');
     gem.setOrigin(0.5, 0.5);
     gem.reset(x, y);
     gem.setAngle(45); // losango — leitura de "item especial" mesmo em placeholder
+    gem.setData('gemIndex', gemIndex); // coleção persistente por mundo (D-18)
     const body = gem.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);
     gem.setVelocityX(-speed);

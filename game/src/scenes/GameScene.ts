@@ -13,6 +13,7 @@ import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS, type GameEventPayload } from '../lib/game-events';
 import { ECONOMY, JUICE, SCORE, SIZES, type WorldDef } from '../config/constants';
 import { WorldSystem } from '../systems/WorldSystem';
+import { GemCollectionSystem } from '../systems/GemCollectionSystem';
 
 const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
 
@@ -26,6 +27,7 @@ export class GameScene extends Phaser.Scene {
   private obstacles!: Phaser.Physics.Arcade.Group;
   private votes!: Phaser.Physics.Arcade.Group;
   private gems!: Phaser.Physics.Arcade.Group;
+  private bars!: Phaser.Physics.Arcade.Group;
   private gemText!: Phaser.GameObjects.Text;
   private gemBurst!: Phaser.GameObjects.Particles.ParticleEmitter;
   private runGems = 0;
@@ -105,6 +107,11 @@ export class GameScene extends Phaser.Scene {
       maxSize: 4, // no máx. 2 por partida (ECONOMY.GEM_WINDOWS_M) + folga
       runChildUpdate: true,
     });
+    this.bars = this.physics.add.group({
+      classType: Collectible,
+      maxSize: 3, // barras flutuantes (D-18) — divisor visual, sem overlap
+      runChildUpdate: true,
+    });
     // mundo selecionado (D-16): layout FIXO via RNG semeado — a mesma fase
     // para todos os jogadores, em todas as partidas
     this.world = WorldSystem.selected();
@@ -116,8 +123,10 @@ export class GameScene extends Phaser.Scene {
       this.obstacles,
       this.votes,
       this.gems,
+      this.bars,
       rng,
       this.world.lengthM * SCORE.PX_PER_M,
+      GemCollectionSystem.collected(this.world.id),
     );
 
     // RF-07: qualquer contato com obstáculo encerra a partida
@@ -276,6 +285,9 @@ export class GameScene extends Phaser.Scene {
   // morrendo, a run deixou algo pra trás ("mesmo assim avancei")
   private collectGem(gem: Collectible): void {
     const { x, y } = gem;
+    // coleção persistente por mundo (D-18): esta gema não renasce
+    const gemIndex = gem.getData('gemIndex') as number | undefined;
+    if (gemIndex !== undefined) GemCollectionSystem.markCollected(this.world.id, gemIndex);
     gem.deactivate();
     this.runGems += 1;
     const balance = WalletSystem.add(1);
@@ -503,6 +515,7 @@ export class GameScene extends Phaser.Scene {
     this.obstacles.children.iterate(sync);
     this.votes.children.iterate(sync);
     this.gems.children.iterate(sync);
+    this.bars.children.iterate(sync);
   }
 
   // RF-07: morte. Com saldo e continue ainda não usado, abre a oferta

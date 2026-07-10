@@ -12,6 +12,7 @@ const PLACEHOLDERS = [
   { key: 'obstacle-low', width: 44, height: 160, color: 0xf97316 },
   { key: 'vote', width: 24, height: 24, color: 0xfacc15 },
   { key: 'gem', width: 20, height: 20, color: 0xa855f7 }, // gema rara (T07B-02)
+  { key: 'gem-bar', width: 120, height: 10, color: 0x64748b }, // barra flutuante (D-18)
 ] as const;
 
 export class PreloadScene extends Phaser.Scene {

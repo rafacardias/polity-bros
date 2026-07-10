@@ -79,13 +79,23 @@ export const INPUT = {
 // 2 janelas de spawn por partida — a gema nasce no 1º obstáculo após um
 // ponto sorteado dentro da janela ("talvez agora venha algo raro").
 export const ECONOMY = {
-  GEM_WINDOWS_M: [
-    [250, 550],
-    [900, 1400],
-  ],
-  GEM_HEIGHT: 150, // px acima do chão — exige pulo alto comprometido perto do obstáculo
+  // Gemas em BARRAS FLUTUANTES (D-18): posições como FRAÇÃO do comprimento
+  // do mundo (1ª cedo e fácil — educa a mecânica; 2ª no último terço).
+  // A barra substitui um slot de obstáculo — gema nunca nasce impossível.
+  GEM_POSITIONS_FRAC: [0.2, 0.65],
   CONTINUE_COST: 3, // gemas para continuar de onde morreu (1x por partida)
   CONTINUE_OFFER_SEC: 4, // janela da oferta de continue no game over
+} as const;
+
+// Barra flutuante (D-18): divisor de rota — gema EM CIMA (pulo alto
+// comprometido), votos EMBAIXO (rota segura). Geometria força a ESCOLHA:
+// não dá pra pegar os dois na mesma passada.
+export const GEM_BAR = {
+  WIDTH: 120,
+  HEIGHT: 10,
+  BAR_ABOVE_GROUND: 104, // topo da barra
+  GEM_ABOVE_BAR: 42, // gema flutua sobre a barra (~146px do chão; apex ≈ 230)
+  VOTES_BELOW_GROUND_H: 46, // linha de votos sob a barra (altura do pulinho)
 } as const;
 
 // Mundos/fases da campanha (D-16, supersede D-14): cada cidade é um MUNDO
