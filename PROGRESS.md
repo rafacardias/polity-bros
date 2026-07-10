@@ -57,17 +57,28 @@ ao fim de cada um:
 
 ### 7B — Progresso que fica (mesmo perdendo) *(✅ implementada em 2026-07-10 — falta seu teste no celular)*
 - [x] "Cidades da campanha": o cenário muda de cor/clima — **SP (largada) → RJ (500m) → Brasília (1200m)**, com banner de chegada
-- [x] **Gema rara 💎**: 1-2x por partida, em rota de pulo alto arriscado; vai direto pra sua carteira (mesmo morrendo depois)
+- [x] **Gema rara** (renomeada para **PROPINA 💵** na 7C): 2x por fase, em cima do bloco flutuante; vai direto pra sua carteira (mesmo morrendo depois)
 - [x] **Continue**: ao morrer com 3+ gemas, aparece o botão CONTINUE (4s pra decidir); gasta 3 gemas, limpa a pista e revive — 1x por partida
 - [x] **Skins**: 4 cores de personagem no menu — Azul (recorde 500+), Rosa (30 votos numa partida), Dourado (compra por 10 gemas)
 
-### 7C — Identidade e compartilhamento
+### 7C — Mundos, Estrelas & Economia *(✅ implementada em 2026-07-10 — falta seu teste no celular + deploy)*
+- [x] **3 fases com FIM**: São Paulo (600m) → Rio (900m) → Brasília (1200m); layout FIXO (decorar a fase faz parte); HUD com contagem regressiva "faltam Xm"; linha de chegada 🏁 visível; vencer desbloqueia a próxima cidade
+- [x] **Bloco flutuante**: dá pra SUBIR em cima (e pegar a propina); bater na lateral ou por baixo MATA — a escolha propina × votos continua
+- [x] **PROPINA 💵** (ex-gema): nota verde com $; educação da 1ª propina na tela de fim ("junte 3 = 1 continue")
+- [x] **Estrelas**: ⭐ morreu · ⭐⭐ terminou a fase · ⭐⭐⭐ terminou coletando TUDO (a escolha do bloco não penaliza) — score final × 1/2/3
+- [x] **Ranking v2**: mostra estrelas, cidade e o selo 🏅 de recorde SEM continue
+- [x] **Fantasma do recorde**: sua skin com 10% de opacidade parada no ponto do seu recorde
+- [x] **Menu hub**: JOGAR fixo embaixo (sempre clicável); menus Fases · Ranking · Skins · Continue; galeria de skins (amplia com nome; bloqueadas em cinza); Continue treme com 3+ propinas; loja futura desabilitada
+- [x] **Skins v2**: 1 desbloqueável por cidade, por votos ACUMULADOS jogando aquela cidade — Azul (100 em SP), Rosa (150 no RJ), Roxo (200 em BSB) + Dourado (compra, 10 💵)
+- ⚠️ Backend v2 pronto mas NÃO deployado: precisa do seu OK (migration no banco + Edge Function + app + zerar scores de teste)
+
+### 7D — Identidade e compartilhamento
 - [ ] Login com **Google** em 2 cliques (sem perder o histórico anônimo)
 - [ ] Nome de usuário editável, exibido no ranking
-- [ ] Tela de fim de partida nova: ranking em destaque por ~3s (seu score, seu top-7, top-7 global), **mas o botão "Jogar de novo" disponível desde o primeiro instante**
+- [ ] Tela de fim de partida social: ranking em destaque por ~3s (seu score, seu top-7, top-7 global), **mas o "Jogar de novo" disponível desde o primeiro instante**
 - [ ] **Imagem de compartilhamento** com moldura + score + convite "bata este recorde em <link>" — WhatsApp/Instagram/etc. **Funciona sem login** (logado, sai com seu nome)
 
-### 7D — Robustez e fechamento
+### 7E — Robustez e fechamento
 - [ ] Sem internet no meio da partida? O jogo continua normal; o score entra numa fila e é enviado quando a conexão voltar
 - [ ] Revisão de segurança de tudo que é novo
 - [ ] Testes finais + deploy (sempre com OK explícito do dono)
