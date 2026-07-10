@@ -28,6 +28,8 @@ export function trackRunEnd(payload: GameEventPayload): void {
     distance: payload.distance,
     elapsed_sec: Math.round(payload.elapsedSec ?? 0),
     death_cause: payload.deathCause ?? 'unknown',
+    gems: payload.gems ?? 0,
+    continue_used: payload.continueUsed ?? false, // review 7B: calibração
   });
 }
 

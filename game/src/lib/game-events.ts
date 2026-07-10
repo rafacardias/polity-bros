@@ -22,6 +22,7 @@ export interface GameEventPayload {
   elapsedSec?: number;
   deathCause?: 'obstacle-high' | 'obstacle-low' | 'unknown';
   gems?: number; // gemas coletadas NA run (T07B-02) — carteira fica no WalletSystem
+  continueUsed?: boolean; // run teve revive (T07B-03) — telemetria/calibração
 }
 
 export function emitGameEvent(evt: string, detail?: unknown): void {

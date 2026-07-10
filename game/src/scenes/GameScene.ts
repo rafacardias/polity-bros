@@ -10,7 +10,7 @@ import { OnboardingSystem } from '../systems/OnboardingSystem';
 import { WalletSystem } from '../systems/WalletSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
-import { emitGameEvent, GAME_EVENTS } from '../lib/game-events';
+import { emitGameEvent, GAME_EVENTS, type GameEventPayload } from '../lib/game-events';
 import { CITIES, ECONOMY, JUICE, SCORE, SIZES } from '../config/constants';
 
 const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
@@ -56,6 +56,11 @@ export class GameScene extends Phaser.Scene {
   private continueUi: Phaser.GameObjects.GameObject[] = [];
   private continueTimers: Phaser.Time.TimerEvent[] = [];
   private continueTapHandler?: (p: Phaser.Input.Pointer) => void;
+  private continueKeyCleanup?: () => void;
+  // payload da morte pendente enquanto a oferta de continue está aberta —
+  // emitido no SHUTDOWN da cena se o jogador sair pro menu no meio (review
+  // 7B: antes, o score dessa run era descartado silenciosamente)
+  private pendingGameOverPayload?: GameEventPayload;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -153,6 +158,16 @@ export class GameScene extends Phaser.Scene {
     this.isGameOver = false;
     this.continueUsed = false;
     this.invulnerableUntil = 0;
+    this.pendingGameOverPayload = undefined;
+    // rede de segurança do score (review 7B): sair da cena com uma morte
+    // pendente (oferta aberta) ainda emite o game:gameover — o listener de
+    // submit vive no App React, que sobrevive ao unmount do GameShell
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.pendingGameOverPayload) {
+        emitGameEvent(GAME_EVENTS.GAME_OVER, this.pendingGameOverPayload);
+        this.pendingGameOverPayload = undefined;
+      }
+    });
   }
 
   // HUD (RF-03/T04-12): score, votos e distância sempre visíveis, fora da
@@ -489,6 +504,10 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.shake(JUICE.SHAKE_DURATION_MS, JUICE.SHAKE_INTENSITY);
     this.cameras.main.flash(JUICE.FLASH_DURATION_MS, 239, 68, 68);
 
+    // morte registrada JÁ como pendente: se o jogador sair pro menu durante
+    // a oferta, o SHUTDOWN emite este payload e o score não se perde
+    this.pendingGameOverPayload = this.buildGameOverPayload(killer);
+
     const canContinue =
       !this.continueUsed && WalletSystem.balance() >= ECONOMY.CONTINUE_COST;
     if (canContinue) {
@@ -498,13 +517,32 @@ export class GameScene extends Phaser.Scene {
     this.finalizeGameOver(killer);
   }
 
+  private buildGameOverPayload(killer?: Obstacle): GameEventPayload {
+    const snapshot = this.score.getSnapshot();
+    // elapsedSec: teto de plausibilidade da Edge Function (RN-04).
+    // deathCause: telemetria (D-10) — sem killer identificado → 'unknown'.
+    const deathCause = killer
+      ? killer.getData('kind') === 'low'
+        ? ('obstacle-low' as const)
+        : ('obstacle-high' as const)
+      : ('unknown' as const);
+    return {
+      ...snapshot,
+      elapsedSec: this.elapsedMs / 1000,
+      deathCause,
+      gems: this.runGems, // T07B-02: gemas desta run
+      continueUsed: this.continueUsed, // T07B-03: run com revive (telemetria)
+    };
+  }
+
   // Oferta de continue (T07B-03, D-11): botão tremendo + countdown. Aceitar
   // gasta gemas e revive no lugar; recusar/estourar o tempo finaliza.
   private offerContinue(killer?: Obstacle): void {
     const { width, height } = this.scale;
     const dim = this.add
       .rectangle(width / 2, height / 2, width, height, 0x000000, 0.55)
-      .setDepth(20);
+      .setDepth(20)
+      .setInteractive(); // absorve o hit-test de objetos sob a oferta (ex.: mute)
     const btn = this.add
       .text(width / 2, height * 0.45, `▶ CONTINUE — ${ECONOMY.CONTINUE_COST} 💎`, {
         fontFamily: 'monospace',
@@ -535,6 +573,20 @@ export class GameScene extends Phaser.Scene {
       repeatDelay: 450,
     });
 
+    // decisão única (aceitar/recusar), por qualquer via: toque, teclado
+    // ou timeout — RN-03/D-15: recusar tem que ser IMEDIATO, sem esperar 4s
+    let decided = false;
+    const decide = (accepted: boolean): void => {
+      if (decided) return;
+      decided = true;
+      this.closeContinueOffer();
+      if (accepted && WalletSystem.spend(ECONOMY.CONTINUE_COST)) {
+        this.revive();
+        return;
+      }
+      this.finalizeGameOver(killer);
+    };
+
     let remaining = ECONOMY.CONTINUE_OFFER_SEC;
     this.continueTimers = [
       this.time.addEvent({
@@ -545,29 +597,37 @@ export class GameScene extends Phaser.Scene {
           countdown.setText(`some em ${remaining}s…`);
         },
       }),
-      this.time.delayedCall(ECONOMY.CONTINUE_OFFER_SEC * 1000, () => {
-        this.closeContinueOffer();
-        this.finalizeGameOver(killer);
-      }),
+      this.time.delayedCall(ECONOMY.CONTINUE_OFFER_SEC * 1000, () => decide(false)),
     ];
 
     // Aceite via pointerdown de CENA + bounds do botão (mesmo pipeline dos
-    // pulos, que é comprovado em mouse E touch) — o hit-test por GameObject
-    // falhou com mouse no harness. Bounds inflados p/ dedo no mobile (RN-02).
-    // Toque FORA do botão é ignorado: recusar é só deixar o tempo estourar.
+    // pulos, comprovado em mouse E touch — hit-test por GameObject falhou
+    // com mouse no harness). Bounds inflados p/ dedo no mobile (RN-02).
+    // Toque FORA do botão = RECUSA imediata (review 7B: jogador com gemas
+    // que não quer gastar volta a "recomeçar em 1 toque" — RN-03), com
+    // carência de 600ms contra o tap reflexo pós-morte.
+    const openedAt = this.time.now;
     const onTap = (p: Phaser.Input.Pointer): void => {
       const hitArea = Phaser.Geom.Rectangle.Inflate(btn.getBounds(), 16, 16);
-      if (!hitArea.contains(p.x, p.y)) return;
-      this.input.off('pointerdown', onTap);
-      this.closeContinueOffer();
-      if (!WalletSystem.spend(ECONOMY.CONTINUE_COST)) {
-        this.finalizeGameOver(killer);
-        return;
+      if (hitArea.contains(p.x, p.y)) {
+        decide(true);
+      } else if (this.time.now - openedAt > 600) {
+        decide(false);
       }
-      this.revive();
     };
     this.input.on('pointerdown', onTap);
     this.continueTapHandler = onTap;
+
+    // desktop: ENTER aceita, ESPAÇO recusa (mesmo músculo do restart rápido)
+    const kb = this.input.keyboard;
+    const onEnter = (): void => decide(true);
+    const onSpace = (): void => decide(false);
+    kb?.once('keydown-ENTER', onEnter);
+    kb?.once('keydown-SPACE', onSpace);
+    this.continueKeyCleanup = () => {
+      kb?.off('keydown-ENTER', onEnter);
+      kb?.off('keydown-SPACE', onSpace);
+    };
   }
 
   private closeContinueOffer(): void {
@@ -575,14 +635,25 @@ export class GameScene extends Phaser.Scene {
       this.input.off('pointerdown', this.continueTapHandler);
       this.continueTapHandler = undefined;
     }
+    this.continueKeyCleanup?.();
+    this.continueKeyCleanup = undefined;
     this.continueTimers.forEach((t) => t.remove());
     this.continueTimers = [];
-    this.continueUi.forEach((o) => o.destroy()); // fora do game loop — ok (RN-01)
+    // destroy() NÃO mata tweens do alvo (Phaser 3.90) — sem o kill, a
+    // tremida do botão seguiria mutando um Text destruído até o shutdown
+    this.continueUi.forEach((o) => {
+      this.tweens.killTweensOf(o);
+      o.destroy(); // fora do game loop — ok (RN-01)
+    });
     this.continueUi = [];
   }
 
   private revive(): void {
     this.continueUsed = true; // 1x por partida
+    this.pendingGameOverPayload = undefined; // a run continua — morte cancelada
+    // review 7B: morrer DESLIZANDO deixava a postura de slide congelada
+    // (hitbox 32px "de graça" contra obstáculos baixos — fere RN-08)
+    this.player.slide(false);
     this.gemText.setText(`💎 ${WalletSystem.balance()}`);
     // pista limpa à frente: revive nunca pode ser morte instantânea injusta
     this.obstacles.children.iterate((child) => {
@@ -613,24 +684,10 @@ export class GameScene extends Phaser.Scene {
 
   // contrato D-05: emite game:gameover (submit de score) e vai à GameOverScene
   private finalizeGameOver(killer?: Obstacle): void {
+    const payload = this.pendingGameOverPayload ?? this.buildGameOverPayload(killer);
+    this.pendingGameOverPayload = undefined; // emitido aqui, não no SHUTDOWN
+    emitGameEvent(GAME_EVENTS.GAME_OVER, payload);
     const snapshot = this.score.getSnapshot();
-    // elapsedSec (T05-04): a Edge Function submit-score usa pra teto de
-    // plausibilidade (RN-04) — não faz parte do ScoreSnapshot em si.
-    const elapsedSec = this.elapsedMs / 1000;
-    // deathCause (T07A-05): telemetria de onde/como se morre — calibra a
-    // curva fixa com dados reais (D-10). Sem killer identificado → 'unknown',
-    // nunca um palpite que polua a calibração.
-    const deathCause = killer
-      ? killer.getData('kind') === 'low'
-        ? ('obstacle-low' as const)
-        : ('obstacle-high' as const)
-      : ('unknown' as const);
-    emitGameEvent(GAME_EVENTS.GAME_OVER, {
-      ...snapshot,
-      elapsedSec,
-      deathCause,
-      gems: this.runGems, // T07B-02: gemas desta run (pop-up 7C + telemetria)
-    });
 
     // quase-vitória (T07A-04): salva os novos máximos e leva o recorde
     // ANTERIOR para a GameOverScene calcular o "faltaram Xm"

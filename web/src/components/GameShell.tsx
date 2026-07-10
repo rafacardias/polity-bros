@@ -1,8 +1,5 @@
 import { useEffect } from 'react';
-import { createGame, emitGameEvent, GAME_EVENTS, onGameEvent, SHELL_EVENTS } from 'game';
-import type { GameEventPayload } from 'game';
-import { submitScore } from '../lib/submitScore';
-import { trackRunEnd } from '../lib/telemetry';
+import { createGame, emitGameEvent, SHELL_EVENTS } from 'game';
 
 interface GameShellProps {
   onExit: () => void;
@@ -22,15 +19,9 @@ export function GameShell({ onExit }: GameShellProps) {
       if (!disposed) emitGameEvent(SHELL_EVENTS.PLAY);
     });
 
-    // T05-04/D-08: ao morrer, envia o score pra Edge Function (JWT + elapsedSec)
-    const offGameOver = onGameEvent<GameEventPayload>(GAME_EVENTS.GAME_OVER, (payload) => {
-      void submitScore(payload);
-      trackRunEnd(payload); // telemetria leve (T07A-05, D-10)
-    });
-
+    // o submit do score vive no App (review 7B) — aqui só o ciclo de vida
     return () => {
       disposed = true;
-      offGameOver();
       game.destroy(true);
     };
   }, []);
