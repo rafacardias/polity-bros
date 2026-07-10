@@ -16,6 +16,7 @@ import { emitGameEvent, GAME_EVENTS, type GameEventPayload } from '../lib/game-e
 import { ECONOMY, JUICE, SCORE, SIZES, type WorldDef } from '../config/constants';
 import { WorldSystem } from '../systems/WorldSystem';
 import { GemCollectionSystem } from '../systems/GemCollectionSystem';
+import { WorldVotesSystem } from '../systems/WorldVotesSystem';
 
 const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
 
@@ -202,6 +203,9 @@ export class GameScene extends Phaser.Scene {
     // submit vive no App React, que sobrevive ao unmount do GameShell
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       if (this.pendingGameOverPayload) {
+        // run terminou "por fora" (saiu pro menu na oferta): os votos ainda
+        // contam pro progresso de skin do mundo (D-19) — nada se perde
+        WorldVotesSystem.add(this.world.id, this.pendingGameOverPayload.votes);
         emitGameEvent(GAME_EVENTS.GAME_OVER, this.pendingGameOverPayload);
         this.pendingGameOverPayload = undefined;
       }
@@ -763,6 +767,9 @@ export class GameScene extends Phaser.Scene {
     const stars = this.won ? this.stars : 1;
     const snapshot = this.score.getSnapshot();
     const finalSnapshot = { ...snapshot, score: snapshot.score * stars };
+    // progresso de skin do mundo (D-19): votos da run acumulam SEMPRE —
+    // morte ou vitória, o farm nunca é perdido
+    WorldVotesSystem.add(this.world.id, snapshot.votes);
 
     // quase-vitória (T07A-04): salva os novos máximos DO MUNDO e leva o
     // recorde ANTERIOR para a GameOverScene calcular o "faltaram Xm"

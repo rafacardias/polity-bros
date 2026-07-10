@@ -1,1 +1,23 @@
 @import 'tailwindcss';
+
+/* Tremidinha do menu Continue (D-24): com 3+ propinas o botão chacoalha a
+   cada 1s — chamado pro uso da moeda ("tenho um continue guardado!") */
+@keyframes menu-tremble {
+  0%,
+  20%,
+  100% {
+    transform: translateX(0);
+  }
+  4%,
+  12% {
+    transform: translateX(-3px);
+  }
+  8%,
+  16% {
+    transform: translateX(3px);
+  }
+}
+
+.menu-tremble {
+  animation: menu-tremble 1s infinite;
+}

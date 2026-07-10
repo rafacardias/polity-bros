@@ -9,12 +9,22 @@ export { GAME_EVENTS, SHELL_EVENTS, emitGameEvent, onGameEvent } from './lib/gam
 export type { GameEventPayload } from './lib/game-events';
 // Skins (T07B-04): catálogo/estado no pacote 'game' (fonte única);
 // o MenuScreen React consome daqui — nunca duplicar o catálogo no /web.
-export { SKINS, isSkinUnlocked, buySkin, getSelectedSkin, selectSkin, gemBalance } from './lib/skins';
+export {
+  SKINS,
+  isSkinUnlocked,
+  buySkin,
+  getSelectedSkin,
+  selectSkin,
+  gemBalance,
+  skinProgress,
+} from './lib/skins';
 export type { SkinDef } from './lib/skins';
 // Mundos (T07C-01, D-16): catálogo + seleção/desbloqueio para o menu React
 export { WORLDS } from './config/constants';
 export type { WorldDef } from './config/constants';
 export { WorldSystem } from './systems/WorldSystem';
+// Progresso de skin por mundo (D-19): a galeria mostra o farm de votos
+export { WorldVotesSystem } from './systems/WorldVotesSystem';
 
 // Entrada PÚBLICA do pacote 'game' (design.md §6/§9).
 // Cada chamada cria uma instância NOVA — o shell React controla o ciclo de

@@ -1,22 +1,5 @@
-import { BestScoreSystem, type BestRecord } from '../systems/BestScoreSystem';
 import { WalletSystem } from '../systems/WalletSystem';
-import { WORLDS } from '../config/constants';
-
-// TRANSITÓRIO até T07C-05 (D-19: 1 skin por mundo): critérios de score/votos
-// olham o MELHOR registro entre todos os mundos
-function bestAcrossWorlds(): BestRecord {
-  return WORLDS.reduce<BestRecord>(
-    (acc, w) => {
-      const b = BestScoreSystem.load(w.id);
-      return {
-        score: Math.max(acc.score, b.score),
-        distance: Math.max(acc.distance, b.distance),
-        votes: Math.max(acc.votes, b.votes),
-      };
-    },
-    { score: 0, distance: 0, votes: 0 },
-  );
-}
+import { WorldVotesSystem } from '../systems/WorldVotesSystem';
 
 // Skins desbloqueáveis (T07B-04, D-11): variantes de COR do placeholder —
 // sem pay-to-win (cor não muda física nem hitbox). Identificadores NEUTROS
@@ -29,9 +12,11 @@ const OWNED_STORAGE_KEY = 'polity-bros:skins-owned';
 
 export type SkinUnlock =
   | { type: 'default' }
-  | { type: 'score'; value: number } // recorde pessoal de score
-  | { type: 'votes'; value: number } // votos em UMA partida (recorde)
-  | { type: 'gems'; value: number }; // compra com gemas (sink da economia)
+  // D-19: 1 skin desbloqueável POR MUNDO — votos ACUMULADOS jogando aquele
+  // mundo (farm, nunca regride). Substitui os critérios de recorde da 7B,
+  // que saíam fácil demais (feedback do dono).
+  | { type: 'world-votes'; world: string; value: number }
+  | { type: 'gems'; value: number }; // compra com propinas (sink da economia)
 
 export interface SkinDef {
   id: string;
@@ -56,16 +41,24 @@ export const SKINS: readonly SkinDef[] = [
     label: 'Azul',
     color: 0x60a5fa,
     css: '#60a5fa',
-    unlock: { type: 'score', value: 500 },
-    requirement: 'recorde 500+ pts',
+    unlock: { type: 'world-votes', world: 'sp', value: 100 },
+    requirement: '100 votos em São Paulo',
   },
   {
     id: 'rosa',
     label: 'Rosa',
     color: 0xf472b6,
     css: '#f472b6',
-    unlock: { type: 'votes', value: 30 },
-    requirement: '30 votos em 1 partida',
+    unlock: { type: 'world-votes', world: 'rj', value: 150 },
+    requirement: '150 votos no Rio',
+  },
+  {
+    id: 'roxo',
+    label: 'Roxo',
+    color: 0xa78bfa,
+    css: '#a78bfa',
+    unlock: { type: 'world-votes', world: 'bsb', value: 200 },
+    requirement: '200 votos em Brasília',
   },
   {
     id: 'dourado',
@@ -91,12 +84,24 @@ export function isSkinUnlocked(def: SkinDef): boolean {
   switch (def.unlock.type) {
     case 'default':
       return true;
-    case 'score':
-      return bestAcrossWorlds().score >= def.unlock.value;
-    case 'votes':
-      return bestAcrossWorlds().votes >= def.unlock.value;
+    case 'world-votes':
+      return WorldVotesSystem.total(def.unlock.world) >= def.unlock.value;
     case 'gems':
       return ownedIds().includes(def.id);
+  }
+}
+
+// progresso 0..1 rumo ao desbloqueio — a galeria (D-19) mostra "quase lá"
+export function skinProgress(def: SkinDef): number {
+  switch (def.unlock.type) {
+    case 'default':
+      return 1;
+    case 'world-votes':
+      return Math.min(1, WorldVotesSystem.total(def.unlock.world) / def.unlock.value);
+    case 'gems':
+      return ownedIds().includes(def.id)
+        ? 1
+        : Math.min(1, WalletSystem.balance() / def.unlock.value);
   }
 }
 
