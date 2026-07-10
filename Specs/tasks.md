@@ -72,7 +72,7 @@
 - [x] [P0] T07C-02: Barra flutuante (gema em cima / votos embaixo) com posições fixas; NUNCA gema impossível; 1ª gema fácil; coleção de gemas persistente por mundo (não reaparece) — *D-18* ✅ aprovada pelo dono 2026-07-10
 - [x] [P0] T07C-02b: Feedback do dono (D-21..D-23) — (a) gema vira **PROPINA**: nota verde com $ e textos 💵 (ids de código seguem `gem`); (b) bloco flutuante vira **plataforma-obstáculo**: subir em cima ok, laterais/fundo matam (`deathCause: 'block'`); (c) marcador de recorde vira **fantasma da skin** com 10% de opacidade — *D-21, D-22, D-23*
 - [x] [P0] T07C-03: Estrelas + score v2 — critérios ⭐/⭐⭐/⭐⭐⭐, multiplicador; Edge Function v2 (fórmula ×stars, tetos por mundo) + migration `scores` (stars, continue_used, world); ranking exibe ⭐ e selo "🏅 sem continue" — *D-17, RN-04*
-- [ ] [P0] T07C-04: Pop-up de fim (vitória E derrota) — animação de vitória, estrelas, desbloqueio do próximo mundo, educação da 1ª propina; replay imediato preservado — *D-15, D-16, D-18, D-21*
+- [x] [P0] T07C-04: Pop-up de fim (vitória E derrota) — animação de vitória, estrelas, desbloqueio do próximo mundo, educação da 1ª propina; replay imediato preservado — *D-15, D-16, D-18, D-21*
 - [ ] [P0] T07C-05: Menu hub v2 — Jogar fixo embaixo (sempre clicável); acima, na ordem: Fases · Ranking · Skins · Continue; Continue com ícone de propina + contagem e tremidinha a cada 1s quando ≥3 propinas; skins (galeria: amplia + nome, cinza "offline"); skins por votos acumulados POR MUNDO — *D-19, D-20, D-24*
 
 ### 7D — Identidade & Social
