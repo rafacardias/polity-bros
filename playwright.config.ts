@@ -12,6 +12,18 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     ...devices['Pixel 7'], // viewport mobile: o alvo do projeto é celular
   },
+  // sessão anônima criada UMA vez (auth.setup.ts) e reusada por todos os
+  // testes — evita criar um usuário anônimo por teste em produção e estourar
+  // o rate limit de sign-ins por IP do Supabase Auth.
+  projects: [
+    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    {
+      name: 'mobile',
+      testMatch: /.*\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { storageState: 'e2e/.auth/state.json' },
+    },
+  ],
   webServer: {
     command: 'npm run dev -w web -- --port 5173 --strictPort',
     url: 'http://localhost:5173',

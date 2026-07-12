@@ -110,3 +110,4 @@ deno.lock
 # Playwright (T07E-03)
 test-results/
 playwright-report/
+e2e/.auth/
