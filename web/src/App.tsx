@@ -6,6 +6,7 @@ import { MenuScreen } from './components/MenuScreen';
 import { RankingScreen } from './components/RankingScreen';
 import { SocialSpotlight } from './components/SocialSpotlight';
 import { fetchRankingContext, type RankingContext } from './lib/ranking';
+import { initScoreQueue } from './lib/scoreQueue';
 import { ensureSession } from './lib/session';
 import { submitScore } from './lib/submitScore';
 import { trackRunEnd } from './lib/telemetry';
@@ -41,6 +42,12 @@ export default function App() {
     ensureSession()
       .then((session) => setOwnPlayerId(session.user.id))
       .catch((err) => console.error('[auth] anonymous sign-in failed', err));
+  }, []);
+
+  // T07E-01/RN-01: reenvia scores presos na fila offline (falha de rede em
+  // partidas anteriores) assim que a conexão volta, e uma vez no boot.
+  useEffect(() => {
+    initScoreQueue();
   }, []);
 
   // T05-04/D-08 + review 7B: o submit vive no App (não no GameShell) porque
