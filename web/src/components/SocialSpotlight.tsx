@@ -1,24 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GameEventPayload } from 'game';
 import type { RankingContext, RankingEntry } from '../lib/ranking';
+import { fetchOwnProfile } from '../lib/profile';
+import { composeShareImage, shareScoreImage } from '../lib/shareImage';
 
 interface SocialSpotlightProps {
   payload: GameEventPayload;
   context: RankingContext;
   ownPlayerId: string | null;
-  onDone: () => void;
 }
 
 const VISIBLE_MS = 3200;
-const EXIT_MS = 400;
+
+type PillState = 'idle' | 'loading' | 'saved';
 
 // T07D-03/D-15: bottom sheet que aparece por cima do canvas logo após o
 // gameover — mostra onde o jogador ficou (position) e dois Top 7 (global e
 // pessoal), depois se recolhe sozinho. pointer-events-none em TUDO: o toque
 // tem que atravessar pro Phaser (RN-03), o "jogar de novo" não pode esperar.
-export function SocialSpotlight({ payload, context, ownPlayerId, onDone }: SocialSpotlightProps) {
+//
+// T07D-04/D-12: o pill de share é uma ilha pointer-events-auto que sobrevive
+// ao recolhimento do sheet — o componente inteiro só desmonta quando o App
+// descarta o spotlight por invalidação (reinício ou saída pro menu), nunca
+// por um timer interno.
+export function SocialSpotlight({ payload, context, ownPlayerId }: SocialSpotlightProps) {
   const [entering, setEntering] = useState(true);
   const [leaving, setLeaving] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
+  const [pillState, setPillState] = useState<PillState>('idle');
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // dois frames de raf pra garantir que o navegador pinte o estado "fora da
   // tela" antes de animar pra dentro — senão o slide-up não roda (CSS transition
@@ -33,13 +43,40 @@ export function SocialSpotlight({ payload, context, ownPlayerId, onDone }: Socia
     return () => clearTimeout(showTimer);
   }, []);
 
+  // busca o username uma vez, best-effort — sem ele a imagem só sai sem a
+  // linha "por @...". Não bloqueia nada nem repete a busca em re-renders.
   useEffect(() => {
-    if (!leaving) return;
-    const hideTimer = setTimeout(onDone, EXIT_MS);
-    return () => clearTimeout(hideTimer);
-  }, [leaving, onDone]);
+    fetchOwnProfile()
+      .then((profile) => setUsername(profile?.username ?? null))
+      .catch(() => setUsername(null));
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    };
+  }, []);
 
   const hidden = entering || leaving;
+
+  async function handleShare(): Promise<void> {
+    if (pillState === 'loading') return;
+    setPillState('loading');
+
+    const blob = await composeShareImage(payload, username);
+    if (!blob) {
+      setPillState('idle');
+      return;
+    }
+
+    const result = await shareScoreImage(blob, payload.score);
+    if (result === 'downloaded') {
+      setPillState('saved');
+      savedTimerRef.current = setTimeout(() => setPillState('idle'), 2000);
+    } else {
+      setPillState('idle');
+    }
+  }
 
   return (
     <div className="pointer-events-none fixed inset-0 z-20 flex items-end justify-center">
@@ -56,6 +93,14 @@ export function SocialSpotlight({ payload, context, ownPlayerId, onDone }: Socia
           <PersonalColumn title="📈 SEUS TOP 7" entries={context.topPersonal} />
         </div>
       </div>
+      <button
+        type="button"
+        onClick={() => void handleShare()}
+        disabled={pillState === 'loading'}
+        className="pointer-events-auto absolute bottom-5 right-4 z-30 rounded-full bg-emerald-500 px-4 py-2 font-mono text-xs font-bold text-slate-950 shadow-lg transition-opacity disabled:opacity-70"
+      >
+        {pillState === 'loading' ? '…' : pillState === 'saved' ? 'salvo! ✓' : '📤 Compartilhar'}
+      </button>
     </div>
   );
 }

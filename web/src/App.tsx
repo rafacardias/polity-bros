@@ -78,11 +78,6 @@ export default function App() {
     });
   }, []);
 
-  function handleSpotlightDone() {
-    activeTokenRef.current = null;
-    setSpotlight(null);
-  }
-
   if (screen === 'game') {
     return (
       <>
@@ -92,7 +87,6 @@ export default function App() {
             payload={spotlight.payload}
             context={spotlight.context}
             ownPlayerId={ownPlayerId}
-            onDone={handleSpotlightDone}
           />
         )}
       </>
