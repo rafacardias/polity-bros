@@ -5,8 +5,9 @@
 > qualquer outra IA/LLM entender o contexto completo do projeto ao ler este único arquivo.
 > É atualizado a cada entrega relevante.
 >
-> **Última atualização:** 2026-07-09 (Fase 7A NO AR em produção; ranking zerado
-> por autorização do dono — regras novas, placar novo)
+> **Última atualização:** 2026-07-12 (Fase 7B/7C NO AR em produção com backend v2;
+> Fase 7D/7E implementadas e testadas — aguardando teste do dono no celular +
+> OK pro deploy de produção. Achado CRÍTICO de anti-cheat corrigido, ver §3.5)
 
 ---
 
@@ -72,16 +73,35 @@ ao fim de cada um:
 - [x] **Skins v2**: 1 desbloqueável por cidade, por votos ACUMULADOS jogando aquela cidade — Azul (100 em SP), Rosa (150 no RJ), Roxo (200 em BSB) + Dourado (compra, 10 💵)
 - ⚠️ Backend v2 pronto mas NÃO deployado: precisa do seu OK (migration no banco + Edge Function + app + zerar scores de teste)
 
-### 7D — Identidade e compartilhamento
-- [ ] Login com **Google** em 2 cliques (sem perder o histórico anônimo)
-- [ ] Nome de usuário editável, exibido no ranking
-- [ ] Tela de fim de partida social: ranking em destaque por ~3s (seu score, seu top-7, top-7 global), **mas o "Jogar de novo" disponível desde o primeiro instante**
-- [ ] **Imagem de compartilhamento** com moldura + score + convite "bata este recorde em <link>" — WhatsApp/Instagram/etc. **Funciona sem login** (logado, sai com seu nome)
+### 7D — Identidade e compartilhamento *(✅ implementada 2026-07-12 — falta seu teste no celular)*
+- [ ] Login com **Google** em 2 cliques (sem perder o histórico anônimo) — ⚠️ **BLOQUEADA**: preciso da credencial Google OAuth (tarefa 2 da seção 6). É a última peça do 7D
+- [x] Nome de usuário editável, exibido no ranking (3–16 letras/números/_; nomes únicos; "Anônimo" pra quem não escolheu)
+- [x] Tela de fim de partida social: ranking em destaque por ~3s (seu score, sua posição, seu top-7, top-7 global), **e o "Jogar de novo" funciona desde o primeiro instante** (o painel deixa o toque passar pro jogo)
+- [x] **Imagem de compartilhamento** com moldura + score + convite "bata este recorde" — WhatsApp/Instagram via compartilhamento nativo do celular, com download como reserva. **Funciona sem login** (logado, sai com seu @nome)
 
-### 7E — Robustez e fechamento
-- [ ] Sem internet no meio da partida? O jogo continua normal; o score entra numa fila e é enviado quando a conexão voltar
-- [ ] Revisão de segurança de tudo que é novo
-- [ ] Testes finais + deploy (sempre com OK explícito do dono)
+### 7E — Robustez e fechamento *(✅ implementada 2026-07-12 — falta seu teste no celular + deploy)*
+- [x] Sem internet no meio da partida? O jogo continua normal; o score entra numa fila local e é reenviado sozinho quando a conexão volta (inclusive se você abriu o jogo já offline)
+- [x] Revisão de segurança de tudo que é novo → **achou e corrigiu 1 falha crítica** (ver §3.5)
+- [~] Testes finais: checagens automáticas (build, tipos, testes de tela) ✅ verdes + robô que abre o jogo e o ranking ✅. **Falta:** seu teste no celular real + seu OK pro deploy de produção
+- ⚠️ Frontend do 7D está em PREVIEW (link privado pra você testar), NÃO em produção. Produção segue com 7B/7C. O backend novo (banco + servidor) JÁ está em produção e é retrocompatível.
+
+## 3.4 🔒 ACHADO CRÍTICO DE SEGURANÇA (2026-07-12) — anti-trapaça corrigido
+> Durante a revisão de segurança da Fase 7, a Squad encontrou (e eu corrigi) uma
+> falha séria no servidor que valida os placares. NADA aqui pode ser esquecido.
+
+**O problema (linguagem simples):** o servidor confiava no "tempo de partida"
+enviado pelo celular para checar se o placar era plausível. Mas esse tempo não
+tinha limite — um trapaceiro esperto poderia mandar um tempo gigante e, com isso,
+declarar milhões de votos e cravar um placar impossível no ranking **para sempre**,
+com um único envio. Como o ranking é o coração da competição (e da vontade de
+voltar), isso destruiria a confiança no jogo.
+
+**A correção:** o servidor agora (a) limita o tempo máximo de uma partida, (b)
+limita a distância ao maior mundo (não existe modo infinito na v1.0) e, o mais
+importante, (c) passou a checar os votos contra a **distância percorrida** (que
+ele controla), não contra o tempo. **Testado ao vivo em produção:** o placar
+forjado foi recusado; um placar real e excelente foi aceito normalmente. Nenhuma
+partida legítima é rejeitada.
 
 ## 3.5 📌 REGISTRO DO 2º BRAINSTORM (2026-07-10) — Mundos, Estrelas e Economia
 > Solicitações do dono após testar a 7B. NADA daqui pode ser esquecido.
