@@ -43,7 +43,11 @@ export async function submitScore(payload: GameEventPayload): Promise<SubmittedS
   try {
     await ensureSession();
   } catch (err) {
-    console.error('[submitScore] no session available', err);
+    // 1º boot do aparelho SEM rede: o sign-in anônimo não resolve. O score
+    // não pode se perder (RN-01) — entra na fila e o drain garante a sessão
+    // antes de reenviar quando a conexão voltar.
+    console.error('[submitScore] no session available, queued', err);
+    enqueueScore(body);
     return null;
   }
 

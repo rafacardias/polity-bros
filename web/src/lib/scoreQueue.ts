@@ -1,4 +1,5 @@
 import { FunctionsFetchError, FunctionsHttpError } from '@supabase/supabase-js';
+import { ensureSession } from './session';
 import { postScore, type ScoreBody } from './submitScore';
 
 // T07E-01/RN-01: resiliência de rede no submit de score. A partida roda
@@ -56,6 +57,17 @@ export async function drainScoreQueue(): Promise<void> {
   draining = true;
   try {
     let queue = readQueue();
+    if (queue.length === 0) return;
+
+    // garante a sessão anônima ANTES de reenviar: um item pode ter sido
+    // enfileirado no 1º boot offline, sem sessão ainda (submitScore). Sem
+    // JWT o postScore levaria 401 (HTTP) e o item seria descartado como
+    // "rejeição" — falha de sessão é transitória, mantém a fila e tenta depois.
+    try {
+      await ensureSession();
+    } catch {
+      return;
+    }
 
     while (queue.length > 0) {
       if (!navigator.onLine) break; // sem rede — nem tenta, mantém a fila

@@ -85,10 +85,18 @@ export default function App() {
     });
   }, []);
 
+  // sair pro menu invalida o spotlight da run anterior — senão ele reapareceria
+  // (com score/posição velhos) ao voltar pro jogo antes do próximo gameover.
+  function exitToMenu() {
+    activeTokenRef.current = null;
+    setSpotlight(null);
+    setScreen('menu');
+  }
+
   if (screen === 'game') {
     return (
       <>
-        <GameShell onExit={() => setScreen('menu')} />
+        <GameShell onExit={exitToMenu} />
         {spotlight && (
           <SocialSpotlight
             payload={spotlight.payload}

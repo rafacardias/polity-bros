@@ -157,7 +157,10 @@ function downloadImage(blob: Blob): ShareResult {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-    URL.revokeObjectURL(url);
+    // revogar logo após click() corre com o início do download (a navegação
+    // pra blob: é assíncrona no WebKit/Safari — alvo mobile) e pode abortá-lo;
+    // dá um tick de folga antes de liberar a URL.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     return 'downloaded';
   } catch (err) {
     console.error('[shareScoreImage] download fallback failed', err);

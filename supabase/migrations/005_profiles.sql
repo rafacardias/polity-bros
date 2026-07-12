@@ -1,8 +1,8 @@
 -- supabase/migrations/005_profiles.sql
 -- T07D-02 / RN-04: perfil público (username) para exibição no ranking.
 -- 1 linha por usuário (player_id é a própria PK) — cada jogador tem um único
--- nome de exibição, trocável, sujeito a rate-limit no cliente/UX (fora do
--- banco, RN-04 item 4).
+-- nome de exibição, trocável livremente (sem cooldown na v1.0; unicidade e
+-- charset já barram os abusos que importam pro ranking — RN-04).
 create table if not exists public.profiles (
   player_id  uuid primary key references auth.users(id) on delete cascade,
   -- 3–16 chars, apenas [a-zA-Z0-9_]: evita nomes vazios/gigantes no ranking

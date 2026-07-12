@@ -16,8 +16,12 @@ export function RankingScreen({ onBack }: RankingScreenProps) {
   const [nameForm, setNameForm] = useState<NameFormState>({ mode: 'view' });
 
   useEffect(() => {
-    fetchTopScores().then(setEntries);
-    fetchOwnProfile().then((profile) => setOwnUsername(profile?.username ?? null));
+    let alive = true; // não seta estado se a tela já saiu (evita warning/leak)
+    fetchTopScores().then((rows) => alive && setEntries(rows));
+    fetchOwnProfile().then((profile) => alive && setOwnUsername(profile?.username ?? null));
+    return () => {
+      alive = false;
+    };
   }, []);
 
   function startEditing() {
