@@ -17,10 +17,26 @@ const VOTE_POINTS = 10; // SCORE.VOTE_POINTS em game/src/config/constants.ts
 // invariante "nenhum payload legítimo é rejeitado" com folga.
 const MAX_DISTANCE_M_PER_SEC = 50;
 const MAX_VOTES_PER_SEC = 25;
+// Anti-cheat robusto (RN-04): votos são espaçados por DISTÂNCIA, não por
+// tempo — atrelar o teto de votos só a elapsedSec (que o cliente controla e
+// não tinha limite superior) deixava forjar votos infinitos. Gap mínimo de
+// obstáculo = 22m (GAP_MIN 220px ÷ PX_PER_M 10) com pior caso ~10 votos/
+// obstáculo ⇒ ~0.45 votos/m no pico; teto 0.75/m + base fixa dá folga larga
+// sobre qualquer run legítima sem deixar o número escapar da distância real.
+const MAX_VOTES_PER_M = 0.75;
+const MAX_VOTES_BASE = 20; // folga p/ bônus de linha em runs muito curtas
+// Teto absoluto de tempo: a run mais longa plausível (bsb 1200m na velocidade
+// mínima ~21m/s ≈ 57s) nem chega perto — corta elapsedSec forjado que descola
+// os limites físicos acima.
+const MAX_ELAPSED_SEC = 300;
 // Mundos com FIM (D-16): distância nunca passa do comprimento da fase
 // (folga de 5m para o frame de cruzamento). Espelha WORLDS em constants.ts.
 const WORLD_LENGTH_M: Record<string, number> = { sp: 600, rj: 900, bsb: 1200 };
 const WORLD_LENGTH_SLACK_M = 5;
+// Sem modo infinito na v1.0 (D-16): nenhuma run legítima passa do maior
+// mundo — vale como teto absoluto de distância inclusive p/ payloads v1
+// (sem world declarado), fechando o furo de distância ilimitada.
+const MAX_DISTANCE_M = 1200 + WORLD_LENGTH_SLACK_M;
 // Rate limit por player_id (RN-04).
 const MIN_SUBMIT_INTERVAL_SEC = 2;
 const MAX_SUBMITS_PER_WINDOW = 30;
@@ -132,9 +148,20 @@ async function submitScore(req: Request, ctx: import("@supabase/server").Supabas
     }
   }
 
+  // teto absoluto de tempo e distância — barram payloads forjados (ex.:
+  // elapsedSec astronômico p/ inflar os limites por segundo) e cobrem também
+  // o caminho v1 sem world declarado, onde os tetos por mundo não rodam.
+  if (elapsedSec > MAX_ELAPSED_SEC || distance > MAX_DISTANCE_M) {
+    return json({ error: "implausible_score" }, 400);
+  }
+
+  // votos limitados por DISTÂNCIA (robusto: distance é capada acima) E por
+  // tempo — defesa em profundidade. A base fixa evita falso-positivo em runs
+  // curtas (bônus de linha logo no 1º obstáculo).
   if (
     distance > elapsedSec * MAX_DISTANCE_M_PER_SEC ||
-    votes > elapsedSec * MAX_VOTES_PER_SEC
+    votes > elapsedSec * MAX_VOTES_PER_SEC ||
+    votes > distance * MAX_VOTES_PER_M + MAX_VOTES_BASE
   ) {
     return json({ error: "implausible_score" }, 400);
   }
