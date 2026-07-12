@@ -106,3 +106,7 @@ deno.lock
 !.env.example
 .vercel
 .env*
+
+# Playwright (T07E-03)
+test-results/
+playwright-report/
