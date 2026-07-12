@@ -28,6 +28,10 @@ export interface GameEventPayload {
   // D-17: ⭐ morreu · ⭐⭐ terminou · ⭐⭐⭐ terminou com todos os coletáveis.
   // Presente no game:gameover; `score` já vem MULTIPLICADO (base × stars).
   stars?: number;
+  // dataURL PNG do frame do momento final da partida (T07D-04, D-12) — usado
+  // pela imagem de share. Opcional: a captura é assíncrona e best-effort,
+  // pode simplesmente não ter resolvido a tempo do emit.
+  screenshot?: string;
 }
 
 export function emitGameEvent(evt: string, detail?: unknown): void {

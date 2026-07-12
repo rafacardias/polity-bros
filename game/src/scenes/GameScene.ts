@@ -71,6 +71,10 @@ export class GameScene extends Phaser.Scene {
   // emitido no SHUTDOWN da cena se o jogador sair pro menu no meio (review
   // 7B: antes, o score dessa run era descartado silenciosamente)
   private pendingGameOverPayload?: GameEventPayload;
+  // T07D-04 (D-12): dataURL do frame final (morte ou vitória) para a imagem
+  // de compartilhamento. Preenchido de forma assíncrona/best-effort — lido
+  // só no instante do emit, nunca aguardado (ver captureFinalFrame).
+  private finalScreenshot?: string;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -198,6 +202,7 @@ export class GameScene extends Phaser.Scene {
     this.continueUsed = false;
     this.invulnerableUntil = 0;
     this.pendingGameOverPayload = undefined;
+    this.finalScreenshot = undefined; // T07D-04: não vazar frame de uma run anterior
     // rede de segurança do score (review 7B): sair da cena com uma morte
     // pendente (oferta aberta) ainda emite o game:gameover — o listener de
     // submit vive no App React, que sobrevive ao unmount do GameShell
@@ -206,7 +211,10 @@ export class GameScene extends Phaser.Scene {
         // run terminou "por fora" (saiu pro menu na oferta): os votos ainda
         // contam pro progresso de skin do mundo (D-19) — nada se perde
         WorldVotesSystem.add(this.world.id, this.pendingGameOverPayload.votes);
-        emitGameEvent(GAME_EVENTS.GAME_OVER, this.pendingGameOverPayload);
+        emitGameEvent(GAME_EVENTS.GAME_OVER, {
+          ...this.pendingGameOverPayload,
+          screenshot: this.finalScreenshot, // valor mais recente no instante do emit
+        });
         this.pendingGameOverPayload = undefined;
       }
     });
@@ -456,6 +464,10 @@ export class GameScene extends Phaser.Scene {
     if (this.isGameOver) return;
     this.isGameOver = true;
     this.won = true;
+    // T07D-04: frame da vitória, ANTES de qualquer transição de cena — dá o
+    // maior tempo possível pro snapshot assíncrono resolver antes do emit
+    // (finalizeGameOver só roda 1500ms depois, via delayedCall abaixo)
+    this.captureFinalFrame();
     // votos deixados para trás ainda ativos contam como perdidos ANTES de
     // fechar a conta das estrelas
     this.spawner.finalizeMisses(this.player.x - SIZES.PLAYER.W / 2);
@@ -560,6 +572,11 @@ export class GameScene extends Phaser.Scene {
     // impacto legível (T07A-02): shake + flash curtos — morte "registra"
     this.cameras.main.shake(JUICE.SHAKE_DURATION_MS, JUICE.SHAKE_INTENSITY);
     this.cameras.main.flash(JUICE.FLASH_DURATION_MS, 239, 68, 68);
+    // T07D-04: captura o frame JÁ aqui, mesmo que a oferta de continue ainda
+    // vá abrir — se o jogador aceitar (revive), este frame fica obsoleto e é
+    // naturalmente sobrescrito na morte DEFINITIVA seguinte; se recusar/não
+    // houver oferta, é exatamente o frame do fim de jogo real
+    this.captureFinalFrame();
 
     // morte registrada JÁ como pendente: se o jogador sair pro menu durante
     // a oferta, o SHUTDOWN emite este payload e o score não se perde
@@ -572,6 +589,23 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.finalizeGameOver(killer);
+  }
+
+  // T07D-04 (D-12): frame do momento final (morte/vitória) para a imagem de
+  // compartilhamento. Assíncrono e best-effort: snapshot() sem coordenadas
+  // devolve a IMAGEM INTEIRA via HTMLImageElement, cujo .src já é o dataURL
+  // PNG pronto pra uso — nunca aguardamos o callback (RN de fluxo: falha ou
+  // atraso na captura jamais pode travar/adiar o game:gameover).
+  private captureFinalFrame(): void {
+    try {
+      this.game.renderer.snapshot((image) => {
+        if (image instanceof HTMLImageElement) {
+          this.finalScreenshot = image.src;
+        }
+      });
+    } catch {
+      // captura é um extra cosmético — nunca pode quebrar o fim de jogo
+    }
   }
 
   private buildGameOverPayload(killer?: Entity): GameEventPayload {
@@ -758,8 +792,12 @@ export class GameScene extends Phaser.Scene {
 
   // contrato D-05: emite game:gameover (submit de score) e vai à GameOverScene
   private finalizeGameOver(killer?: Entity): void {
-    const payload = this.pendingGameOverPayload ?? this.buildGameOverPayload(killer);
+    const basePayload = this.pendingGameOverPayload ?? this.buildGameOverPayload(killer);
     this.pendingGameOverPayload = undefined; // emitido aqui, não no SHUTDOWN
+    // screenshot lido só agora (T07D-04): pendingGameOverPayload pode ter sido
+    // montado antes do snapshot assíncrono resolver — este é o valor mais
+    // fresco possível no instante real do emit
+    const payload: GameEventPayload = { ...basePayload, screenshot: this.finalScreenshot };
     emitGameEvent(GAME_EVENTS.GAME_OVER, payload);
 
     // recorde e tela final usam o score FINAL (base × estrelas, D-17) — o
