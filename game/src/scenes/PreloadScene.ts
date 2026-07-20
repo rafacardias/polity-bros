@@ -7,10 +7,8 @@ import { SPRITE_ASSETS, WORLD_BACKGROUNDS } from '../data/assets-manifest';
 // via this.load.* — os keys ('player', 'obstacle', 'vote') NÃO mudam.
 // 'player' já saiu daqui: virou arquivo real (assets-manifest → SPRITE_ASSETS).
 const PLACEHOLDERS = [
-  // player-slide segue placeholder até haver arte de "agachado": cor do terno
-  // (azul-marinho) em vez de branco para casar com o sprite real quando a
-  // skin default não tinge (silhueta coerente durante o slide, ~550ms)
-  { key: 'player-slide', width: 44, height: 32, color: 0x1e2a4a },
+  // player-slide já saiu daqui: virou arquivo real (assets-manifest → SPRITE_ASSETS),
+  // pose agachada gerada a partir do personagem em pé.
   { key: 'obstacle-high', width: 44, height: 72, color: 0xef4444 },
   { key: 'obstacle-low', width: 44, height: 160, color: 0xf97316 },
   { key: 'vote', width: 24, height: 24, color: 0xfacc15 },

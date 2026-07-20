@@ -10,10 +10,11 @@ export interface SpriteAsset {
   path: string; // relativo a /public (ex.: 'assets/sprites/player.png')
 }
 
-// Sprites de arquivo. Os demais keys (obstacle-*, vote, gem, ground,
-// player-slide) seguem gerados em runtime até receberem arte final.
+// Sprites de arquivo. Os demais keys (obstacle-*, vote, gem, ground)
+// seguem gerados em runtime até receberem arte final.
 export const SPRITE_ASSETS: readonly SpriteAsset[] = [
   { key: 'player', path: 'assets/sprites/player.png' },
+  { key: 'player-slide', path: 'assets/sprites/player-slide.png' }, // pose agachada/slide (Fase 3)
 ] as const;
 
 // Fundos de parallax POR MUNDO (D-16): id do mundo → skyline. Mundos ausentes

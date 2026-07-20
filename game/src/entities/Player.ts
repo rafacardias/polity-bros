@@ -32,6 +32,18 @@ export class Player extends Entity {
     body.setOffset(Math.round((this.width - SIZES.PLAYER.W) / 2), this.height - SIZES.PLAYER.H);
   }
 
+  // Hitbox do SLIDE fixa em 44×SLIDE_H, centrada na largura da arte agachada e
+  // ancorada nos pés — mesma invariante de fairness do standing (RN-07). Sem
+  // isto, a hitbox herdaria o tamanho da textura do slide; centrar garante que
+  // a caixa de colisão (44×32) não muda ao trocar o placeholder pela arte real.
+  // Deve rodar DEPOIS de setTexture('player-slide') para ler this.width/height
+  // já da textura agachada.
+  private lockSlideHitbox(): void {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    body.setSize(SIZES.PLAYER.W, SIZES.PLAYER.SLIDE_H, false);
+    body.setOffset(Math.round((this.width - SIZES.PLAYER.W) / 2), this.height - SIZES.PLAYER.SLIDE_H);
+  }
+
   // tint da skin — também usado pelo revive (T07B-03), que precisa desfazer
   // o cinza da morte voltando ao visual da skin. Skin default = personagem na
   // cor natural do sprite (clearTint); skins desbloqueáveis = tint por cima.
@@ -127,8 +139,7 @@ export class Player extends Entity {
       this.juiceTween?.stop();
       this.setScale(1, 1);
       this.setTexture('player-slide');
-      body.setSize(SIZES.PLAYER.W, SIZES.PLAYER.SLIDE_H, false);
-      body.setOffset(0, 0);
+      this.lockSlideHitbox(); // hitbox 44×32 centrada na arte agachada, ancorada nos pés
       if (!body.blocked.down) this.setVelocityY(PHYSICS.FAST_FALL); // desce rápido no ar
     } else {
       this.setTexture('player');
