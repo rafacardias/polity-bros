@@ -1,14 +1,16 @@
 import Phaser from 'phaser';
 import { GEM_BAR } from '../config/constants';
+import { SPRITE_ASSETS, WORLD_BACKGROUNDS } from '../data/assets-manifest';
 
 // Placeholders visuais (RN-07): retângulos coloridos gerados em runtime.
 // Na Fase 3 estes keys passam a apontar para sprites reais carregados
 // via this.load.* — os keys ('player', 'obstacle', 'vote') NÃO mudam.
+// 'player' já saiu daqui: virou arquivo real (assets-manifest → SPRITE_ASSETS).
 const PLACEHOLDERS = [
-  // player é BRANCO: a cor real vem do tint da skin selecionada (T07B-04) —
-  // branco × tint = cor exata, sem gerar uma textura por skin
-  { key: 'player', width: 44, height: 64, color: 0xffffff },
-  { key: 'player-slide', width: 44, height: 32, color: 0xffffff },
+  // player-slide segue placeholder até haver arte de "agachado": cor do terno
+  // (azul-marinho) em vez de branco para casar com o sprite real quando a
+  // skin default não tinge (silhueta coerente durante o slide, ~550ms)
+  { key: 'player-slide', width: 44, height: 32, color: 0x1e2a4a },
   { key: 'obstacle-high', width: 44, height: 72, color: 0xef4444 },
   { key: 'obstacle-low', width: 44, height: 160, color: 0xf97316 },
   { key: 'vote', width: 24, height: 24, color: 0xfacc15 },
@@ -24,7 +26,19 @@ export class PreloadScene extends Phaser.Scene {
 
   preload(): void {
     this.createProgressBar();
-    // Sprites permanecem placeholders gerados em runtime até a Fase 3.
+    // Sprites REAIS de arquivo (Fase 3) declarados no manifest — o restante
+    // segue placeholder gerado em runtime (generatePlaceholderTextures).
+    // Guard idempotente: em teoria a PreloadScene roda 1x, mas evita re-load
+    // se a textura já existir.
+    for (const { key, path } of SPRITE_ASSETS) {
+      if (!this.textures.exists(key)) this.load.image(key, path);
+    }
+    // Fundos de parallax por mundo (Fase 3) — key 'bg-<world>'. Mundos sem
+    // entrada seguem com a cor sólida de WorldDef.bg (sem camada de skyline).
+    for (const [world, path] of Object.entries(WORLD_BACKGROUNDS)) {
+      const key = `bg-${world}`;
+      if (!this.textures.exists(key)) this.load.image(key, path);
+    }
     // Áudio (T05-06/RF-10) já usa arquivos reais — tons sintéticos
     // provisórios em /assets/audio, mesmos keys que valem para os
     // arquivos finais.

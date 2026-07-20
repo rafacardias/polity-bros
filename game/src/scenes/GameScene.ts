@@ -38,6 +38,10 @@ export class GameScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private distanceText!: Phaser.GameObjects.Text;
   private groundTile!: Phaser.GameObjects.TileSprite;
+  // Fundo de parallax (Fase 3): skyline atrás do gameplay, só existe se o
+  // mundo tiver arte 'bg-<id>'. Rola a SKY_PARALLAX da velocidade do chão.
+  private skyTile?: Phaser.GameObjects.TileSprite;
+  private readonly SKY_PARALLAX = 0.35;
   private score!: ScoreSystem;
   private progression!: ProgressionSystem;
   private audio!: AudioSystem;
@@ -424,8 +428,27 @@ export class GameScene extends Phaser.Scene {
   // largada — fundo, chão e tint sutil dos obstáculos. Silhueta sagrada.
   private applyWorldPalette(): void {
     this.cameras.main.setBackgroundColor(this.world.bg);
+    this.createSkyBackground();
     this.groundTile.setTint(this.world.groundTint);
     this.spawner.setObstacleTint(this.world.obstacleTint);
+  }
+
+  // Camada de skyline do mundo (Fase 3): parallax atrás de tudo (depth < 0).
+  // A cor sólida de world.bg fica como fundo/fallback. A textura é escalada
+  // para cobrir a altura sem repetir no eixo Y (só rola em X). A arte já vem
+  // dessaturada para não competir com a silhueta dos obstáculos (D-16).
+  private createSkyBackground(): void {
+    const key = `bg-${this.world.id}`;
+    if (!this.textures.exists(key)) return; // mundo sem skyline → cor sólida
+    const { width, height } = this.scale;
+    const groundTop = height - SIZES.GROUND_H;
+    const src = this.textures.get(key).getSourceImage() as HTMLImageElement;
+    const scale = groundTop / src.height; // cobre a altura; repete só em X
+    this.skyTile = this.add
+      .tileSprite(0, 0, width, groundTop, key)
+      .setOrigin(0, 0)
+      .setTileScale(scale, scale)
+      .setDepth(-10);
   }
 
   // Linha de chegada (D-16): quadriculada, se aproxima como o marcador de
@@ -525,6 +548,7 @@ export class GameScene extends Phaser.Scene {
     const speed = this.progression.speed;
     const step = (speed * delta) / 1000;
     this.groundTile.tilePositionX += step;
+    if (this.skyTile) this.skyTile.tilePositionX += step * this.SKY_PARALLAX; // parallax (Fase 3)
     this.score.addDistance(step); // pontos por distância/tempo (RF-08)
     this.spawner.update(this.progression.distance, speed);
     this.syncWorldSpeed(speed);
