@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GEM_BAR } from '../config/constants';
-import { SPRITE_ASSETS, WORLD_BACKGROUNDS } from '../data/assets-manifest';
+import { SPRITE_ASSETS, SPRITESHEET_ASSETS, WORLD_BACKGROUNDS } from '../data/assets-manifest';
 
 // Placeholders visuais (RN-07): retângulos coloridos gerados em runtime.
 // Na Fase 3 estes keys passam a apontar para sprites reais carregados
@@ -30,6 +30,10 @@ export class PreloadScene extends Phaser.Scene {
     // se a textura já existir.
     for (const { key, path } of SPRITE_ASSETS) {
       if (!this.textures.exists(key)) this.load.image(key, path);
+    }
+    // Sheets animados (Fase 3) — frames de tamanho fixo p/ montar animações.
+    for (const { key, path, frameWidth, frameHeight } of SPRITESHEET_ASSETS) {
+      if (!this.textures.exists(key)) this.load.spritesheet(key, path, { frameWidth, frameHeight });
     }
     // Fundos de parallax por mundo (Fase 3) — key 'bg-<world>'. Mundos sem
     // entrada seguem com a cor sólida de WorldDef.bg (sem camada de skyline).

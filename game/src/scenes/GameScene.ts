@@ -592,6 +592,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.pause();
     this.inputSystem.setEnabled(false);
     this.player.setTint(0x94a3b8);
+    this.player.freezeAnimation(); // congela o ciclo de corrida no frame da morte
     this.audio.death();
     // impacto legível (T07A-02): shake + flash curtos — morte "registra"
     this.cameras.main.shake(JUICE.SHAKE_DURATION_MS, JUICE.SHAKE_INTENSITY);

@@ -10,11 +10,27 @@ export interface SpriteAsset {
   path: string; // relativo a /public (ex.: 'assets/sprites/player.png')
 }
 
+// Sprite sheets animados (Fase 3): frames de tamanho fixo lado a lado. A
+// PreloadScene carrega via load.spritesheet e as ANIMAÇÕES são montadas na
+// entidade (ex.: Player cria a anim 'player-run' a partir dos frames 0–3).
+export interface SpriteSheetAsset {
+  key: string;
+  path: string;
+  frameWidth: number;
+  frameHeight: number;
+}
+
 // Sprites de arquivo. Os demais keys (obstacle-*, vote, gem, ground)
 // seguem gerados em runtime até receberem arte final.
 export const SPRITE_ASSETS: readonly SpriteAsset[] = [
-  { key: 'player', path: 'assets/sprites/player.png' },
+  { key: 'player', path: 'assets/sprites/player.png' }, // frame estático (pulo/queda)
   { key: 'player-slide', path: 'assets/sprites/player-slide.png' }, // pose agachada/slide (Fase 3)
+] as const;
+
+// Sheets animados. player-run = ciclo de corrida (4 frames 61×74), alinhados
+// pelos pés na origem (0.5,1) — mesmo tamanho por frame evita "tremor".
+export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
+  { key: 'player-run', path: 'assets/sprites/player-run.png', frameWidth: 61, frameHeight: 74 },
 ] as const;
 
 // Fundos de parallax POR MUNDO (D-16): id do mundo → skyline. Mundos ausentes

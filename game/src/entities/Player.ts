@@ -8,17 +8,32 @@ import { getSelectedSkin } from '../lib/skins';
 // Âncora nos pés (origin 0.5, 1): trocar a hitbox no slide mantém os pés
 // no chão sem matemática de offset.
 export class Player extends Entity {
+  private static readonly RUN_ANIM = 'player-run';
   private sliding = false;
   private wasOnGround = true;
   private juiceTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'player'); // sprite real do personagem (Fase 3)
+    super(scene, x, y, 'player'); // frame estático (usado em pulo/queda)
     this.setOrigin(0.5, 1);
     // gravidade vem do GAME_CONFIG (arcade.gravity.y) — não duplicar aqui
     this.setCollideWorldBounds(true);
     this.lockStandingHitbox(); // hitbox fixa 44×64, independe do tamanho da arte
     this.applySkinTint(); // cor da skin selecionada (T07B-04)
+    this.createRunAnimation(); // ciclo de corrida (Fase 3)
+  }
+
+  // Animação de corrida (Fase 3): 4 frames do sheet 'player-run'. Global no
+  // anims manager da cena — guard evita recriar em restart. Só é montada aqui;
+  // o disparo/parada fica no state machine visual do update().
+  private createRunAnimation(): void {
+    if (this.scene.anims.exists(Player.RUN_ANIM)) return;
+    this.scene.anims.create({
+      key: Player.RUN_ANIM,
+      frames: this.scene.anims.generateFrameNumbers('player-run', { start: 0, end: 3 }),
+      frameRate: 12,
+      repeat: -1,
+    });
   }
 
   // Hitbox EM PÉ fixa em SIZES.PLAYER (RN-07: "trocam de arte, não de
@@ -134,6 +149,9 @@ export class Player extends Entity {
     this.sliding = active;
     const body = this.body as Phaser.Physics.Arcade.Body;
     if (active) {
+      // parar o ciclo de corrida ANTES de trocar a textura — senão o próximo
+      // frame da animação sobrescreve o sprite agachado
+      this.anims.stop();
       // um stretch de pulo ainda em curso (swipe-cancel dentro da janela)
       // não pode escalar a hitbox do slide — invariante de fairness
       this.juiceTween?.stop();
@@ -142,8 +160,27 @@ export class Player extends Entity {
       this.lockSlideHitbox(); // hitbox 44×32 centrada na arte agachada, ancorada nos pés
       if (!body.blocked.down) this.setVelocityY(PHYSICS.FAST_FALL); // desce rápido no ar
     } else {
+      // volta ao estado em pé; o update() escolhe correr (chão) ou congelar (ar)
       this.setTexture('player');
       this.lockStandingHitbox(); // sprite real 57×72 → hitbox 44×64 recentrada
+    }
+  }
+
+  // Estado visual em CHÃO: toca o ciclo de corrida animado. Frames uniformes
+  // (61×74) → a hitbox em pé (44×64) fica estável, trava só ao (re)entrar.
+  private enterRun(): void {
+    if (this.anims.currentAnim?.key === Player.RUN_ANIM && this.anims.isPlaying) return;
+    this.anims.play(Player.RUN_ANIM, true);
+    this.lockStandingHitbox();
+  }
+
+  // Estado visual no AR (pulo/queda): congela num sprite único em pé — sem
+  // ciclo de pernas correndo no meio do salto.
+  private enterAir(): void {
+    if (this.anims.isPlaying) this.anims.stop();
+    if (this.texture.key !== 'player') {
+      this.setTexture('player');
+      this.lockStandingHitbox();
     }
   }
 
@@ -156,5 +193,18 @@ export class Player extends Entity {
     const grounded = this.onGround;
     if (grounded && !this.wasOnGround && !this.sliding) this.playSquash();
     this.wasOnGround = grounded;
+
+    // state machine visual: corre no chão, congela no ar. O slide tem visual
+    // próprio (setado em slide()) — não mexer enquanto agachado.
+    if (!this.sliding) {
+      if (grounded) this.enterRun();
+      else this.enterAir();
+    }
+  }
+
+  // congela a animação (usado pela cena na morte/game over, onde o update()
+  // deixa de rodar mas o loop da anim continuaria sozinho no Phaser)
+  freezeAnimation(): void {
+    this.anims.stop();
   }
 }
