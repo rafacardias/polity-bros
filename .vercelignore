@@ -1,0 +1,40 @@
+# .vercelignore — controla o que o CLI empacota no deploy.
+# ATENÇÃO: quando este arquivo existe, o Vercel o usa NO LUGAR do .gitignore.
+# Por isso replicamos aqui as exclusões essenciais (segredos, build, deps) +
+# a pasta pesada Visual/ (artes brutas, 1.2GB — não vai pro deploy).
+
+# --- Pesados / não usados no build (Vercel reinstala deps e rebuilda) ---
+Visual/
+assets-raw/
+node_modules/
+
+# --- Build outputs ---
+dist/
+build/
+coverage/
+game/dist/
+web/dist/
+.vite/
+*.tsbuildinfo
+
+# --- Segredos — NUNCA subir ---
+.env
+.env.*
+!.env.example
+
+# --- Vercel / Git ---
+.vercel/
+.git/
+
+# --- Testes / relatórios ---
+test-results/
+playwright-report/
+e2e/.auth/
+
+# --- Logs / OS / editores ---
+*.log
+.DS_Store
+.vscode/
+.idea/
+.cache/
+.eslintcache
