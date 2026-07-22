@@ -38,10 +38,10 @@ export const SPRITE_ASSETS: readonly SpriteAsset[] = [
 export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
   { key: 'player-run', path: 'assets/sprites/player-run.png', frameWidth: 61, frameHeight: 74 },
   { key: 'player-slide', path: 'assets/sprites/player-slide.png', frameWidth: 60, frameHeight: 48 },
-  { key: 'bolsonaro-run', path: 'assets/sprites/bolsonaro-run.png', frameWidth: 48, frameHeight: 72 },
-  { key: 'bolsonaro-slide', path: 'assets/sprites/bolsonaro-slide.png', frameWidth: 41, frameHeight: 48 },
+  { key: 'bolsonaro-run', path: 'assets/sprites/bolsonaro-run.png', frameWidth: 51, frameHeight: 72 },
+  { key: 'bolsonaro-slide', path: 'assets/sprites/bolsonaro-slide.png', frameWidth: 44, frameHeight: 48 },
   { key: 'lula-run', path: 'assets/sprites/lula-run.png', frameWidth: 52, frameHeight: 72 },
-  { key: 'lula-slide', path: 'assets/sprites/lula-slide.png', frameWidth: 48, frameHeight: 48 },
+  { key: 'lula-slide', path: 'assets/sprites/lula-slide.png', frameWidth: 47, frameHeight: 48 },
 ] as const;
 
 // Fundos de parallax POR MUNDO (D-16): id do mundo → skyline. Mundos ausentes
