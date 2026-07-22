@@ -251,9 +251,10 @@ export class GameScene extends Phaser.Scene {
       .setDepth(10);
     // countdown "faltam Xm": contorno escuro + negrito garantem leitura sobre
     // QUALQUER céu de mundo (SP azul-claro, RJ teal, BSB índigo). O cinza
-    // anterior (#94a3b8) sumia no azul do skyline — feedback do dono.
+    // anterior (#94a3b8) sumia no azul do skyline — feedback do dono. Y=52 para
+    // não ficar sob o botão "← Menu" do shell React (que ocupa o topo-esquerdo).
     this.distanceText = this.add
-      .text(12, 10, '0m', {
+      .text(12, 52, '0m', {
         ...style,
         fontStyle: 'bold',
         stroke: '#0f172a',
