@@ -3,6 +3,7 @@ import { Obstacle } from '../entities/Obstacle';
 import { Enemy } from '../entities/Enemy';
 import { Collectible } from '../entities/Collectible';
 import { CAMERA, ECONOMY, ENEMY, FINISH_CLEAR_M, GEM_BAR, SCORE, SPAWN, SIZES } from '../config/constants';
+import type { TerrainSystem } from './TerrainSystem';
 
 type Kind = 'high' | 'low'; // high = pular por cima; low/suspenso = deslizar por baixo
 
@@ -10,6 +11,7 @@ type Kind = 'high' | 'low'; // high = pular por cima; low/suspenso = deslizar po
 // maxSize, get() reutiliza instâncias desativadas — nunca new/destroy no loop.
 export class SpawnerSystem {
   private lastSpawnX = 0;
+  private currentDistance = 0; // mundo do player no frame atual (offset de terreno)
   // ledger das linhas de voto (T07A-03): lineId → progresso. Entrada some na
   // primeira quebra (voto perdido) ou na completude — não cresce sem limite.
   private lineLedger = new Map<number, { total: number; collected: number }>();
@@ -42,6 +44,7 @@ export class SpawnerSystem {
     private rng: Phaser.Math.RandomDataGenerator,
     private worldLengthPx: number,
     collectedGemIndices: number[],
+    private terrain: TerrainSystem,
   ) {
     const lengthM = worldLengthPx / SCORE.PX_PER_M;
     const playableEndM = lengthM - FINISH_CLEAR_M;
@@ -53,6 +56,7 @@ export class SpawnerSystem {
   }
 
   update(distance: number, speed: number): void {
+    this.currentDistance = distance; // usado por spawnGroundTop (offset do degrau)
     const gap = Math.max(SPAWN.GAP_MIN, SPAWN.GAP_BASE - distance * SPAWN.GAP_TIGHTEN);
     // 1º obstáculo usa FIRST_GAP (T07A-05): respiro de leitura pro novato
     const target = this.lastSpawnX === 0 ? SPAWN.FIRST_GAP : gap;
@@ -81,9 +85,9 @@ export class SpawnerSystem {
   // passando reto por baixo). A GameScene registra um COLLIDER com o player:
   // pousar no topo é seguro; laterais/fundo matam (kind 'block').
   private spawnGemBar(speed: number, target: { index: number; collected: boolean }): void {
-    const { width, height } = this.scene.scale;
-    const groundTop = height - SIZES.GROUND_H;
+    const { width } = this.scene.scale;
     const x = width + GEM_BAR.WIDTH;
+    const groundTop = this.spawnGroundTop(x); // monta no degrau local (D-26)
     const barY = groundTop - GEM_BAR.BAR_ABOVE_GROUND;
 
     // estrela 3 (D-17): o bloco entra na contabilidade — satisfeito por
@@ -150,6 +154,19 @@ export class SpawnerSystem {
     });
   }
 
+  // Topo do chão no X REAL de spawn da entidade (não na borda da tela), JÁ
+  // descontando a altura do degrau local (D-26): a entidade "monta" no degrau
+  // em vez de flutuar/enterrar. Amostrar no X exato evita o erro de 1 nível
+  // perto de uma quina de degrau (a entidade nasce ~W px além da borda). Como
+  // entidade e terreno rolam na MESMA velocidade em X, ela permanece sobre o
+  // mesmo segmento por toda a vida — salvo inimigos, que andam mais rápido e
+  // por isso "sobem/descem" o terreno a cada frame (GameScene.rideEnemiesOnTerrain).
+  private spawnGroundTop(screenX: number): number {
+    const base = this.scene.scale.height - SIZES.GROUND_H;
+    const worldX = this.currentDistance + (screenX - SIZES.PLAYER.SCREEN_X);
+    return base - this.terrain.groundOffsetAt(worldX);
+  }
+
   // troca de cidade (T07B-01): novos obstáculos nascem com o tint da paleta;
   // os já ativos são retintados pela GameScene para consistência visual
   setObstacleTint(tint: number): void {
@@ -212,8 +229,7 @@ export class SpawnerSystem {
   }
 
   private spawnObstacle(speed: number, gap: number): void {
-    const { width, height } = this.scene.scale;
-    const groundTop = height - SIZES.GROUND_H;
+    const { width } = this.scene.scale;
     const kind: Kind = this.rng.frac() < 0.5 ? 'high' : 'low';
     // Slots 'high' viram INIMIGO (D-25/§7-E): o player pula por cima OU pisa em
     // cima (stomp) por votos. 'low' segue obstáculo suspenso de deslizar por
@@ -230,9 +246,10 @@ export class SpawnerSystem {
       return;
     }
     const spec = kind === 'high' ? SIZES.OBSTACLE_HIGH : SIZES.OBSTACLE_LOW;
+    const x = width + spec.W;
+    const groundTop = this.spawnGroundTop(x); // monta no degrau local (D-26)
     // âncora nos pés (origin 0.5,1): y é a BASE do obstáculo
     const y = kind === 'high' ? groundTop : groundTop - SIZES.OBSTACLE_LOW.CLEARANCE;
-    const x = width + spec.W;
 
     const obstacle = this.obstacles.get(x, y) as Obstacle | null;
     if (obstacle) {
@@ -268,9 +285,9 @@ export class SpawnerSystem {
   // "não pulava direito"). Overlap não separa corpos: o stomp/quique e a morte
   // são 100% decididos por código (hitEnemy), sem física empurrando o player.
   private spawnEnemy(speed: number): void {
-    const { width, height } = this.scene.scale;
-    const groundTop = height - SIZES.GROUND_H;
+    const { width } = this.scene.scale;
     const x = width + ENEMY.W;
+    const groundTop = this.spawnGroundTop(x); // repórter caminha no degrau local (D-26)
     const enemy = this.enemies.get(x, groundTop) as Enemy | null;
     if (!enemy) return; // pool exausto — não criar além do maxSize (RN-01)
     enemy.setOrigin(0.5, 1);
@@ -289,6 +306,7 @@ export class SpawnerSystem {
     body.setAllowGravity(false); // fica no chão sem cair; só desliza no eixo X
     enemy.setVelocityX(-(speed + ENEMY.WALK_SPEED));
     enemy.setData('kind', 'enemy'); // telemetria: mapeado como obstacle-high por ora
+    enemy.setData('aboveGround', 0); // repórter anda no chão → sobe/desce degraus (ride)
   }
 
   // Câmera de imprensa VOADORA (D-25/§9-6): reusa o pool de inimigos, mas voa no
@@ -296,10 +314,10 @@ export class SpawnerSystem {
   // marcada 'camera' → hitEnemy trata como ameaça pura (contato = morte; o dodge
   // é deslizar por baixo). Também OVERLAP (não empurra o player).
   private spawnFlyer(speed: number): void {
-    const { width, height } = this.scene.scale;
-    const groundTop = height - SIZES.GROUND_H;
-    const baseY = groundTop - CAMERA.CLEARANCE; // base da hitbox = topo do vão de passagem
+    const { width } = this.scene.scale;
     const x = width + CAMERA.W;
+    const groundTop = this.spawnGroundTop(x); // câmera voa relativa ao degrau local (D-26)
+    const baseY = groundTop - CAMERA.CLEARANCE; // base da hitbox = topo do vão de passagem
     const enemy = this.enemies.get(x, baseY) as Enemy | null;
     if (!enemy) return; // pool exausto — não criar além do maxSize (RN-01)
     enemy.setOrigin(0.5, 1);
@@ -314,6 +332,7 @@ export class SpawnerSystem {
     body.setAllowGravity(false); // voa: fica na altura fixa, só desliza no eixo X
     enemy.setVelocityX(-(speed + ENEMY.WALK_SPEED));
     enemy.setData('kind', 'camera'); // hitEnemy: câmera = morte no contato (não stompável)
+    enemy.setData('aboveGround', CAMERA.CLEARANCE); // voa a CLEARANCE do chão local (ride)
   }
 
   // barIndex: votos que vivem sob um bloco flutuante (D-17) — a perda deles

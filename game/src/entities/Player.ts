@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Entity } from './Entity';
-import { JUICE, PHYSICS, SIZES } from '../config/constants';
+import { JUICE, PHYSICS, SIZES, TERRAIN } from '../config/constants';
 import { getSelectedSkin, skinTextures } from '../lib/skins';
 
 // Auto-run (RF-04, D-03): o avanço é do CENÁRIO (world-scroll) — o Player
@@ -18,6 +18,12 @@ export class Player extends Entity {
   private sliding = false;
   private wasOnGround = true;
   private juiceTween?: Phaser.Tweens.Tween;
+  // Chão do terreno em degraus (D-26): Y dos pés do degrau sob o player (X fixo),
+  // informado pela GameScene a cada frame. ∞ = sem terreno → usa só o world
+  // bounds (base). O player SOBE até ele suavemente (auto-climb, §7-A) e o
+  // reporta como "no chão" para poder pular. Não toca no pulo (velocity<0).
+  private terrainFeetY = Number.POSITIVE_INFINITY;
+  private groundedOnTerrain = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     const tex = skinTextures(getSelectedSkin());
@@ -100,9 +106,39 @@ export class Player extends Entity {
 
   get onGround(): boolean {
     // blocked.down = chão do mundo; touching.down = em pé sobre o bloco
-    // flutuante (D-22, collider dinâmico) — nos dois casos pode pular
+    // flutuante (D-22, collider dinâmico); groundedOnTerrain = parado num degrau
+    // do terreno (D-26) — nos três casos pode pular
     const body = this.body as Phaser.Physics.Arcade.Body;
-    return body.blocked.down || body.touching.down;
+    return body.blocked.down || body.touching.down || this.groundedOnTerrain;
+  }
+
+  // Chão do terreno em degraus (D-26): a GameScene informa a cada frame a altura
+  // (Y dos pés) do degrau sob o player, que fica em X fixo. Passar ∞ = sem
+  // terreno (só world bounds). O clamp acontece em applyTerrainFloor (update).
+  setTerrainFloor(feetY: number): void {
+    this.terrainFeetY = feetY;
+  }
+
+  // Auto-climb suave (§7-A): reposiciona os pés no degrau sob o player e o marca
+  // "no chão". NÃO age enquanto sobe num pulo (velocity.y < 0) → a física de
+  // pulo calibrada (RN-IT3) fica intocada. Na BASE (feetY = groundTop = world
+  // bounds) o comportamento é idêntico ao de hoje: parado/queda batem no mesmo
+  // Y. Só em degrau elevado o player é levantado ≤CLIMB_RATE px/frame (subida
+  // visível, sem punição, nunca teleporta). Descer é queda natural (fica acima
+  // do piso → gravidade puxa até o próximo degrau).
+  private applyTerrainFloor(body: Phaser.Physics.Arcade.Body): void {
+    if (!Number.isFinite(this.terrainFeetY) || body.velocity.y < 0) {
+      this.groundedOnTerrain = false;
+      return;
+    }
+    if (this.y >= this.terrainFeetY) {
+      const climbed = Math.max(this.terrainFeetY, this.y - TERRAIN.CLIMB_RATE);
+      this.setY(climbed);
+      this.setVelocityY(0);
+      this.groundedOnTerrain = true;
+    } else {
+      this.groundedOnTerrain = false; // acima do piso: caindo em direção a ele
+    }
   }
 
   // chamado ao iniciar o toque/tecla (RF-05); retorna se pulou de fato —
@@ -157,11 +193,15 @@ export class Player extends Entity {
   }
 
   // converte um pulo RECÉM-iniciado em slide (cancelamento por swipe ↓):
-  // reassenta os pés no chão e desliza — o "hop" de 1-2 frames some na hora
+  // reassenta os pés no chão LOCAL (degrau, se houver — senão world bounds) e
+  // desliza — o "hop" de 1-2 frames some na hora, sem "cair" do degrau (D-26)
   abortJumpToSlide(): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
     this.setVelocityY(0);
-    this.setY(this.scene.physics.world.bounds.bottom);
+    const floor = Number.isFinite(this.terrainFeetY)
+      ? Math.min(this.scene.physics.world.bounds.bottom, this.terrainFeetY)
+      : this.scene.physics.world.bounds.bottom;
+    this.setY(floor);
     body.reset(this.x, this.y);
     this.slide(true);
   }
@@ -212,6 +252,7 @@ export class Player extends Entity {
   update(_time: number, _delta: number): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
     if (body.velocity.y > PHYSICS.MAX_FALL_SPEED) this.setVelocityY(PHYSICS.MAX_FALL_SPEED);
+    this.applyTerrainFloor(body); // degraus (D-26): auto-climb + grounded no degrau
 
     // aterrissagem (transição ar→chão) → squash. Fora do slide: a hitbox do
     // slide é intencional e não pode ser tocada pela escala do juice.

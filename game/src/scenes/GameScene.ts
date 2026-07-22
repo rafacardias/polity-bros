@@ -14,8 +14,9 @@ import { WalletSystem } from '../systems/WalletSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS, type GameEventPayload } from '../lib/game-events';
-import { ECONOMY, ENEMY, JUICE, SCORE, SIZES, type WorldDef } from '../config/constants';
+import { ECONOMY, ENEMY, JUICE, SCORE, SIZES, TERRAIN, type WorldDef } from '../config/constants';
 import { WorldSystem } from '../systems/WorldSystem';
+import { TerrainSystem } from '../systems/TerrainSystem';
 import { GemCollectionSystem } from '../systems/GemCollectionSystem';
 import { WorldVotesSystem } from '../systems/WorldVotesSystem';
 
@@ -46,6 +47,10 @@ export class GameScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private distanceText!: Phaser.GameObjects.Text;
   private groundTile!: Phaser.GameObjects.TileSprite;
+  // Terreno em degraus (D-26): campo de altura + silhueta desenhada. A física é
+  // um clamp determinístico no Player (auto-climb) alimentado pela altura do
+  // terreno sob o player (X fixo) — ver updateTerrainFloor / Player.setTerrainFloor.
+  private terrain!: TerrainSystem;
   // Fundo de parallax (Fase 3): skyline atrás do gameplay, só existe se o
   // mundo tiver arte 'bg-<id>'. Rola a SKY_PARALLAX da velocidade do chão.
   private skyTile?: Phaser.GameObjects.TileSprite;
@@ -107,6 +112,7 @@ export class GameScene extends Phaser.Scene {
       SIZES.GROUND_H,
       'ground',
     );
+    this.groundTile.setDepth(-2); // base plana atrás da silhueta dos degraus (D-26)
 
     this.audio = new AudioSystem(this);
     this.player = new Player(this, SIZES.PLAYER.SCREEN_X, groundTop);
@@ -146,6 +152,10 @@ export class GameScene extends Phaser.Scene {
     this.stompCombo = 0;
     this.unlockedWorldName = null;
     const rng = new Phaser.Math.RandomDataGenerator([this.world.seed]);
+    // Terreno em degraus (D-26): criado ANTES do spawner — as entidades
+    // "montam" no degrau local (offset de altura). RNG PRÓPRIO (seed+'-terrain')
+    // para não deslocar a sequência de obstáculos/inimigos do rng acima (D-16).
+    this.createTerrain();
     this.spawner = new SpawnerSystem(
       this,
       this.obstacles,
@@ -156,6 +166,7 @@ export class GameScene extends Phaser.Scene {
       rng,
       this.world.lengthM * SCORE.PX_PER_M,
       GemCollectionSystem.collected(this.world.id),
+      this.terrain,
     );
 
     // RF-07: qualquer contato com obstáculo encerra a partida
@@ -545,12 +556,57 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // Terreno em degraus (D-26, §4.1): silhueta desenhada (Graphics reutilizado)
+  // + corpo-chão invisível imóvel sob o player. Como o player fica em X fixo,
+  // só a altura do terreno NESSE ponto importa para a física: o corpo-chão é
+  // reposicionado a cada frame nessa altura (updateTerrainFloor). O player pousa/
+  // pula NELE nativamente (onGround via touching.down) e SOBE degraus por
+  // separação de corpos — a física de pulo calibrada (RN-IT3) fica intocada.
+  private createTerrain(): void {
+    const gfx = this.add.graphics().setDepth(-1);
+    const terrainRng = new Phaser.Math.RandomDataGenerator([`${this.world.seed}-terrain`]);
+    this.terrain = new TerrainSystem(
+      this,
+      terrainRng,
+      this.world.lengthM * SCORE.PX_PER_M,
+      gfx,
+    );
+  }
+
+  // Inimigos "sobem/descem" o terreno (D-26): como andam mais rápido que o
+  // scroll, derivam entre segmentos — a cada frame seguem a altura do terreno
+  // sob eles (repórter no chão; câmera a CLEARANCE acima), suavemente (≤CLIMB_RATE
+  // px/frame) para nunca teleportar num degrau. Mantém stomp/slide-under justos.
+  private rideEnemiesOnTerrain(): void {
+    const base = this.scale.height - SIZES.GROUND_H;
+    const distance = this.progression.distance;
+    this.enemies.children.iterate((child) => {
+      const e = child as Enemy;
+      if (!e.active) return true;
+      const above = (e.getData('aboveGround') as number) ?? 0;
+      const worldX = distance + (e.x - SIZES.PLAYER.SCREEN_X);
+      const target = base - this.terrain.groundOffsetAt(worldX) - above;
+      e.y += Phaser.Math.Clamp(target - e.y, -TERRAIN.CLIMB_RATE, TERRAIN.CLIMB_RATE);
+      return true;
+    });
+  }
+
+  // Informa ao Player a altura (Y dos pés) do degrau sob ele (X fixo). O clamp
+  // de auto-climb vive no Player.applyTerrainFloor — aqui só a leitura do campo
+  // de altura. Na base (offset 0) o Y é o groundTop = world bounds → sem efeito.
+  private updateTerrainFloor(): void {
+    const offset = this.terrain.groundOffsetAt(this.progression.distance);
+    const groundTop = this.scale.height - SIZES.GROUND_H;
+    this.player.setTerrainFloor(groundTop - offset);
+  }
+
   // Paleta = TEMA do mundo (D-16, supersede D-14): aplicada uma vez na
   // largada — fundo, chão e tint sutil dos obstáculos. Silhueta sagrada.
   private applyWorldPalette(): void {
     this.cameras.main.setBackgroundColor(this.world.bg);
     this.createSkyBackground();
     this.groundTile.setTint(this.world.groundTint);
+    this.terrain.setTint(this.world.groundTint); // degraus acompanham o chão
     this.spawner.setObstacleTint(this.world.obstacleTint);
   }
 
@@ -677,6 +733,9 @@ export class GameScene extends Phaser.Scene {
     if (this.skyTile) this.skyTile.tilePositionX += step * this.SKY_PARALLAX; // parallax (Fase 3)
     this.score.addDistance(step); // pontos por distância/tempo (RF-08)
     this.spawner.update(this.progression.distance, speed);
+    this.terrain.update(this.progression.distance); // degraus: gera/recicla + desenha
+    this.updateTerrainFloor(); // informa a altura do degrau sob o player (auto-climb)
+    this.rideEnemiesOnTerrain(); // inimigos seguem o terreno (derivam por andar mais rápido)
     this.syncWorldSpeed(speed);
     this.player.update(time, delta);
     // Invariante do auto-runner (RF-04): o player fica SEMPRE em SCREEN_X — só

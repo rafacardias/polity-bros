@@ -170,6 +170,25 @@ export const CAMERA = {
   LOW_SLOT_CHANCE: 0.5, // fração dos slots 'low' que viram câmera (resto = obstacle-low)
 } as const;
 
+// Terreno em degraus (D-26, milestone Inimigos & Terreno §4.1): o chão deixa de
+// ser plano. Um "campo de altura" (height field) de segmentos em coordenada de
+// MUNDO rola com o cenário; o ÚNICO ponto que importa para a física é a altura
+// sob o player (X fixo), então um CORPO-CHÃO invisível e imóvel posicionado
+// nessa altura faz o player pousar/pular NATIVAMENTE (onGround via touching.down)
+// e SUBIR degraus por separação de corpos — sem tocar na física de pulo já
+// calibrada (RN-IT3). Degraus NUNCA matam (§7-A "auto-climb suave"): quando o
+// degrau sobe, o corpo-chão empurra o player para cima a CLIMB_RATE px/frame
+// (subida visível, sem punição); descer é queda natural pela gravidade.
+export const TERRAIN = {
+  STEP_H: 40, // altura de 1 nível de degrau (px) — subível de pulo com folga
+  MAX_LEVEL: 2, // níveis acima da base (0..2); "parede alta" = 2 níveis (80px)
+  SEG_MIN: 240, // comprimento mín. de um segmento plano (px) — dá pé pra ler/pular
+  SEG_MAX: 520, // comprimento máx. de um segmento plano (px)
+  CLIMB_RATE: 12, // px/frame de auto-subida (suave, §7-A) — sobe rápido mas visível
+  FLOOR_W: 140, // largura do corpo-chão invisível sob o player (X fixo)
+  WARMUP_FLAT_PX: 720, // largada plana: respiro/onboarding antes do 1º degrau (par do WARMUP)
+} as const;
+
 // reta final limpa: os últimos metros antes da linha de chegada não têm
 // obstáculos — a vitória se CELEBRA, não se rouba no último frame
 export const FINISH_CLEAR_M = 60;
