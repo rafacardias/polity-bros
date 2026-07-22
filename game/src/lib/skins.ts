@@ -24,26 +24,18 @@ export interface SkinDef {
 }
 
 export const SKINS: readonly SkinDef[] = [
-  {
-    id: 'candidato',
-    label: 'Candidato',
-    side: 'Neutro',
-    char: 'player',
-    unlock: { type: 'default' },
-    requirement: 'inicial',
-  },
+  // Rótulo por LADO político (pedido do dono) — o personagem é a caricatura,
+  // o nome exibido é a posição. Ambos liberados de fábrica.
   {
     id: 'bolsonaro',
-    label: 'Bolsonaro',
-    side: 'Direita',
+    label: 'Direita',
     char: 'bolsonaro',
     unlock: { type: 'default' },
     requirement: 'liberado',
   },
   {
     id: 'lula',
-    label: 'Lula',
-    side: 'Esquerda',
+    label: 'Esquerda',
     char: 'lula',
     unlock: { type: 'default' },
     requirement: 'liberado',
