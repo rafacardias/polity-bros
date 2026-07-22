@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { Obstacle } from '../entities/Obstacle';
 import { Enemy } from '../entities/Enemy';
 import { Collectible } from '../entities/Collectible';
 import { CAMERA, ECONOMY, ENEMY, FINISH_CLEAR_M, GEM_BAR, SCORE, SPAWN, SIZES } from '../config/constants';
@@ -16,9 +15,6 @@ export class SpawnerSystem {
   // primeira quebra (voto perdido) ou na completude — não cresce sem limite.
   private lineLedger = new Map<number, { total: number; collected: number }>();
   private nextLineId = 1;
-  // paleta da cidade atual (T07B-01, D-14): tint quase-branco, atmosfera
-  // sem tocar silhueta/hitbox
-  private obstacleTint = 0xffffff;
   // Gemas em barras flutuantes (D-18): posições FIXAS (fração do mundo);
   // gemas já coletadas neste aparelho não renascem (coleção persistente) —
   // a barra e os votos de baixo continuam aparecendo.
@@ -36,7 +32,6 @@ export class SpawnerSystem {
   // mesma fase para todos os jogadores, em todas as partidas
   constructor(
     private scene: Phaser.Scene,
-    private obstacles: Phaser.Physics.Arcade.Group,
     private votes: Phaser.Physics.Arcade.Group,
     private gems: Phaser.Physics.Arcade.Group,
     private bars: Phaser.Physics.Arcade.Group,
@@ -167,12 +162,6 @@ export class SpawnerSystem {
     return base - this.terrain.groundOffsetAt(worldX);
   }
 
-  // troca de cidade (T07B-01): novos obstáculos nascem com o tint da paleta;
-  // os já ativos são retintados pela GameScene para consistência visual
-  setObstacleTint(tint: number): void {
-    this.obstacleTint = tint;
-  }
-
   // voto perdido: se pertencia a um bloco flutuante conta no desfecho do
   // bloco (pode ser perdoado pela propina); senão é perda comum → sem 3⭐
   private countMissedVote(vote: Collectible): void {
@@ -228,52 +217,27 @@ export class SpawnerSystem {
     return true;
   }
 
+  // Slot de ameaça (D-26/§7-E): a geometria estática letal SAIU DE VEZ — a
+  // letalidade migrou 100% para os INIMIGOS animados. 'high' = repórter (pular
+  // por cima OU pisar/stomp por votos); 'low' = câmera voadora (deslizar por
+  // baixo ou morrer). O desafio de "subir/vencer plataforma" agora é o próprio
+  // TERRENO em degraus (tarefa 1). rng semeado mantém o layout FIXO (D-16).
   private spawnObstacle(speed: number, gap: number): void {
     const { width } = this.scene.scale;
     const kind: Kind = this.rng.frac() < 0.5 ? 'high' : 'low';
-    // Slots 'high' viram INIMIGO (D-25/§7-E): o player pula por cima OU pisa em
-    // cima (stomp) por votos. 'low' segue obstáculo suspenso de deslizar por
-    // baixo — preserva o slide/agachado. rng semeado mantém o layout FIXO (D-16).
-    if (kind === 'high' && this.rng.frac() < ENEMY.HIGH_SLOT_CHANCE) {
-      this.spawnEnemy(speed);
-      return;
-    }
-    // Slots 'low' viram CÂMERA VOADORA (D-25/§9-6): ameaça no alto que se
-    // desliza por baixo — animada e vindo na direção do player, no lugar do
-    // obstáculo suspenso estático. rng semeado mantém o layout FIXO (D-16).
-    if (kind === 'low' && this.rng.frac() < CAMERA.LOW_SLOT_CHANCE) {
-      this.spawnFlyer(speed);
-      return;
-    }
-    const spec = kind === 'high' ? SIZES.OBSTACLE_HIGH : SIZES.OBSTACLE_LOW;
-    const x = width + spec.W;
-    const groundTop = this.spawnGroundTop(x); // monta no degrau local (D-26)
-    // âncora nos pés (origin 0.5,1): y é a BASE do obstáculo
-    const y = kind === 'high' ? groundTop : groundTop - SIZES.OBSTACLE_LOW.CLEARANCE;
+    if (kind === 'high') this.spawnEnemy(speed);
+    else this.spawnFlyer(speed);
 
-    const obstacle = this.obstacles.get(x, y) as Obstacle | null;
-    if (obstacle) {
-      obstacle.setTexture(kind === 'high' ? 'obstacle-high' : 'obstacle-low');
-      obstacle.setOrigin(0.5, 1);
-      obstacle.reset(x, y);
-      const body = obstacle.body as Phaser.Physics.Arcade.Body;
-      body.setSize(spec.W, spec.H, false);
-      body.setOffset(0, 0);
-      body.setAllowGravity(false);
-      body.immovable = true;
-      obstacle.setVelocityX(-speed);
-      obstacle.setData('kind', kind);
-      obstacle.setTint(this.obstacleTint);
-    }
-
-    // rota de risco/recompensa: linha de votos logo após o obstáculo, alta —
-    // exige manter o pulo (high) ou pular logo depois do slide (low) (RF-11)
+    // rota de risco/recompensa (RF-11): linhas de voto perto da ameaça — a ALTA
+    // exige manter o pulo; a FÁCIL fica no meio do vão. Relativas ao chão LOCAL
+    // (degrau), ancoradas num X de referência à frente da ameaça.
+    const refX = width + SIZES.OBSTACLE_HIGH.W;
+    const groundTop = this.spawnGroundTop(refX);
     if (this.rng.frac() < SPAWN.VOTE_LINE_CHANCE) {
-      this.spawnVoteLine(x + 60, y - SPAWN.VOTE_RISK_HEIGHT, speed);
+      this.spawnVoteLine(refX + 60, groundTop - SPAWN.VOTE_RISK_HEIGHT, speed);
     }
-    // linha fácil no meio do vão: recompensa constante ao longo da fase (RF-11)
     if (this.rng.frac() < SPAWN.EASY_VOTE_CHANCE) {
-      this.spawnVoteLine(x + gap / 2, groundTop - SPAWN.VOTE_EASY_HEIGHT, speed);
+      this.spawnVoteLine(refX + gap / 2, groundTop - SPAWN.VOTE_EASY_HEIGHT, speed);
     }
   }
 

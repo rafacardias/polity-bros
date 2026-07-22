@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Entity } from '../entities/Entity';
-import { Obstacle } from '../entities/Obstacle';
 import { Enemy } from '../entities/Enemy';
 import { Collectible } from '../entities/Collectible';
 import { getSelectedSkin, skinTextures } from '../lib/skins';
@@ -34,7 +33,6 @@ export class GameScene extends Phaser.Scene {
   private player!: Player;
   private inputSystem!: InputSystem;
   private spawner!: SpawnerSystem;
-  private obstacles!: Phaser.Physics.Arcade.Group;
   private votes!: Phaser.Physics.Arcade.Group;
   private gems!: Phaser.Physics.Arcade.Group;
   private bars!: Phaser.Physics.Arcade.Group;
@@ -119,11 +117,6 @@ export class GameScene extends Phaser.Scene {
     this.inputSystem = new InputSystem(this, this.player, this.audio);
 
     // pools (RN-01): maxSize limita instâncias; get() reutiliza
-    this.obstacles = this.physics.add.group({
-      classType: Obstacle,
-      maxSize: 24,
-      runChildUpdate: true,
-    });
     this.votes = this.physics.add.group({
       classType: Collectible,
       maxSize: 36,
@@ -158,7 +151,6 @@ export class GameScene extends Phaser.Scene {
     this.createTerrain();
     this.spawner = new SpawnerSystem(
       this,
-      this.obstacles,
       this.votes,
       this.gems,
       this.bars,
@@ -169,10 +161,6 @@ export class GameScene extends Phaser.Scene {
       this.terrain,
     );
 
-    // RF-07: qualquer contato com obstáculo encerra a partida
-    this.physics.add.overlap(this.player, this.obstacles, (_p, o) =>
-      this.gameOver(o as Obstacle),
-    );
     // RF-11: coletar voto incrementa o contador do HUD
     this.physics.add.overlap(this.player, this.votes, (_p, v) =>
       this.collectVote(v as Collectible),
@@ -181,21 +169,17 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.gems, (_p, g) =>
       this.collectGem(g as Collectible),
     );
-    // D-22: bloco flutuante é plataforma-obstáculo — COLLIDER (separa os
-    // corpos, dá pra ficar em pé no topo). Pouso por cima é seguro; contato
-    // pelas laterais ou pelo fundo mata, como nos obstáculos verticais.
-    this.physics.add.collider(this.player, this.bars, (_p, b) => {
+    // Bloco flutuante (D-22 → D-26): agora plataforma NÃO-LETAL. ONE-WAY via
+    // processCallback — colide SÓ vindo de cima (pés acima do topo no frame
+    // anterior, body.prev), então dá pra pousar no topo (propina de rota alta);
+    // laterais/fundo o player ATRAVESSA sem morrer. A letalidade migrou 100%
+    // para os inimigos (D-26): geometria estática só barra/serve de plataforma.
+    // O teste por body.prev também evita o falso "toque lateral" de uma
+    // plataforma que desliza para a esquerda (bug de pouso do dono, D-22).
+    this.physics.add.collider(this.player, this.bars, undefined, (_p, b) => {
       const pb = this.player.body as Phaser.Physics.Arcade.Body;
       const bb = (b as Collectible).body as Phaser.Physics.Arcade.Body;
-      // Pouso EM CIMA = seguro (plataforma). Checagem GEOMÉTRICA pela posição
-      // do frame ANTERIOR (body.prev): o player veio de cima se seus pés
-      // estavam acima do topo da barra no frame passado. E imune a como o
-      // Arcade resolveu o eixo neste frame — numa plataforma que desliza para a
-      // esquerda, um pouso no topo as vezes era resolvido como toque lateral
-      // (touching.right falso) e matava injustamente ao cair sobre a propina
-      // (bug reportado pelo dono). Bater na lateral/fundo segue fatal (D-22).
-      const cameFromAbove = pb.prev.y + pb.height <= bb.prev.y + 6;
-      if (!cameFromAbove) this.gameOver(b as Collectible);
+      return pb.prev.y + pb.height <= bb.prev.y + 6; // one-way: só colide do topo
     });
     // Inimigo (D-25): OVERLAP (não collider) — como os obstáculos. Pisar em cima
     // (veio de cima) = STOMP por votos; contato lateral/frontal = morte. A decisão
@@ -607,7 +591,6 @@ export class GameScene extends Phaser.Scene {
     this.createSkyBackground();
     this.groundTile.setTint(this.world.groundTint);
     this.terrain.setTint(this.world.groundTint); // degraus acompanham o chão
-    this.spawner.setObstacleTint(this.world.obstacleTint);
   }
 
   // Camada de skyline do mundo (Fase 3): parallax atrás de tudo (depth < 0).
@@ -766,7 +749,6 @@ export class GameScene extends Phaser.Scene {
       if (sprite.active) sprite.setVelocityX(-speed);
       return true;
     };
-    this.obstacles.children.iterate(sync);
     this.votes.children.iterate(sync);
     this.gems.children.iterate(sync);
     this.bars.children.iterate(sync);
@@ -979,13 +961,7 @@ export class GameScene extends Phaser.Scene {
     this.player.slide(false);
     this.gemText.setText(`💵 ${WalletSystem.balance()}`);
     // pista limpa à frente: revive nunca pode ser morte instantânea injusta —
-    // vale para obstáculos verticais E blocos flutuantes (D-22, que matam
-    // pelas laterais e chegariam voando no player recém-revivido)
-    this.obstacles.children.iterate((child) => {
-      const sprite = child as Phaser.Physics.Arcade.Sprite;
-      if (sprite.active) (sprite as Obstacle).deactivate();
-      return true;
-    });
+    // some com blocos flutuantes (plataformas D-22/D-26) e inimigos à frente
     this.bars.children.iterate((child) => {
       const bar = child as Collectible;
       if (bar.active) bar.deactivate();

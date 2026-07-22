@@ -14,9 +14,9 @@ const PLACEHOLDERS = [
   // inimigo (D-25): agora arte real de arquivo — sheet 'enemy-walk' (repórter)
   // carregado via SPRITESHEET_ASSETS. Sem placeholder aqui (saiu do runtime).
   { key: 'vote', width: 24, height: 24, color: 0xfacc15 },
-  // bloco flutuante (D-22): plataforma-obstáculo — vermelho da família dos
-  // obstáculos ("pode matar"), player sobe em cima; laterais/fundo matam
-  { key: 'gem-bar', width: GEM_BAR.WIDTH, height: GEM_BAR.HEIGHT, color: 0xef4444 },
+  // bloco flutuante (D-22 → D-26): plataforma NÃO-LETAL. Cor de concreto/slate
+  // (não mais vermelho de "perigo") — o player pousa no topo (propina); não mata
+  { key: 'gem-bar', width: GEM_BAR.WIDTH, height: GEM_BAR.HEIGHT, color: 0x64748b },
 ] as const;
 
 export class PreloadScene extends Phaser.Scene {
