@@ -164,9 +164,17 @@ export class GameScene extends Phaser.Scene {
     // corpos, dá pra ficar em pé no topo). Pouso por cima é seguro; contato
     // pelas laterais ou pelo fundo mata, como nos obstáculos verticais.
     this.physics.add.collider(this.player, this.bars, (_p, b) => {
-      const body = this.player.body as Phaser.Physics.Arcade.Body;
-      const safeLanding = body.touching.down && !body.touching.up && !body.touching.right;
-      if (!safeLanding) this.gameOver(b as Collectible);
+      const pb = this.player.body as Phaser.Physics.Arcade.Body;
+      const bb = (b as Collectible).body as Phaser.Physics.Arcade.Body;
+      // Pouso EM CIMA = seguro (plataforma). Checagem GEOMÉTRICA pela posição
+      // do frame ANTERIOR (body.prev): o player veio de cima se seus pés
+      // estavam acima do topo da barra no frame passado. E imune a como o
+      // Arcade resolveu o eixo neste frame — numa plataforma que desliza para a
+      // esquerda, um pouso no topo as vezes era resolvido como toque lateral
+      // (touching.right falso) e matava injustamente ao cair sobre a propina
+      // (bug reportado pelo dono). Bater na lateral/fundo segue fatal (D-22).
+      const cameFromAbove = pb.prev.y + pb.height <= bb.prev.y + 6;
+      if (!cameFromAbove) this.gameOver(b as Collectible);
     });
 
     // emitter ÚNICO criado fora do loop; explode() reutiliza partículas do
