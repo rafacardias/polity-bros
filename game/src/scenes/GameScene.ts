@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Entity } from '../entities/Entity';
 import { Obstacle } from '../entities/Obstacle';
+import { Enemy } from '../entities/Enemy';
 import { Collectible } from '../entities/Collectible';
 import { getSelectedSkin, skinTextures } from '../lib/skins';
 import { InputSystem } from '../systems/InputSystem';
@@ -13,7 +14,7 @@ import { WalletSystem } from '../systems/WalletSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS, type GameEventPayload } from '../lib/game-events';
-import { ECONOMY, JUICE, SCORE, SIZES, type WorldDef } from '../config/constants';
+import { ECONOMY, ENEMY, JUICE, SCORE, SIZES, type WorldDef } from '../config/constants';
 import { WorldSystem } from '../systems/WorldSystem';
 import { GemCollectionSystem } from '../systems/GemCollectionSystem';
 import { WorldVotesSystem } from '../systems/WorldVotesSystem';
@@ -36,6 +37,8 @@ export class GameScene extends Phaser.Scene {
   private votes!: Phaser.Physics.Arcade.Group;
   private gems!: Phaser.Physics.Arcade.Group;
   private bars!: Phaser.Physics.Arcade.Group;
+  private enemies!: Phaser.Physics.Arcade.Group; // inimigos (D-25) — stomp por votos
+  private stompCombo = 0; // stomps encadeados NO AR; zera ao tocar o chão (§7-F)
   private gemText!: Phaser.GameObjects.Text;
   private gemBurst!: Phaser.GameObjects.Particles.ParticleEmitter;
   private runGems = 0;
@@ -130,11 +133,17 @@ export class GameScene extends Phaser.Scene {
       maxSize: 3, // blocos flutuantes (D-18/D-22) — plataforma-obstáculo
       runChildUpdate: true,
     });
+    this.enemies = this.physics.add.group({
+      classType: Enemy,
+      maxSize: 12, // inimigos (D-25) — pooling; update() recicla fora da tela
+      runChildUpdate: true,
+    });
     // mundo selecionado (D-16): layout FIXO via RNG semeado — a mesma fase
     // para todos os jogadores, em todas as partidas
     this.world = WorldSystem.selected();
     this.won = false;
     this.stars = 1;
+    this.stompCombo = 0;
     this.unlockedWorldName = null;
     const rng = new Phaser.Math.RandomDataGenerator([this.world.seed]);
     this.spawner = new SpawnerSystem(
@@ -143,6 +152,7 @@ export class GameScene extends Phaser.Scene {
       this.votes,
       this.gems,
       this.bars,
+      this.enemies,
       rng,
       this.world.lengthM * SCORE.PX_PER_M,
       GemCollectionSystem.collected(this.world.id),
@@ -176,6 +186,10 @@ export class GameScene extends Phaser.Scene {
       const cameFromAbove = pb.prev.y + pb.height <= bb.prev.y + 6;
       if (!cameFromAbove) this.gameOver(b as Collectible);
     });
+    // Inimigo (D-25): pisar em cima (veio de cima) = STOMP por votos; contato
+    // lateral/frontal = morte. Mesmo teste "veio de cima" à prova de plataforma
+    // em movimento (body.prev), agora aplicado a um alvo que anda para a esquerda.
+    this.physics.add.collider(this.player, this.enemies, (_p, e) => this.hitEnemy(e as Enemy));
 
     // emitter ÚNICO criado fora do loop; explode() reutiliza partículas do
     // pool interno do Phaser (RN-01 — nada de new/destroy por coleta)
@@ -351,6 +365,41 @@ export class GameScene extends Phaser.Scene {
     this.audio.gem();
     this.gemBurst.explode(14, x, y);
     this.showFloatingText(x, y - 24, 'PROPINA! 💵');
+  }
+
+  // Inimigo tocado (D-25): "veio de cima" → STOMP; senão, morte (respeitando a
+  // carência pós-revive). O teste por body.prev é imune ao eixo que o Arcade
+  // escolhe ao colidir com um corpo que anda para a esquerda.
+  private hitEnemy(enemy: Enemy): void {
+    if (this.isGameOver) return;
+    const pb = this.player.body as Phaser.Physics.Arcade.Body;
+    const eb = enemy.body as Phaser.Physics.Arcade.Body;
+    const cameFromAbove = pb.prev.y + pb.height <= eb.prev.y + 6;
+    if (cameFromAbove) {
+      this.stompEnemy(enemy);
+      return;
+    }
+    if (this.time.now < this.invulnerableUntil) return; // carência pós-revive (T07B-03)
+    this.gameOver(enemy);
+  }
+
+  // STOMP (D-25, §7-F): derrota o inimigo, quica o player e credita votos com
+  // combo simples (cada stomp encadeado NO AR soma STOMP_COMBO_BONUS; o combo
+  // zera ao tocar o chão — ver update()). Votos passam pelo contador (RN-04).
+  private stompEnemy(enemy: Enemy): void {
+    this.stompCombo += 1;
+    const reward = ENEMY.STOMP_VOTES + (this.stompCombo - 1) * ENEMY.STOMP_COMBO_BONUS;
+    this.score.addVotes(reward);
+    enemy.deactivate(); // pooling: nunca destroy (RN-01)
+    this.player.setVelocityY(ENEMY.STOMP_BOUNCE); // quica (game feel + reposiciona)
+    this.audio.vote();
+    this.voteBurst.explode(JUICE.VOTE_BURST_COUNT, enemy.x, enemy.y - ENEMY.H / 2);
+    this.votesText.setText(`🗳️ ${this.score.getSnapshot().votes}`);
+    this.showFloatingText(
+      enemy.x,
+      enemy.y - ENEMY.H,
+      this.stompCombo > 1 ? `STOMP x${this.stompCombo}! +${reward}` : `STOMP! +${reward}`,
+    );
   }
 
   // linha inteira coletada: bônus (em votos — ver SCORE.LINE_BONUS_VOTES),
@@ -620,6 +669,7 @@ export class GameScene extends Phaser.Scene {
     this.spawner.update(this.progression.distance, speed);
     this.syncWorldSpeed(speed);
     this.player.update(time, delta);
+    if (this.player.onGround) this.stompCombo = 0; // combo de stomp exige encadear NO AR
     this.updateHud();
     this.updateRecordMarker();
     this.updateFinishMarker();
@@ -646,6 +696,12 @@ export class GameScene extends Phaser.Scene {
     this.votes.children.iterate(sync);
     this.gems.children.iterate(sync);
     this.bars.children.iterate(sync);
+    // inimigos andam MAIS rápido que o scroll (aproximação) — sync com o offset
+    this.enemies.children.iterate((child) => {
+      const e = child as Phaser.Physics.Arcade.Sprite;
+      if (e.active) e.setVelocityX(-(speed + ENEMY.WALK_SPEED));
+      return true;
+    });
   }
 
   // RF-07: morte. Com saldo e continue ainda não usado, abre a oferta
@@ -861,6 +917,13 @@ export class GameScene extends Phaser.Scene {
       if (bar.active) bar.deactivate();
       return true;
     });
+    // inimigos à frente também somem (D-25): revive nunca pode ser morte injusta
+    this.enemies.children.iterate((child) => {
+      const enemy = child as Enemy;
+      if (enemy.active) enemy.deactivate();
+      return true;
+    });
+    this.stompCombo = 0;
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     body.stop();
     this.player.applySkinTint(); // desfaz o cinza da morte → cor da skin

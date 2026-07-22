@@ -34,6 +34,12 @@ export class ScoreSystem {
     this.votes += 1;
   }
 
+  // vários votos de uma vez (recompensa de stomp — D-25): passa pelo MESMO
+  // contador de votos, mantendo a fórmula validada pela Edge Function (RN-04)
+  addVotes(n: number): void {
+    this.votes += n;
+  }
+
   // linha completa de votos (T07A-03): bônus em VOTOS, não em pontos avulsos —
   // mantém a fórmula validada pela Edge Function (ver SCORE.LINE_BONUS_VOTES)
   addLineBonus(): void {

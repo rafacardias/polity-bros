@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GEM_BAR } from '../config/constants';
+import { ENEMY, GEM_BAR } from '../config/constants';
 import { SPRITE_ASSETS, SPRITESHEET_ASSETS, WORLD_BACKGROUNDS } from '../data/assets-manifest';
 
 // Placeholders visuais (RN-07): retângulos coloridos gerados em runtime.
@@ -11,6 +11,9 @@ const PLACEHOLDERS = [
   // SPRITESHEET_ASSETS), ciclo de corrida-agachada gerado do personagem em pé.
   { key: 'obstacle-high', width: 44, height: 72, color: 0xef4444 },
   { key: 'obstacle-low', width: 44, height: 160, color: 0xf97316 },
+  // inimigo (D-25): violeta p/ distinguir dos obstáculos letais (vermelho/
+  // laranja) — sinaliza "dá pra pisar em cima". Placeholder até a arte real.
+  { key: 'enemy', width: ENEMY.W, height: ENEMY.H, color: 0x7c3aed },
   { key: 'vote', width: 24, height: 24, color: 0xfacc15 },
   // bloco flutuante (D-22): plataforma-obstáculo — vermelho da família dos
   // obstáculos ("pode matar"), player sobe em cima; laterais/fundo matam

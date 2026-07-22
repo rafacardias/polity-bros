@@ -142,6 +142,20 @@ export const WORLDS = [
 ] as const;
 export type WorldDef = (typeof WORLDS)[number];
 
+// Inimigos (D-25, milestone Inimigos & Terreno): personagem que ANDA na direção
+// do player (mais rápido que o scroll → "vem pra cima"). Pisar em cima (stomp) =
+// votos com combo simples; contato lateral/frontal = morte. Substitui parte dos
+// slots de obstáculo 'high' (§7-E) — os 'low' seguem para preservar o slide.
+export const ENEMY = {
+  W: 40, // hitbox (arte real vem depois — RN-07: trocam de arte, não de tamanho)
+  H: 60,
+  WALK_SPEED: 70, // somado ao scroll do mundo = velocidade de aproximação
+  STOMP_BOUNCE: -380, // quica ao pisar (menor que o pulo normal, PHYSICS.JUMP_VELOCITY)
+  STOMP_VOTES: 3, // votos-base por stomp
+  STOMP_COMBO_BONUS: 2, // cada stomp encadeado NO AR soma +2 votos (combo — §7-F)
+  HIGH_SLOT_CHANCE: 0.6, // fração dos slots de obstáculo 'high' que viram inimigo
+} as const;
+
 // reta final limpa: os últimos metros antes da linha de chegada não têm
 // obstáculos — a vitória se CELEBRA, não se rouba no último frame
 export const FINISH_CLEAR_M = 60;

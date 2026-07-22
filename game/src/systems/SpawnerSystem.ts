@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { Obstacle } from '../entities/Obstacle';
+import { Enemy } from '../entities/Enemy';
 import { Collectible } from '../entities/Collectible';
-import { ECONOMY, FINISH_CLEAR_M, GEM_BAR, SCORE, SPAWN, SIZES } from '../config/constants';
+import { ECONOMY, ENEMY, FINISH_CLEAR_M, GEM_BAR, SCORE, SPAWN, SIZES } from '../config/constants';
 
 type Kind = 'high' | 'low'; // high = pular por cima; low/suspenso = deslizar por baixo
 
@@ -37,6 +38,7 @@ export class SpawnerSystem {
     private votes: Phaser.Physics.Arcade.Group,
     private gems: Phaser.Physics.Arcade.Group,
     private bars: Phaser.Physics.Arcade.Group,
+    private enemies: Phaser.Physics.Arcade.Group,
     private rng: Phaser.Math.RandomDataGenerator,
     private worldLengthPx: number,
     collectedGemIndices: number[],
@@ -213,6 +215,13 @@ export class SpawnerSystem {
     const { width, height } = this.scene.scale;
     const groundTop = height - SIZES.GROUND_H;
     const kind: Kind = this.rng.frac() < 0.5 ? 'high' : 'low';
+    // Slots 'high' viram INIMIGO (D-25/§7-E): o player pula por cima OU pisa em
+    // cima (stomp) por votos. 'low' segue obstáculo suspenso de deslizar por
+    // baixo — preserva o slide/agachado. rng semeado mantém o layout FIXO (D-16).
+    if (kind === 'high' && this.rng.frac() < ENEMY.HIGH_SLOT_CHANCE) {
+      this.spawnEnemy(speed);
+      return;
+    }
     const spec = kind === 'high' ? SIZES.OBSTACLE_HIGH : SIZES.OBSTACLE_LOW;
     // âncora nos pés (origin 0.5,1): y é a BASE do obstáculo
     const y = kind === 'high' ? groundTop : groundTop - SIZES.OBSTACLE_LOW.CLEARANCE;
@@ -242,6 +251,28 @@ export class SpawnerSystem {
     if (this.rng.frac() < SPAWN.EASY_VOTE_CHANCE) {
       this.spawnVoteLine(x + gap / 2, groundTop - SPAWN.VOTE_EASY_HEIGHT, speed);
     }
+  }
+
+  // Inimigo (D-25): nasce no chão à direita e ANDA para a esquerda mais rápido
+  // que o scroll (velocidade = scroll + WALK_SPEED) → aproxima-se do player.
+  // Imóvel para o stomp: o player quica em cima e o inimigo não é empurrado.
+  private spawnEnemy(speed: number): void {
+    const { width, height } = this.scene.scale;
+    const groundTop = height - SIZES.GROUND_H;
+    const x = width + ENEMY.W;
+    const enemy = this.enemies.get(x, groundTop) as Enemy | null;
+    if (!enemy) return; // pool exausto — não criar além do maxSize (RN-01)
+    enemy.setTexture('enemy');
+    enemy.setOrigin(0.5, 1);
+    enemy.reset(x, groundTop);
+    const body = enemy.body as Phaser.Physics.Arcade.Body;
+    body.setSize(ENEMY.W, ENEMY.H, false);
+    body.setOffset(0, 0);
+    body.setAllowGravity(false);
+    body.immovable = true; // plataforma de stomp: player quica, inimigo não cede
+    body.friction.set(0, 0);
+    enemy.setVelocityX(-(speed + ENEMY.WALK_SPEED));
+    enemy.setData('kind', 'enemy'); // telemetria: mapeado como obstacle-high por ora
   }
 
   // barIndex: votos que vivem sob um bloco flutuante (D-17) — a perda deles
