@@ -1,8 +1,9 @@
 # Spec — Inimigos & Terreno (Milestone)
 
-> **Status:** RASCUNHO para aprovação do dono. Nada é implementado até as
-> **Decisões em Aberto (§7)** serem travadas. Esta spec ABRE o milestone e
-> registra a mudança de paradigma; a IA implementa a partir dela, não inventa.
+> **Status:** ✅ APROVADA — §7 travado nas recomendadas (dono, 2026-07-22).
+> ADRs D-25/D-26 formalizados em `docs/DECISIONS.md`. Implementação em
+> incrementos jogáveis, começando pela tarefa 1 (terreno). Esta spec é a fonte
+> da verdade do milestone; a IA implementa a partir dela, não inventa.
 >
 > **Origem:** brainstorm do dono (2026-07-22) inspirado no Super Mario Run.
 > **Fundação já pronta:** o sistema "skin = personagem animado" (idle/corrida/
@@ -86,8 +87,8 @@ Este milestone acerta vários gatilhos do filtro do `CLAUDE.md` de uma vez:
 - **RN-IT2:** toda ameaça é telegrafada (janela mínima de leitura antes do impacto).
 - **RN-IT3:** nada já testado/validado (skins, intro, HUD, física) pode regredir.
 
-## 7. ⚠️ DECISÕES EM ABERTO (preciso de você antes de implementar)
-São as escolhas de design que mudam o que eu construo. Minha recomendação em **negrito**.
+## 7. ✅ DECISÕES TRAVADAS (dono, 2026-07-22 — aceitou as recomendadas)
+Todas as recomendações abaixo (**negrito**) foram aceitas. Ficam LOCKED.
 
 - **A) Terreno que "não mata" num auto-runner:** o player fica em X fixo e o
   mundo vem pra ele. Se ele NÃO vencer um degrau alto, o que acontece?

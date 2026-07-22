@@ -14,7 +14,7 @@
 | D-03 | Gênero MVP: endless runner auto-run (1 mão, vertical) | ✅ Ativa |
 | D-04 | Colecionável = "votos" (tema político do jogo) | ✅ Ativa |
 | D-05 | Integração React ↔ Phaser via container DIV + CustomEvents (NUNCA iframe) | ✅ Ativa |
-| D-06 | Escopo MVP = vertical slice; ideias extras vão para Visão Futura | ✅ Ativa |
+| D-06 | Escopo MVP = vertical slice; ideias extras vão para Visão Futura | ✅ Ativa (Enemy → D-25) |
 | D-07 | MenuScreen vive no React Shell, não como Scene Phaser | ✅ Ativa |
 | D-08 | Escrita de score só via Edge Function (service role) | ✅ Ativa |
 | D-09 | Fase 7 = "Loop de Compulsão" (game feel → meta-progressão → identidade/social → robustez) | ✅ Ativa |
@@ -30,9 +30,11 @@
 | D-19 | 1 skin desbloqueável POR MUNDO (votos acumulados no mundo); galeria com cinza "offline" | ✅ Ativa |
 | D-20 | Menu vira hub: botões cidades/skins/continue(gemas); supersede parcial D-14 (cidade = mundo, não transição) | ✅ Ativa |
 | D-21 | Gema renomeada para **PROPINA** (nota verde com $); ids de código continuam `gem` | ✅ Ativa |
-| D-22 | Bloco flutuante vira plataforma-obstáculo: subir em cima = ok; laterais/fundo = morte | ✅ Ativa |
+| D-22 | Bloco flutuante vira plataforma-obstáculo: subir em cima = ok; laterais/fundo = morte | ⤳ superseded D-26 |
 | D-23 | Marcador de recorde = "fantasma" da skin do player com 10% de opacidade | ✅ Ativa |
 | D-24 | Menu hub v2: Jogar fixo embaixo (sempre clicável); Fases/Ranking/Skins/Continue acima; tremidinha no Continue com ≥3 propinas | ✅ Ativa |
+| D-25 | Inimigos entram como mecânica central (stomp = votos); evolui D-06 | ✅ Ativa |
+| D-26 | Geometria estática NÃO mata; letalidade só nos inimigos (supersede D-22) | ✅ Ativa |
 
 ---
 
@@ -156,6 +158,17 @@
 **Contexto:** dono enviou mockup do menu (2026-07-10).
 **Decisão:** botão **Jogar** fixo no canto inferior, **pressionável a qualquer momento** (RN-03 vale no menu). Acima dele, nesta ordem: **Fases · Ranking · Skins · Continue**. O botão Continue mostra ícone de propina + contagem e, quando o jogador tem **≥3 propinas**, ganha animação de "tremidinha" a cada 1s (chamado pro uso da moeda).
 **Consequência:** T07C-05 implementa este layout; a loja futura (Fase 9, desabilitada) vive dentro de Continue.
+
+## D-25 — Inimigos como mecânica central (evolui D-06)
+**Contexto:** o MVP jogável (Fase 4) provou o núcleo. Brainstorm do dono (2026-07-22, ref. Super Mario Run) pede ameaças **animadas que andam na direção do player** e podem ser **"pisadas" (stomp)** por votos. D-06 listava `Enemy` como fora do MVP.
+**Decisão:** `Enemy` vira entidade central (pooled, animada) que se aproxima do player. **Stomp** (pouso no topo) derrota o inimigo, quica o player e concede **votos** (com combo simples); contato **lateral/frontal = fim de jogo**. Tema: repórteres/CPI/fake news que o político evita (1–2 tipos no 1º corte). Toda ameaça é **telegrafada** (morte justa). Detalhado em `specs/inimigos-terreno.md` — §7 travado nas recomendadas (dono, 2026-07-22).
+**Consequência:** reabre o slot `Enemy` (antes backlog); reaproveita o padrão topo-seguro do D-22 e a fundação de personagem animado das skins (Fase 4). Nova fonte de pontuação (stomp = votos).
+
+## D-26 — Geometria estática não mata; letalidade só nos inimigos (supersede D-22)
+**Supersede:** D-22.
+**Contexto:** no D-22 o bloco flutuante matava pelas laterais/fundo. O dono quer que **nada estático mate** — degraus/plataformas só barram ou permitem subir; a ameaça vem **só dos inimigos** (D-25).
+**Decisão:** geometria estática (degraus, plataformas, ex-blocos) é **não-letal** — o player sobe ou é barrado, nunca morre por encostar. O terreno ganha **degraus**: pequenos com auto-step, altos exigem pulo; degrau que não vencer faz **auto-climb suave** (sem punição). Os obstáculos letais atuais (altos/baixos) são **substituídos** por degraus/inimigos. **Sem buracos** que matam no 1º corte.
+**Consequência:** remove a causa de morte `block` (D-22); simplifica o contrato de justiça (só inimigo mata). Rework de colisão no núcleo — cada passo re-testado no **Gate de Diversão** no celular (RN-IT3: nada validado pode regredir).
 
 ---
 
