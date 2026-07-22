@@ -3,14 +3,39 @@ import {
   SKINS,
   WORLDS,
   WorldSystem,
-  buySkin,
   gemBalance,
   getSelectedSkin,
   isSkinUnlocked,
   selectSkin,
-  skinProgress,
 } from 'game';
 import type { SkinDef } from 'game';
+
+// Miniatura da skin no menu (Fase 4): skin = PERSONAGEM, então mostramos o
+// sprite idle real (servido em /assets/sprites/<char>.png — o web/public/assets
+// é symlink pro game/public/assets). Skins "em breve" (sem char) viram um
+// cadeado. image-rendering pixelated mantém o pixel-art nítido no upscale.
+function SkinThumb({ skin, big }: { skin: SkinDef; big?: boolean }) {
+  const box = big ? 'h-24 w-16' : 'h-12 w-9';
+  if (!skin.char) {
+    return (
+      <span
+        className={`flex ${box} items-center justify-center rounded-lg bg-slate-700 text-slate-500`}
+      >
+        {big ? '🔒' : '🔒'}
+      </span>
+    );
+  }
+  return (
+    <span className={`flex ${box} items-end justify-center`}>
+      <img
+        src={`/assets/sprites/${skin.char}.png`}
+        alt={skin.label}
+        className="max-h-full w-auto"
+        style={{ imageRendering: 'pixelated' }}
+      />
+    </span>
+  );
+}
 
 interface MenuScreenProps {
   onPlay: () => void;
@@ -42,12 +67,8 @@ export function MenuScreen({ onPlay, onRanking }: MenuScreenProps) {
   };
 
   const handleSkinTap = (skin: SkinDef): void => {
-    setZoomedSkin(skin.id); // amplia SEMPRE (bloqueada inclusive — D-19)
-    if (isSkinUnlocked(skin)) {
-      selectSkin(skin.id);
-    } else if (skin.unlock.type === 'gems' && buySkin(skin.id)) {
-      selectSkin(skin.id); // comprou → já equipa
-    }
+    setZoomedSkin(skin.id); // amplia SEMPRE (inclusive "em breve" — D-19)
+    if (isSkinUnlocked(skin)) selectSkin(skin.id); // locked não equipa
     refresh();
   };
 
@@ -119,32 +140,31 @@ export function MenuScreen({ onPlay, onRanking }: MenuScreenProps) {
 
         {panel === 'skins' && (
           <div className="rounded-xl border border-slate-700 bg-slate-800 p-3">
-            {/* galeria (D-19): tocada amplia com nome; bloqueadas em tons de
-                cinza "offline" — sem cadeado */}
+            {/* galeria de PERSONAGENS (Fase 4): tocar amplia com nome+lado;
+                "em breve" (Juiz/1ª Dama) aparece com cadeado, sem equipar */}
             {zoomedSkin &&
               (() => {
                 const skin = SKINS.find((s) => s.id === zoomedSkin);
                 if (!skin) return null;
                 const unlocked = isSkinUnlocked(skin);
-                const progress = Math.round(skinProgress(skin) * 100);
                 return (
                   <div className="mb-3 flex flex-col items-center gap-1">
-                    <span
-                      className={`h-24 w-16 rounded-lg ${unlocked ? '' : 'opacity-40 grayscale'}`}
-                      style={{ backgroundColor: skin.css }}
-                    />
-                    <span className="text-sm font-semibold">{skin.label}</span>
+                    <SkinThumb skin={skin} big />
+                    <span className="text-sm font-semibold">
+                      {skin.label}
+                      {skin.side ? <span className="text-slate-400"> · {skin.side}</span> : null}
+                    </span>
                     <span className="text-xs text-slate-400">
                       {unlocked
                         ? skin.id === selectedSkin.id
                           ? 'equipada'
                           : 'toque de novo para equipar'
-                        : `${skin.requirement} · ${progress}%`}
+                        : 'em breve'}
                     </span>
                   </div>
                 );
               })()}
-            <div className="flex justify-between gap-2">
+            <div className="flex justify-between gap-1">
               {SKINS.map((skin) => {
                 const unlocked = isSkinUnlocked(skin);
                 const selected = skin.id === selectedSkin.id;
@@ -153,15 +173,14 @@ export function MenuScreen({ onPlay, onRanking }: MenuScreenProps) {
                     key={skin.id}
                     type="button"
                     onClick={() => handleSkinTap(skin)}
-                    aria-label={`Skin ${skin.label} — ${unlocked ? 'disponível' : skin.requirement}`}
-                    className={`flex flex-1 flex-col items-center gap-1 rounded-lg p-2 transition active:scale-95 ${
+                    aria-label={`Skin ${skin.label}${skin.side ? ' ' + skin.side : ''} — ${
+                      unlocked ? 'disponível' : 'em breve'
+                    }`}
+                    className={`flex flex-1 flex-col items-center gap-1 rounded-lg p-1.5 transition active:scale-95 ${
                       selected ? 'bg-slate-700 ring-2 ring-green-400' : 'hover:bg-slate-700/60'
                     }`}
                   >
-                    <span
-                      className={`h-10 w-7 rounded ${unlocked ? '' : 'opacity-40 grayscale'}`}
-                      style={{ backgroundColor: skin.css }}
-                    />
+                    <SkinThumb skin={skin} />
                     <span className="text-[10px] leading-tight text-slate-400">{skin.label}</span>
                   </button>
                 );

@@ -12,11 +12,10 @@ export type { GameEventPayload } from './lib/game-events';
 export {
   SKINS,
   isSkinUnlocked,
-  buySkin,
   getSelectedSkin,
   selectSkin,
   gemBalance,
-  skinProgress,
+  skinTextures,
 } from './lib/skins';
 export type { SkinDef } from './lib/skins';
 // Mundos (T07C-01, D-16): catálogo + seleção/desbloqueio para o menu React

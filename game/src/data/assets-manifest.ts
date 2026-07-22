@@ -22,17 +22,26 @@ export interface SpriteSheetAsset {
 
 // Sprites de arquivo. Os demais keys (obstacle-*, vote, gem, ground)
 // seguem gerados em runtime até receberem arte final.
+// Frames estáticos (idle/pulo/queda) — um por PERSONAGEM de skin (D-11/Fase 4:
+// skin = personagem, não mais cor). O prefixo do key casa com SkinDef.char.
 export const SPRITE_ASSETS: readonly SpriteAsset[] = [
-  { key: 'player', path: 'assets/sprites/player.png' }, // frame estático (pulo/queda)
+  { key: 'player', path: 'assets/sprites/player.png' }, // Candidato (neutro, default)
+  { key: 'bolsonaro', path: 'assets/sprites/bolsonaro.png' }, // skin Direita
+  { key: 'lula', path: 'assets/sprites/lula.png' }, // skin Esquerda
 ] as const;
 
-// Sheets animados. player-run = ciclo de corrida (4 frames 61×74); player-slide
-// = ciclo de corrida-agachada (4 frames 60×48, bem mais baixo que os 72px em pé
-// → lê como "duck"). Todos alinhados pelos pés na origem (0.5,1); mesmo tamanho
-// por frame evita "tremor".
+// Sheets animados por personagem: '<char>-run' (ciclo de corrida) e
+// '<char>-slide' (corrida-agachada, bem mais baixo → lê como "duck"). Todos
+// alinhados pelos pés na origem (0.5,1); mesmo tamanho por frame evita "tremor".
+// Larguras variam por build do personagem (Lula mais encorpado etc.) — cada
+// sheet declara seu frameWidth; a hitbox segue fixa em SIZES.PLAYER (RN-07).
 export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
   { key: 'player-run', path: 'assets/sprites/player-run.png', frameWidth: 61, frameHeight: 74 },
   { key: 'player-slide', path: 'assets/sprites/player-slide.png', frameWidth: 60, frameHeight: 48 },
+  { key: 'bolsonaro-run', path: 'assets/sprites/bolsonaro-run.png', frameWidth: 48, frameHeight: 72 },
+  { key: 'bolsonaro-slide', path: 'assets/sprites/bolsonaro-slide.png', frameWidth: 41, frameHeight: 48 },
+  { key: 'lula-run', path: 'assets/sprites/lula-run.png', frameWidth: 52, frameHeight: 72 },
+  { key: 'lula-slide', path: 'assets/sprites/lula-slide.png', frameWidth: 48, frameHeight: 48 },
 ] as const;
 
 // Fundos de parallax POR MUNDO (D-16): id do mundo → skyline. Mundos ausentes

@@ -1,21 +1,30 @@
 import Phaser from 'phaser';
 import { Entity } from './Entity';
 import { JUICE, PHYSICS, SIZES } from '../config/constants';
-import { getSelectedSkin } from '../lib/skins';
+import { getSelectedSkin, skinTextures } from '../lib/skins';
 
 // Auto-run (RF-04, D-03): o avanço é do CENÁRIO (world-scroll) — o Player
 // fica em X fixo na tela e só controla o eixo vertical (pulo/slide).
 // Âncora nos pés (origin 0.5, 1): trocar a hitbox no slide mantém os pés
 // no chão sem matemática de offset.
 export class Player extends Entity {
-  private static readonly RUN_ANIM = 'player-run';
-  private static readonly SLIDE_ANIM = 'player-slide';
+  // Keys de textura/animação do PERSONAGEM da skin selecionada (Fase 4).
+  // Derivados de skinTextures(): idle = '<char>', corrida = '<char>-run',
+  // agachado = '<char>-slide'. A skin é lida UMA vez na construção (a troca
+  // acontece no menu, antes da partida).
+  private readonly idleKey: string;
+  private readonly runKey: string;
+  private readonly slideKey: string;
   private sliding = false;
   private wasOnGround = true;
   private juiceTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'player'); // frame estático (usado em pulo/queda)
+    const tex = skinTextures(getSelectedSkin());
+    super(scene, x, y, tex.idle); // frame estático do personagem (pulo/queda)
+    this.idleKey = tex.idle;
+    this.runKey = tex.run;
+    this.slideKey = tex.slide;
     this.setOrigin(0.5, 1);
     // gravidade vem do GAME_CONFIG (arcade.gravity.y) — não duplicar aqui
     this.setCollideWorldBounds(true);
@@ -29,10 +38,10 @@ export class Player extends Entity {
   // anims manager da cena — guard evita recriar em restart. Só é montada aqui;
   // o disparo/parada fica no state machine visual do update().
   private createRunAnimation(): void {
-    if (this.scene.anims.exists(Player.RUN_ANIM)) return;
+    if (this.scene.anims.exists(this.runKey)) return;
     this.scene.anims.create({
-      key: Player.RUN_ANIM,
-      frames: this.scene.anims.generateFrameNumbers('player-run', { start: 0, end: 3 }),
+      key: this.runKey,
+      frames: this.scene.anims.generateFrameNumbers(this.runKey, { start: 0, end: 3 }),
       frameRate: 12,
       repeat: -1,
     });
@@ -43,10 +52,10 @@ export class Player extends Entity {
   // correr" — feedback do dono); agora as pernas seguem em ciclo enquanto
   // desliza. frameRate um pouco mais alto dá a sensação de arrancada baixa.
   private createSlideAnimation(): void {
-    if (this.scene.anims.exists(Player.SLIDE_ANIM)) return;
+    if (this.scene.anims.exists(this.slideKey)) return;
     this.scene.anims.create({
-      key: Player.SLIDE_ANIM,
-      frames: this.scene.anims.generateFrameNumbers('player-slide', { start: 0, end: 3 }),
+      key: this.slideKey,
+      frames: this.scene.anims.generateFrameNumbers(this.slideKey, { start: 0, end: 3 }),
       frameRate: 14,
       repeat: -1,
     });
@@ -78,13 +87,11 @@ export class Player extends Entity {
   // tint da skin — também usado pelo revive (T07B-03), que precisa desfazer
   // o cinza da morte voltando ao visual da skin. Skin default = personagem na
   // cor natural do sprite (clearTint); skins desbloqueáveis = tint por cima.
+  // Skins agora são PERSONAGENS de arte própria (não mais tint de cor), então
+  // o visual normal é sempre a textura limpa. Mantido porque o revive (T07B-03)
+  // chama isto para DESFAZER o cinza da morte, voltando à arte do personagem.
   applySkinTint(): void {
-    const skin = getSelectedSkin();
-    if (skin.unlock.type === 'default') {
-      this.clearTint();
-    } else {
-      this.setTint(skin.color);
-    }
+    this.clearTint();
   }
 
   get isSliding(): boolean {
@@ -170,24 +177,25 @@ export class Player extends Entity {
       this.juiceTween?.stop();
       this.setScale(1, 1);
       // toca o ciclo agachado (troca o sheet do run pelo do slide). play() já
-      // aplica o frame 0, então this.width/height passam a ser 60×48 antes de
-      // travar a hitbox — sem isto a caixa herdaria o tamanho do sheet de corrida
-      this.anims.play(Player.SLIDE_ANIM, true);
+      // aplica o frame 0, então this.width/height passam ao tamanho do frame
+      // agachado antes de travar a hitbox — sem isto a caixa herdaria o tamanho
+      // do sheet de corrida
+      this.anims.play(this.slideKey, true);
       this.lockSlideHitbox(); // hitbox 44×32 centrada na arte agachada, ancorada nos pés
       if (!body.blocked.down) this.setVelocityY(PHYSICS.FAST_FALL); // desce rápido no ar
     } else {
       // volta ao estado em pé; o update() escolhe correr (chão) ou congelar (ar)
       this.anims.stop();
-      this.setTexture('player');
-      this.lockStandingHitbox(); // sprite real 57×72 → hitbox 44×64 recentrada
+      this.setTexture(this.idleKey);
+      this.lockStandingHitbox(); // arte em pé do personagem → hitbox 44×64 recentrada
     }
   }
 
   // Estado visual em CHÃO: toca o ciclo de corrida animado. Frames uniformes
   // (61×74) → a hitbox em pé (44×64) fica estável, trava só ao (re)entrar.
   private enterRun(): void {
-    if (this.anims.currentAnim?.key === Player.RUN_ANIM && this.anims.isPlaying) return;
-    this.anims.play(Player.RUN_ANIM, true);
+    if (this.anims.currentAnim?.key === this.runKey && this.anims.isPlaying) return;
+    this.anims.play(this.runKey, true);
     this.lockStandingHitbox();
   }
 
@@ -195,8 +203,8 @@ export class Player extends Entity {
   // ciclo de pernas correndo no meio do salto.
   private enterAir(): void {
     if (this.anims.isPlaying) this.anims.stop();
-    if (this.texture.key !== 'player') {
-      this.setTexture('player');
+    if (this.texture.key !== this.idleKey) {
+      this.setTexture(this.idleKey);
       this.lockStandingHitbox();
     }
   }

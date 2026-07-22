@@ -3,7 +3,7 @@ import { Player } from '../entities/Player';
 import { Entity } from '../entities/Entity';
 import { Obstacle } from '../entities/Obstacle';
 import { Collectible } from '../entities/Collectible';
-import { getSelectedSkin } from '../lib/skins';
+import { getSelectedSkin, skinTextures } from '../lib/skins';
 import { InputSystem } from '../systems/InputSystem';
 import { SpawnerSystem } from '../systems/SpawnerSystem';
 import { ScoreSystem } from '../systems/ScoreSystem';
@@ -366,9 +366,8 @@ export class GameScene extends Phaser.Scene {
   private createRecordMarker(): void {
     const groundTop = this.scale.height - SIZES.GROUND_H;
     this.recordGhost = this.add
-      .image(0, groundTop, 'player')
+      .image(0, groundTop, skinTextures(getSelectedSkin()).idle)
       .setOrigin(0.5, 1)
-      .setTint(getSelectedSkin().color)
       .setAlpha(JUICE.RECORD_GHOST_ALPHA)
       .setDepth(4)
       .setVisible(false);
