@@ -42,6 +42,11 @@ export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
   { key: 'bolsonaro-slide', path: 'assets/sprites/bolsonaro-slide.png', frameWidth: 44, frameHeight: 48 },
   { key: 'lula-run', path: 'assets/sprites/lula-run.png', frameWidth: 52, frameHeight: 72 },
   { key: 'lula-slide', path: 'assets/sprites/lula-slide.png', frameWidth: 47, frameHeight: 48 },
+  // Inimigo (D-25): repórter satírico com microfone — ciclo de caminhada de 4
+  // frames. Anda na direção do player (perfil virado à ESQUERDA). A hitbox
+  // segue fixa em ENEMY (RN-07: arte ≠ tamanho); frame 49×68 excede os 40×60
+  // da caixa e é recentrado nos pés no SpawnerSystem.
+  { key: 'enemy-walk', path: 'assets/sprites/enemy-walk.png', frameWidth: 49, frameHeight: 68 },
 ] as const;
 
 // Fundos de parallax POR MUNDO (D-16): id do mundo → skyline. Mundos ausentes

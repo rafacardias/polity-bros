@@ -262,12 +262,14 @@ export class SpawnerSystem {
     const x = width + ENEMY.W;
     const enemy = this.enemies.get(x, groundTop) as Enemy | null;
     if (!enemy) return; // pool exausto — não criar além do maxSize (RN-01)
-    enemy.setTexture('enemy');
     enemy.setOrigin(0.5, 1);
     enemy.reset(x, groundTop);
+    enemy.playWalk(); // aplica o sheet do repórter + ciclo de caminhada (frame 0 fixa this.width/height)
     const body = enemy.body as Phaser.Physics.Arcade.Body;
     body.setSize(ENEMY.W, ENEMY.H, false);
-    body.setOffset(0, 0);
+    // hitbox 40×60 centrada na arte (49×68) e ancorada nos pés — arte ≠ hitbox
+    // (RN-07): cabeça/microfone podem exceder a caixa sem afetar o fairness
+    body.setOffset(Math.round((enemy.width - ENEMY.W) / 2), enemy.height - ENEMY.H);
     body.setAllowGravity(false);
     body.immovable = true; // plataforma de stomp: player quica, inimigo não cede
     body.friction.set(0, 0);

@@ -11,6 +11,13 @@ interface GameShellProps {
 export function GameShell({ onExit }: GameShellProps) {
   useEffect(() => {
     const game = createGame('game-container');
+    // handle de teste E2E só fora de produção: deixa o Playwright inspecionar a
+    // cena viva via window.__game (score, grupos de entidades, colisões). Usa
+    // MODE, não DEV/PROD — nesta stack só MODE strippa de fato (ver main.tsx:16),
+    // então em produção este bloco vira dead-code e some do bundle.
+    if (import.meta.env.MODE !== 'production') {
+      (window as unknown as { __game: typeof game }).__game = game;
+    }
     // instância destruída não pode anunciar menu:play (StrictMode remonta em dev);
     // flag local em vez de events.off, que removeria listeners INTERNOS do boot
     let disposed = false;

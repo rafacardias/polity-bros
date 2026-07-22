@@ -118,15 +118,18 @@ Todas as recomendações abaixo (**negrito**) foram aceitas. Ficam LOCKED.
   incrementos jogáveis (terreno → 1 inimigo → stomp → 2º inimigo → tuning).
 
 ## 9. Esboço de tarefas (após travar o §7)
-Sequência incremental, cada passo jogável e commit atômico + E2E:
-1. **Terreno em degraus** (SpawnerSystem gera plataformas; auto-step; sem letalidade).
-2. **Converter/retirar obstáculos letais** (D-26) — geometria estática deixa de matar.
-3. **Entidade `Enemy`** (pooled) + animação de caminhada + aproximação do player.
-4. **Colisão stomp** (topo = derrota + quica + votos; lateral = §7-B).
-5. **Arte do 1º inimigo** (repórter) via pipeline das skins.
-6. **2º inimigo** (câmera/CPI) + variedade de spawn.
-7. **Balanceamento + Gate de Diversão** no celular real (dono aprova).
-8. **ADRs D-25/D-26** formalizados em `docs/DECISIONS.md`.
+Sequência incremental, cada passo jogável e commit atômico + E2E.
+> **Ordem ajustada (dono):** começamos pela MECÂNICA e ARTE do inimigo (3→4→5)
+> em vez do terreno, para provar o "vem pra cima + stomp" e trocar o placeholder
+> por arte real cedo. Terreno (1→2) vem depois.
+1. **Terreno em degraus** (SpawnerSystem gera plataformas; auto-step; sem letalidade). ⏳
+2. **Converter/retirar obstáculos letais** (D-26) — geometria estática deixa de matar. ⏳
+3. **Entidade `Enemy`** (pooled) + animação de caminhada + aproximação do player. ✅
+4. **Colisão stomp** (topo = derrota + quica + votos; lateral = §7-B). ✅ (dono aprovou o feel no celular)
+5. **Arte do 1º inimigo** (repórter) via pipeline das skins. ✅ (sheet `enemy-walk` 4 frames, 49×68)
+6. **2º inimigo** (câmera/CPI) + variedade de spawn. ⏳
+7. **Balanceamento + Gate de Diversão** no celular real (dono aprova). ⏳
+8. **ADRs D-25/D-26** formalizados em `docs/DECISIONS.md`. ✅
 
 ---
 
