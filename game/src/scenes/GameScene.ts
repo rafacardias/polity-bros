@@ -238,8 +238,10 @@ export class GameScene extends Phaser.Scene {
       .text(width / 2, 10, 'SCORE 0', { ...style, fontSize: '20px' })
       .setOrigin(0.5, 0)
       .setDepth(10);
+    // votos por ÍCONE (ponto 6/HUD, ref. Mario Run): 🗳️ + número no lugar da
+    // palavra "VOTOS" — linguagem universal, menos "cara de app" (par do 💵)
     this.votesText = this.add
-      .text(width - 12, 10, 'VOTOS 0', { ...style, color: '#facc15' })
+      .text(width - 12, 10, '🗳️ 0', { ...style, color: '#facc15' })
       .setOrigin(1, 0)
       .setDepth(10);
     // carteira de propinas (T07B-02, D-21): saldo TOTAL do aparelho
@@ -320,7 +322,7 @@ export class GameScene extends Phaser.Scene {
     this.audio.vote();
     this.voteBurst.explode(JUICE.VOTE_BURST_COUNT, x, y); // T07A-02
     if (lineComplete) this.celebrateLine(x, y); // momento "uau" (T07A-03)
-    this.votesText.setText(`VOTOS ${this.score.getSnapshot().votes}`);
+    this.votesText.setText(`🗳️ ${this.score.getSnapshot().votes}`);
   }
 
   // propina (T07B-02, D-11, D-21): vai DIRETO pra carteira persistente —
