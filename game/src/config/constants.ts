@@ -156,6 +156,20 @@ export const ENEMY = {
   HIGH_SLOT_CHANCE: 0.6, // fração dos slots de obstáculo 'high' que viram inimigo
 } as const;
 
+// 2º inimigo (D-25): CÂMERA de imprensa VOADORA — ameaça "lá no alto" que o
+// player DESLIZA por baixo (dá uso defensivo ao agachar). Ocupa parte dos slots
+// de obstáculo 'low' (§9-6). Não stompável: qualquer contato mata (o dodge é
+// geométrico — a hitbox agachada passa por baixo). Aproxima na mesma velocidade
+// do repórter (reusa ENEMY.WALK_SPEED no spawn/sync).
+export const CAMERA = {
+  W: 44, // hitbox (arte pode exceder — RN-07)
+  H: 40,
+  // base da hitbox acima do chão — MESMO valor do obstacle-low (slide-under já
+  // calibrado): a hitbox agachada (32px) passa por baixo, a em pé (64px) bate.
+  CLEARANCE: 44,
+  LOW_SLOT_CHANCE: 0.5, // fração dos slots 'low' que viram câmera (resto = obstacle-low)
+} as const;
+
 // reta final limpa: os últimos metros antes da linha de chegada não têm
 // obstáculos — a vitória se CELEBRA, não se rouba no último frame
 export const FINISH_CLEAR_M = 60;

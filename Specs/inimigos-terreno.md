@@ -127,7 +127,8 @@ Sequência incremental, cada passo jogável e commit atômico + E2E.
 3. **Entidade `Enemy`** (pooled) + animação de caminhada + aproximação do player. ✅
 4. **Colisão stomp** (topo = derrota + quica + votos; lateral = §7-B). ✅ (dono aprovou o feel no celular)
 5. **Arte do 1º inimigo** (repórter) via pipeline das skins. ✅ (sheet `enemy-walk` 4 frames, 49×68)
-6. **2º inimigo** (câmera/CPI) + variedade de spawn. ⏳
+6. **2º inimigo** (câmera de imprensa voadora) — ameaça no alto, desliza por
+   baixo (não stompável); ocupa 50% dos slots 'low'. ✅ (sheet `enemy-fly` 71×58)
 7. **Balanceamento + Gate de Diversão** no celular real (dono aprova). ⏳
 8. **ADRs D-25/D-26** formalizados em `docs/DECISIONS.md`. ✅
 

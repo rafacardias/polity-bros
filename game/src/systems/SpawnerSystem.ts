@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { Obstacle } from '../entities/Obstacle';
 import { Enemy } from '../entities/Enemy';
 import { Collectible } from '../entities/Collectible';
-import { ECONOMY, ENEMY, FINISH_CLEAR_M, GEM_BAR, SCORE, SPAWN, SIZES } from '../config/constants';
+import { CAMERA, ECONOMY, ENEMY, FINISH_CLEAR_M, GEM_BAR, SCORE, SPAWN, SIZES } from '../config/constants';
 
 type Kind = 'high' | 'low'; // high = pular por cima; low/suspenso = deslizar por baixo
 
@@ -222,6 +222,13 @@ export class SpawnerSystem {
       this.spawnEnemy(speed);
       return;
     }
+    // Slots 'low' viram CÂMERA VOADORA (D-25/§9-6): ameaça no alto que se
+    // desliza por baixo — animada e vindo na direção do player, no lugar do
+    // obstáculo suspenso estático. rng semeado mantém o layout FIXO (D-16).
+    if (kind === 'low' && this.rng.frac() < CAMERA.LOW_SLOT_CHANCE) {
+      this.spawnFlyer(speed);
+      return;
+    }
     const spec = kind === 'high' ? SIZES.OBSTACLE_HIGH : SIZES.OBSTACLE_LOW;
     // âncora nos pés (origin 0.5,1): y é a BASE do obstáculo
     const y = kind === 'high' ? groundTop : groundTop - SIZES.OBSTACLE_LOW.CLEARANCE;
@@ -282,6 +289,31 @@ export class SpawnerSystem {
     body.setAllowGravity(false); // fica no chão sem cair; só desliza no eixo X
     enemy.setVelocityX(-(speed + ENEMY.WALK_SPEED));
     enemy.setData('kind', 'enemy'); // telemetria: mapeado como obstacle-high por ora
+  }
+
+  // Câmera de imprensa VOADORA (D-25/§9-6): reusa o pool de inimigos, mas voa no
+  // ALTO (base da hitbox a CAMERA.CLEARANCE do chão, igual ao obstacle-low) e é
+  // marcada 'camera' → hitEnemy trata como ameaça pura (contato = morte; o dodge
+  // é deslizar por baixo). Também OVERLAP (não empurra o player).
+  private spawnFlyer(speed: number): void {
+    const { width, height } = this.scene.scale;
+    const groundTop = height - SIZES.GROUND_H;
+    const baseY = groundTop - CAMERA.CLEARANCE; // base da hitbox = topo do vão de passagem
+    const x = width + CAMERA.W;
+    const enemy = this.enemies.get(x, baseY) as Enemy | null;
+    if (!enemy) return; // pool exausto — não criar além do maxSize (RN-01)
+    enemy.setOrigin(0.5, 1);
+    enemy.setFlipX(false); // arte já com a lente à ESQUERDA (direção do movimento)
+    enemy.reset(x, baseY);
+    enemy.playFly(); // sheet da câmera + hover (frame 0 fixa this.width/height)
+    const body = enemy.body as Phaser.Physics.Arcade.Body;
+    body.setSize(CAMERA.W, CAMERA.H, false);
+    // hitbox 44×40 no CORPO da câmera (base da arte), centrada na largura —
+    // rotores/lente excedem a caixa sem afetar o fairness (RN-07)
+    body.setOffset(Math.round((enemy.width - CAMERA.W) / 2), enemy.height - CAMERA.H);
+    body.setAllowGravity(false); // voa: fica na altura fixa, só desliza no eixo X
+    enemy.setVelocityX(-(speed + ENEMY.WALK_SPEED));
+    enemy.setData('kind', 'camera'); // hitEnemy: câmera = morte no contato (não stompável)
   }
 
   // barIndex: votos que vivem sob um bloco flutuante (D-17) — a perda deles

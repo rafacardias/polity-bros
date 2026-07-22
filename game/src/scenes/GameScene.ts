@@ -374,6 +374,14 @@ export class GameScene extends Phaser.Scene {
   // escolhe ao colidir com um corpo que anda para a esquerda.
   private hitEnemy(enemy: Enemy): void {
     if (this.isGameOver) return;
+    // Câmera voadora (D-25): ameaça PURA — não stompável. Qualquer contato mata;
+    // o dodge é deslizar por baixo (geométrico: a hitbox agachada passa por baixo
+    // e nem chega a chamar hitEnemy). Se encostou, não desviou.
+    if (enemy.getData('kind') === 'camera') {
+      if (this.time.now < this.invulnerableUntil) return; // carência pós-revive
+      this.gameOver(enemy);
+      return;
+    }
     const pb = this.player.body as Phaser.Physics.Arcade.Body;
     const eb = enemy.body as Phaser.Physics.Arcade.Body;
     const cameFromAbove = pb.prev.y + pb.height <= eb.prev.y + 6;

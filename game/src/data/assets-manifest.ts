@@ -47,6 +47,10 @@ export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
   // segue fixa em ENEMY (RN-07: arte ≠ tamanho); frame 49×68 excede os 40×60
   // da caixa e é recentrado nos pés no SpawnerSystem.
   { key: 'enemy-walk', path: 'assets/sprites/enemy-walk.png', frameWidth: 49, frameHeight: 68 },
+  // 2º inimigo (D-25): câmera de imprensa VOADORA — ciclo de hover de 4 frames.
+  // Lente à esquerda (na direção do movimento, sem flip). Corpo da câmera ≈ 40px
+  // (hitbox CAMERA.H); rotores acima excedem a caixa (RN-07: arte ≠ hitbox).
+  { key: 'enemy-fly', path: 'assets/sprites/enemy-fly.png', frameWidth: 71, frameHeight: 58 },
 ] as const;
 
 // Fundos de parallax POR MUNDO (D-16): id do mundo → skyline. Mundos ausentes
