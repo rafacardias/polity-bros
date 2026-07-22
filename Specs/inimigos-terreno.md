@@ -122,8 +122,12 @@ Sequência incremental, cada passo jogável e commit atômico + E2E.
 > **Ordem ajustada (dono):** começamos pela MECÂNICA e ARTE do inimigo (3→4→5)
 > em vez do terreno, para provar o "vem pra cima + stomp" e trocar o placeholder
 > por arte real cedo. Terreno (1→2) vem depois.
-1. **Terreno em degraus** (SpawnerSystem gera plataformas; auto-step; sem letalidade). ⏳
-2. **Converter/retirar obstáculos letais** (D-26) — geometria estática deixa de matar. ⏳
+1. **Terreno em degraus** (TerrainSystem: campo de altura + silhueta; auto-climb
+   não-letal no Player; entidades montam no degrau; inimigos seguem o terreno). ✅
+   (E2E: pulo na base intacto; auto-climb sobe sem lançar; pés no degrau <1.2px)
+2. **Converter/retirar obstáculos letais** (D-26) — geometria estática deixa de
+   matar: 'high'→repórter, 'low'→câmera; bloco vira plataforma one-way não-letal;
+   obstáculos removidos. ✅ (E2E: nada estático mata; pouso no bloco preservado)
 3. **Entidade `Enemy`** (pooled) + animação de caminhada + aproximação do player. ✅
 4. **Colisão stomp** (topo = derrota + quica + votos; lateral = §7-B). ✅ (dono aprovou o feel no celular)
 5. **Arte do 1º inimigo** (repórter) via pipeline das skins. ✅ (sheet `enemy-walk` 4 frames, 49×68)
