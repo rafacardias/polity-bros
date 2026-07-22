@@ -20,6 +20,11 @@ import { WorldVotesSystem } from '../systems/WorldVotesSystem';
 
 const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
 
+// Intro cinematográfica (estilo Mario Run): close-up no personagem correndo no
+// lugar (mundo/score/tempo PARADOS, HUD oculto), câmera afasta em ~0.9s e o
+// jogo começa. Pulável no 1º toque para não ferir o restart rápido (RN-03).
+const INTRO = { ZOOM: 1.9, MS: 900 } as const;
+
 // Loop principal (design.md §2). Auto-run world-scroll (RF-04): o Player fica
 // em X fixo e o cenário/obstáculos deslizam para a esquerda na velocidade
 // corrente. Velocidade fixa neste bloco; ProgressionSystem entra na T04-11.
@@ -65,6 +70,7 @@ export class GameScene extends Phaser.Scene {
   private emitAccumulator = 0;
   private elapsedMs = 0;
   private isGameOver = false;
+  private introActive = false;
   private continueUsed = false;
   private invulnerableUntil = 0;
   private continueUi: Phaser.GameObjects.GameObject[] = [];
@@ -194,10 +200,10 @@ export class GameScene extends Phaser.Scene {
     this.recordCelebrated = false;
     this.createRecordMarker();
     this.createFinishMarker();
-    this.createOnboardingHint();
     this.applyWorldPalette();
     this.audio.startMusic();
     this.cameras.main.fadeIn(JUICE.FADE_IN_MS, 0, 0, 0);
+    this.startIntro(); // close-up + zoom-out; o onboarding aparece ao final dela
 
     this.progression = new ProgressionSystem(this.world.speed);
     this.emitAccumulator = 0;
@@ -382,6 +388,44 @@ export class GameScene extends Phaser.Scene {
       .setVisible(false);
   }
 
+  // Intro cinematográfica (ponto 6, ref. Mario Run): zoom no personagem
+  // correndo no lugar, HUD/tempo ocultos; a câmera afasta e o jogo "abre".
+  // Enquanto ativa, o update() só anima o player (mundo/score congelados).
+  private startIntro(): void {
+    this.introActive = true;
+    const { width, height } = this.scale;
+    const cam = this.cameras.main;
+    this.setHudVisible(false); // "o tempo ainda não conta"
+    cam.setZoom(INTRO.ZOOM);
+    cam.centerOn(this.player.x, this.player.y - 24); // close no personagem
+    cam.pan(width / 2, height / 2, INTRO.MS, 'Sine.easeInOut');
+    cam.zoomTo(1, INTRO.MS, 'Sine.easeInOut');
+    this.time.delayedCall(INTRO.MS, () => this.endIntro());
+    // pular no 1º toque/tecla — restart rápido não pode esperar a animação (RN-03)
+    this.input.once('pointerdown', () => this.endIntro());
+    this.input.keyboard?.once('keydown', () => this.endIntro());
+  }
+
+  private endIntro(): void {
+    if (!this.introActive) return; // idempotente (timer + skip disputam)
+    this.introActive = false;
+    const { width, height } = this.scale;
+    const cam = this.cameras.main;
+    cam.panEffect.reset();
+    cam.zoomEffect.reset();
+    cam.setZoom(1);
+    cam.centerOn(width / 2, height / 2); // volta à câmera fixa do runner
+    this.setHudVisible(true);
+    this.createOnboardingHint(); // só depois do zoom (respiro de leitura)
+  }
+
+  private setHudVisible(v: boolean): void {
+    this.scoreText.setVisible(v);
+    this.votesText.setVisible(v);
+    this.gemText.setVisible(v);
+    this.distanceText.setVisible(v);
+  }
+
   // Micro-onboarding (T07A-06, RF-15): hint de controles UMA vez por
   // aparelho, mínimo e não-bloqueante. Some na 1ª interação (o jogador agiu
   // = entendeu) ou sozinho após 6s. FIRST_GAP + aquecimento (T07A-05) dão o
@@ -549,6 +593,11 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     if (this.isGameOver) return;
+    // intro (ponto 6): personagem corre no lugar; nada avança até a câmera abrir
+    if (this.introActive) {
+      this.player.update(time, delta);
+      return;
+    }
     this.elapsedMs += delta;
     this.inputSystem.update();
     this.progression.update(delta); // dificuldade crescente (RF-09)
