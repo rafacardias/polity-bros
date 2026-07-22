@@ -186,10 +186,12 @@ export class GameScene extends Phaser.Scene {
       const cameFromAbove = pb.prev.y + pb.height <= bb.prev.y + 6;
       if (!cameFromAbove) this.gameOver(b as Collectible);
     });
-    // Inimigo (D-25): pisar em cima (veio de cima) = STOMP por votos; contato
-    // lateral/frontal = morte. Mesmo teste "veio de cima" à prova de plataforma
-    // em movimento (body.prev), agora aplicado a um alvo que anda para a esquerda.
-    this.physics.add.collider(this.player, this.enemies, (_p, e) => this.hitEnemy(e as Enemy));
+    // Inimigo (D-25): OVERLAP (não collider) — como os obstáculos. Pisar em cima
+    // (veio de cima) = STOMP por votos; contato lateral/frontal = morte. A decisão
+    // é 100% de código (hitEnemy) pelo teste "veio de cima" (body.prev, à prova de
+    // alvo em movimento). Overlap NÃO separa corpos: sem isto, o inimigo imóvel
+    // empurrava o player para fora do X fixo (bug do "não pulava direito").
+    this.physics.add.overlap(this.player, this.enemies, (_p, e) => this.hitEnemy(e as Enemy));
 
     // emitter ÚNICO criado fora do loop; explode() reutiliza partículas do
     // pool interno do Phaser (RN-01 — nada de new/destroy por coleta)
@@ -669,6 +671,11 @@ export class GameScene extends Phaser.Scene {
     this.spawner.update(this.progression.distance, speed);
     this.syncWorldSpeed(speed);
     this.player.update(time, delta);
+    // Invariante do auto-runner (RF-04): o player fica SEMPRE em SCREEN_X — só
+    // controla o eixo vertical. Trava o X para que NENHUMA colisão (bloco D-22,
+    // resíduo físico) possa arrastá-lo para fora da posição fixa. Inimigos já são
+    // overlap (não empurram), mas isto blinda a invariante contra qualquer fonte.
+    if (this.player.x !== SIZES.PLAYER.SCREEN_X) this.player.x = SIZES.PLAYER.SCREEN_X;
     if (this.player.onGround) this.stompCombo = 0; // combo de stomp exige encadear NO AR
     this.updateHud();
     this.updateRecordMarker();

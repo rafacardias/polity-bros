@@ -255,7 +255,11 @@ export class SpawnerSystem {
 
   // Inimigo (D-25): nasce no chão à direita e ANDA para a esquerda mais rápido
   // que o scroll (velocidade = scroll + WALK_SPEED) → aproxima-se do player.
-  // Imóvel para o stomp: o player quica em cima e o inimigo não é empurrado.
+  // NÃO é imóvel/collider: a GameScene registra um OVERLAP (como os obstáculos),
+  // não um collider. Antes o inimigo era um collider imóvel — ao tocar o player
+  // ele EMPURRAVA o corpo para fora do X fixo (bug: player deslizava de 100→16 e
+  // "não pulava direito"). Overlap não separa corpos: o stomp/quique e a morte
+  // são 100% decididos por código (hitEnemy), sem física empurrando o player.
   private spawnEnemy(speed: number): void {
     const { width, height } = this.scene.scale;
     const groundTop = height - SIZES.GROUND_H;
@@ -263,16 +267,19 @@ export class SpawnerSystem {
     const enemy = this.enemies.get(x, groundTop) as Enemy | null;
     if (!enemy) return; // pool exausto — não criar além do maxSize (RN-01)
     enemy.setOrigin(0.5, 1);
+    // Arte gerada virada à DIREITA (microfone estendido p/ frente-direita); o
+    // inimigo anda p/ ESQUERDA → espelha para olhar na direção do movimento.
+    // Sem isto, cara p/ direita + andar p/ esquerda = "moonwalk" (feedback do dono).
+    enemy.setFlipX(true);
     enemy.reset(x, groundTop);
     enemy.playWalk(); // aplica o sheet do repórter + ciclo de caminhada (frame 0 fixa this.width/height)
     const body = enemy.body as Phaser.Physics.Arcade.Body;
     body.setSize(ENEMY.W, ENEMY.H, false);
     // hitbox 40×60 centrada na arte (49×68) e ancorada nos pés — arte ≠ hitbox
-    // (RN-07): cabeça/microfone podem exceder a caixa sem afetar o fairness
+    // (RN-07): cabeça/microfone podem exceder a caixa sem afetar o fairness.
+    // flipX não afeta o offset do corpo (espaço da textura), a caixa segue centrada.
     body.setOffset(Math.round((enemy.width - ENEMY.W) / 2), enemy.height - ENEMY.H);
-    body.setAllowGravity(false);
-    body.immovable = true; // plataforma de stomp: player quica, inimigo não cede
-    body.friction.set(0, 0);
+    body.setAllowGravity(false); // fica no chão sem cair; só desliza no eixo X
     enemy.setVelocityX(-(speed + ENEMY.WALK_SPEED));
     enemy.setData('kind', 'enemy'); // telemetria: mapeado como obstacle-high por ora
   }
