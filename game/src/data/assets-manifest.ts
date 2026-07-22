@@ -24,13 +24,15 @@ export interface SpriteSheetAsset {
 // seguem gerados em runtime até receberem arte final.
 export const SPRITE_ASSETS: readonly SpriteAsset[] = [
   { key: 'player', path: 'assets/sprites/player.png' }, // frame estático (pulo/queda)
-  { key: 'player-slide', path: 'assets/sprites/player-slide.png' }, // pose agachada/slide (Fase 3)
 ] as const;
 
-// Sheets animados. player-run = ciclo de corrida (4 frames 61×74), alinhados
-// pelos pés na origem (0.5,1) — mesmo tamanho por frame evita "tremor".
+// Sheets animados. player-run = ciclo de corrida (4 frames 61×74); player-slide
+// = ciclo de corrida-agachada (4 frames 60×48, bem mais baixo que os 72px em pé
+// → lê como "duck"). Todos alinhados pelos pés na origem (0.5,1); mesmo tamanho
+// por frame evita "tremor".
 export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
   { key: 'player-run', path: 'assets/sprites/player-run.png', frameWidth: 61, frameHeight: 74 },
+  { key: 'player-slide', path: 'assets/sprites/player-slide.png', frameWidth: 60, frameHeight: 48 },
 ] as const;
 
 // Fundos de parallax POR MUNDO (D-16): id do mundo → skyline. Mundos ausentes

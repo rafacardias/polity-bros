@@ -9,6 +9,7 @@ import { getSelectedSkin } from '../lib/skins';
 // no chão sem matemática de offset.
 export class Player extends Entity {
   private static readonly RUN_ANIM = 'player-run';
+  private static readonly SLIDE_ANIM = 'player-slide';
   private sliding = false;
   private wasOnGround = true;
   private juiceTween?: Phaser.Tweens.Tween;
@@ -21,6 +22,7 @@ export class Player extends Entity {
     this.lockStandingHitbox(); // hitbox fixa 44×64, independe do tamanho da arte
     this.applySkinTint(); // cor da skin selecionada (T07B-04)
     this.createRunAnimation(); // ciclo de corrida (Fase 3)
+    this.createSlideAnimation(); // ciclo de corrida-agachada (agachado animado)
   }
 
   // Animação de corrida (Fase 3): 4 frames do sheet 'player-run'. Global no
@@ -32,6 +34,20 @@ export class Player extends Entity {
       key: Player.RUN_ANIM,
       frames: this.scene.anims.generateFrameNumbers('player-run', { start: 0, end: 3 }),
       frameRate: 12,
+      repeat: -1,
+    });
+  }
+
+  // Animação de corrida-AGACHADA (agachado animado): 4 frames do sheet
+  // 'player-slide'. Antes o slide era uma textura estática ("parava de
+  // correr" — feedback do dono); agora as pernas seguem em ciclo enquanto
+  // desliza. frameRate um pouco mais alto dá a sensação de arrancada baixa.
+  private createSlideAnimation(): void {
+    if (this.scene.anims.exists(Player.SLIDE_ANIM)) return;
+    this.scene.anims.create({
+      key: Player.SLIDE_ANIM,
+      frames: this.scene.anims.generateFrameNumbers('player-slide', { start: 0, end: 3 }),
+      frameRate: 14,
       repeat: -1,
     });
   }
@@ -149,18 +165,19 @@ export class Player extends Entity {
     this.sliding = active;
     const body = this.body as Phaser.Physics.Arcade.Body;
     if (active) {
-      // parar o ciclo de corrida ANTES de trocar a textura — senão o próximo
-      // frame da animação sobrescreve o sprite agachado
-      this.anims.stop();
       // um stretch de pulo ainda em curso (swipe-cancel dentro da janela)
       // não pode escalar a hitbox do slide — invariante de fairness
       this.juiceTween?.stop();
       this.setScale(1, 1);
-      this.setTexture('player-slide');
+      // toca o ciclo agachado (troca o sheet do run pelo do slide). play() já
+      // aplica o frame 0, então this.width/height passam a ser 60×48 antes de
+      // travar a hitbox — sem isto a caixa herdaria o tamanho do sheet de corrida
+      this.anims.play(Player.SLIDE_ANIM, true);
       this.lockSlideHitbox(); // hitbox 44×32 centrada na arte agachada, ancorada nos pés
       if (!body.blocked.down) this.setVelocityY(PHYSICS.FAST_FALL); // desce rápido no ar
     } else {
       // volta ao estado em pé; o update() escolhe correr (chão) ou congelar (ar)
+      this.anims.stop();
       this.setTexture('player');
       this.lockStandingHitbox(); // sprite real 57×72 → hitbox 44×64 recentrada
     }
