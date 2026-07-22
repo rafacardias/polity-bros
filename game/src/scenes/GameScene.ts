@@ -241,8 +241,16 @@ export class GameScene extends Phaser.Scene {
       .text(width - 12, 32, `💵 ${WalletSystem.balance()}`, { ...style, color: '#4ade80' })
       .setOrigin(1, 0)
       .setDepth(10);
+    // countdown "faltam Xm": contorno escuro + negrito garantem leitura sobre
+    // QUALQUER céu de mundo (SP azul-claro, RJ teal, BSB índigo). O cinza
+    // anterior (#94a3b8) sumia no azul do skyline — feedback do dono.
     this.distanceText = this.add
-      .text(12, 10, '0m', { ...style, color: '#94a3b8' })
+      .text(12, 10, '0m', {
+        ...style,
+        fontStyle: 'bold',
+        stroke: '#0f172a',
+        strokeThickness: 4,
+      })
       .setOrigin(0, 0)
       .setDepth(10);
 
