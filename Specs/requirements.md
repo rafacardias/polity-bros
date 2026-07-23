@@ -88,6 +88,7 @@ scores id uuid pk player_id uuid -> auth.users (escrita SÓ via Edge Function/se
 - **Dificuldade adaptativa (DDA)** — só se a telemetria da v1.0 provar necessidade, e nunca na curva que pontua (D-10).
 - **Obstáculos móveis / inimigos (Enemy — cortado do MVP em D-06)** — entram conforme a dificuldade sobe: no chão, vindo contra o player, "eleitores cobrando promessas" e "repórteres com perguntas" (o candidato se esquiva); no ar, ameaças voadoras (tema a definir — ex.: drone de fake news) para pressionar o slide/timing.
 - **Múltiplos mundos/temas**, cada um introduzindo 1 mecânica nova. *(Versão light — "cidades da campanha" SP→RJ→Brasília só por paleta — entrou na v1.0, T07B-01/D-14.)*
+- **Rotas alternadas cima/baixo no terreno alto** — em trechos de chão mais elevado, o jogador ESCOLHE seguir por cima (rota de risco: mais desafio, mais recompensa/votos) ou por baixo (rota segura: menos prêmio) — clássico "votos em rota de risco/recompensa" do filtro de retenção. Exige level design MANUAL (não o terreno procedural atual), por isso é feature de FASES ELABORADAS pós-MVP, não do terreno em degraus da v1.0 (pedido do dono, 2026-07-23).
 - **Modo Desafio** (no-hit, speed run, alvo de votos).
 - **Ghost race assíncrono** contra fantasmas de amigos/global.
 - **Modo Kingdom** (base-building com os votos coletados).
