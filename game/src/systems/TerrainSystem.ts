@@ -116,6 +116,12 @@ export class TerrainSystem {
     // cores do chão (par de generateGroundTexture) moduladas pelo tint do mundo
     const bodyC = this.applyTint(0x3f3f46);
     const faceC = this.applyTint(0x71717a);
+    // "sanduíche de contraste" no topo do degrau: uma linha de BRILHO sobre uma
+    // linha de SOMBRA. Isso dá leitura da superfície contra QUALQUER fundo — o
+    // brilho destaca sobre skyline escuro, a sombra destaca sobre skyline claro
+    // (antes, o cinza sozinho sumia no parallax — feedback do dono, legibilidade).
+    const capC = this.applyTint(0xe4e4e7); // brilho (quase branco)
+    const edgeC = this.applyTint(0x18181b); // sombra (quase preto)
     for (const seg of this.segments) {
       if (seg.level <= 0) continue;
       const left = SIZES.PLAYER.SCREEN_X + (seg.startX - distance);
@@ -126,7 +132,13 @@ export class TerrainSystem {
       g.fillRect(left, top, seg.w, this.sceneBottom - top);
       // faixa de topo (leitura de "superfície")
       g.fillStyle(faceC, 1);
-      g.fillRect(left, top, seg.w, 6);
+      g.fillRect(left, top, seg.w, 8);
+      // sombra (2px) logo abaixo do brilho
+      g.fillStyle(edgeC, 1);
+      g.fillRect(left, top + 2, seg.w, 2);
+      // brilho no topo (2px) — a "quina" iluminada do degrau
+      g.fillStyle(capC, 1);
+      g.fillRect(left, top, seg.w, 2);
     }
   }
 
