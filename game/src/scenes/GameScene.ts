@@ -589,8 +589,27 @@ export class GameScene extends Phaser.Scene {
   private applyWorldPalette(): void {
     this.cameras.main.setBackgroundColor(this.world.bg);
     this.createSkyBackground();
+    this.createForegroundScrim();
     this.groundTile.setTint(this.world.groundTint);
     this.terrain.setTint(this.world.groundTint); // degraus acompanham o chão
+  }
+
+  // Scrim de leitura (feedback do dono, opção 1): um véu escuro em GRADIENTE na
+  // faixa inferior — transparente no meio da tela, adensa até a base. Empurra o
+  // casario denso (que faz parte da arte de skyline, depth -10) para trás sem
+  // apagar o céu lá em cima. Fica em depth -6: NA FRENTE do skyline, mas ATRÁS
+  // do chão (-2), dos degraus (-1) e do player/entidades — então a pista fica
+  // nítida por cima. Só existe onde há arte de skyline (senão o fundo é liso).
+  private createForegroundScrim(): void {
+    if (!this.skyTile) return;
+    const { width, height } = this.scale;
+    const top = height * 0.5; // gradiente começa no meio da tela
+    const c = this.world.bg; // tom da cidade mistura melhor que preto puro
+    const g = this.add.graphics().setDepth(-6).setScrollFactor(0);
+    // fillGradientStyle(tl, tr, bl, br, aTL, aTR, aBL, aBR): alpha 0 no topo do
+    // gradiente → ~0.72 na base = transparência que adensa para baixo.
+    g.fillGradientStyle(c, c, c, c, 0, 0, 0.72, 0.72);
+    g.fillRect(0, top, width, height - top);
   }
 
   // Camada de skyline do mundo (Fase 3): parallax atrás de tudo (depth < 0).
