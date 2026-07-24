@@ -3,9 +3,9 @@ import { WalletSystem } from '../systems/WalletSystem';
 // Skins = PERSONAGENS (Fase 4, supersede D-11 "cores"): cada skin é um político
 // com arte própria (idle + corrida + agachado), key de textura por SkinDef.char.
 // Sem pay-to-win: trocar de personagem não muda física nem hitbox (RN-07 — a
-// caixa segue fixa em SIZES.PLAYER). Bolsonaro (Direita) e Lula (Esquerda)
-// entram LIBERADOS de fábrica (decisão do dono: escolher o lado já na 1ª tela =
-// identidade + FOMO social). Juiz e 1ª Dama ficam "em breve" (locked, sem arte).
+// caixa segue fixa em SIZES.PLAYER). Elenco 3D liberado: Centrão (default),
+// militantes Patriota/Comunista e políticos FICTÍCIOS Direita/Esquerda (escolher
+// o lado na 1ª tela = identidade + FOMO social). Juiz e 1ª Dama ficam "em breve".
 // Fonte ÚNICA do catálogo: o React (MenuScreen) importa daqui via 'game'.
 
 const SKIN_STORAGE_KEY = 'polity-bros:skin';
@@ -18,7 +18,7 @@ export interface SkinDef {
   id: string;
   label: string; // nome exibido (ex.: 'Bolsonaro')
   side?: string; // legenda de lado (ex.: 'Direita') — opcional
-  char: string; // prefixo das texturas: 'player' | 'bolsonaro' | 'lula' ('' se locked)
+  char: string; // prefixo das texturas: 'centrao' | 'patriota' | 'direita' … ('' se locked)
   unlock: SkinUnlock;
   requirement: string; // texto curto exibido no menu
 }
@@ -40,7 +40,6 @@ export const SKINS: readonly SkinDef[] = [
   {
     id: 'patriota',
     label: 'Patriota',
-    side: 'Direita',
     char: 'patriota',
     unlock: { type: 'default' },
     requirement: 'liberado',
@@ -48,24 +47,26 @@ export const SKINS: readonly SkinDef[] = [
   {
     id: 'comunista',
     label: 'Comunista',
-    side: 'Esquerda',
     char: 'comunista',
     unlock: { type: 'default' },
     requirement: 'liberado',
   },
-  // Rótulo por LADO político (pedido do dono) — o personagem é a caricatura,
-  // o nome exibido é a posição. Ambos liberados de fábrica.
+  // Políticos por LADO (2026-07-24): personagens FICTÍCIOS 3D que evocam o lado sem
+  // imitar pessoa real (a gravata verde-amarela lê direita; a camisa vermelha + barba
+  // grisalha lê esquerda). Substituem as antigas skins pixel Bolsonaro/Lula — que eram
+  // pessoas reais (risco de imagem) e destoavam do 3D. As figuras reais ficam p/ a Fase 9
+  // (pagas), se e quando fizer sentido. Ambos liberados de fábrica.
   {
-    id: 'bolsonaro',
+    id: 'direita',
     label: 'Direita',
-    char: 'bolsonaro',
+    char: 'direita',
     unlock: { type: 'default' },
     requirement: 'liberado',
   },
   {
-    id: 'lula',
+    id: 'esquerda',
     label: 'Esquerda',
-    char: 'lula',
+    char: 'esquerda',
     unlock: { type: 'default' },
     requirement: 'liberado',
   },

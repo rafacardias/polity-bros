@@ -30,8 +30,8 @@ export const SPRITE_ASSETS: readonly SpriteAsset[] = [
   { key: 'patriota', path: 'assets/sprites/patriota.png' }, // Militante Direita (3D): camisa amarela + boné da bandeira
   { key: 'comunista', path: 'assets/sprites/comunista.png' }, // Militante Esquerda (3D): camisa vermelha + barba + bolsa
   { key: 'player', path: 'assets/sprites/player.png' }, // Candidato neutro (legado)
-  { key: 'bolsonaro', path: 'assets/sprites/bolsonaro.png' }, // skin Direita
-  { key: 'lula', path: 'assets/sprites/lula.png' }, // skin Esquerda
+  { key: 'direita', path: 'assets/sprites/direita.png' }, // Político Direita (3D fictício — substitui pixel Bolsonaro)
+  { key: 'esquerda', path: 'assets/sprites/esquerda.png' }, // Político Esquerda (3D fictício — substitui pixel Lula)
 ] as const;
 
 // Sheets animados por personagem: '<char>-run' (ciclo de corrida) e
@@ -60,10 +60,13 @@ export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
   { key: 'comunista-slide', path: 'assets/sprites/comunista-slide.png', frameWidth: 67, frameHeight: 60 },
   { key: 'player-run', path: 'assets/sprites/player-run.png', frameWidth: 61, frameHeight: 74 },
   { key: 'player-slide', path: 'assets/sprites/player-slide.png', frameWidth: 60, frameHeight: 48 },
-  { key: 'bolsonaro-run', path: 'assets/sprites/bolsonaro-run.png', frameWidth: 51, frameHeight: 72 },
-  { key: 'bolsonaro-slide', path: 'assets/sprites/bolsonaro-slide.png', frameWidth: 44, frameHeight: 48 },
-  { key: 'lula-run', path: 'assets/sprites/lula-run.png', frameWidth: 52, frameHeight: 72 },
-  { key: 'lula-slide', path: 'assets/sprites/lula-slide.png', frameWidth: 47, frameHeight: 48 },
+  // Políticos 3D fictícios (Direita/Esquerda) — substituem as skins pixel Bolsonaro/Lula
+  // (que eram pessoas reais → risco de imagem). Arquétipo do lado, sem imitar ninguém.
+  // Mesma escala do Centrão base (run ~82, slide ~61). Hitbox fixa (RN-07).
+  { key: 'direita-run', path: 'assets/sprites/direita-run.png', frameWidth: 58, frameHeight: 82 },
+  { key: 'direita-slide', path: 'assets/sprites/direita-slide.png', frameWidth: 65, frameHeight: 61 },
+  { key: 'esquerda-run', path: 'assets/sprites/esquerda-run.png', frameWidth: 63, frameHeight: 82 },
+  { key: 'esquerda-slide', path: 'assets/sprites/esquerda-slide.png', frameWidth: 62, frameHeight: 61 },
   // Inimigo (D-25): repórter satírico com microfone — ciclo de caminhada de 4
   // frames. Anda na direção do player (perfil virado à ESQUERDA). A hitbox
   // segue fixa em ENEMY (RN-07: arte ≠ tamanho); frame 49×68 excede os 40×60
