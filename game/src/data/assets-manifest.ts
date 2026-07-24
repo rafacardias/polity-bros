@@ -41,7 +41,7 @@ export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
   // fatiados na MESMA escala (slide mais baixo → duck). Frame maior que os pixel
   // legados; hitbox segue fixa em SIZES.PLAYER (RN-07).
   { key: 'centrao-run', path: 'assets/sprites/centrao-run.png', frameWidth: 57, frameHeight: 80 },
-  { key: 'centrao-slide', path: 'assets/sprites/centrao-slide.png', frameWidth: 54, frameHeight: 56 },
+  { key: 'centrao-slide', path: 'assets/sprites/centrao-slide.png', frameWidth: 53, frameHeight: 61 },
   { key: 'player-run', path: 'assets/sprites/player-run.png', frameWidth: 61, frameHeight: 74 },
   { key: 'player-slide', path: 'assets/sprites/player-slide.png', frameWidth: 60, frameHeight: 48 },
   { key: 'bolsonaro-run', path: 'assets/sprites/bolsonaro-run.png', frameWidth: 51, frameHeight: 72 },
