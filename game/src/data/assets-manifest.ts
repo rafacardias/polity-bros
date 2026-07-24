@@ -25,7 +25,8 @@ export interface SpriteSheetAsset {
 // Frames estáticos (idle/pulo/queda) — um por PERSONAGEM de skin (D-11/Fase 4:
 // skin = personagem, não mais cor). O prefixo do key casa com SkinDef.char.
 export const SPRITE_ASSETS: readonly SpriteAsset[] = [
-  { key: 'player', path: 'assets/sprites/player.png' }, // Candidato (neutro, default)
+  { key: 'centrao', path: 'assets/sprites/centrao.png' }, // Centrão (3D, personagem base default)
+  { key: 'player', path: 'assets/sprites/player.png' }, // Candidato neutro (legado)
   { key: 'bolsonaro', path: 'assets/sprites/bolsonaro.png' }, // skin Direita
   { key: 'lula', path: 'assets/sprites/lula.png' }, // skin Esquerda
 ] as const;
@@ -36,6 +37,11 @@ export const SPRITE_ASSETS: readonly SpriteAsset[] = [
 // Larguras variam por build do personagem (Lula mais encorpado etc.) — cada
 // sheet declara seu frameWidth; a hitbox segue fixa em SIZES.PLAYER (RN-07).
 export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
+  // Centrão (personagem base 3D-cartoon): run/slide gerados por IA, recortados e
+  // fatiados na MESMA escala (slide mais baixo → duck). Frame maior que os pixel
+  // legados; hitbox segue fixa em SIZES.PLAYER (RN-07).
+  { key: 'centrao-run', path: 'assets/sprites/centrao-run.png', frameWidth: 57, frameHeight: 80 },
+  { key: 'centrao-slide', path: 'assets/sprites/centrao-slide.png', frameWidth: 54, frameHeight: 56 },
   { key: 'player-run', path: 'assets/sprites/player-run.png', frameWidth: 61, frameHeight: 74 },
   { key: 'player-slide', path: 'assets/sprites/player-slide.png', frameWidth: 60, frameHeight: 48 },
   { key: 'bolsonaro-run', path: 'assets/sprites/bolsonaro-run.png', frameWidth: 51, frameHeight: 72 },

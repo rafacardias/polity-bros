@@ -24,6 +24,17 @@ export interface SkinDef {
 }
 
 export const SKINS: readonly SkinDef[] = [
+  // Centrão: personagem BASE default (pedido do dono 2026-07-24). Político
+  // genérico/fisiológico = identificação nacional ampla, sem polarizar. As skins
+  // de figura (Direita/Esquerda) viram PAGAS na Fase 9 (monetização da paixão
+  // política); por ora seguem liberadas.
+  {
+    id: 'centrao',
+    label: 'Centrão',
+    char: 'centrao',
+    unlock: { type: 'default' },
+    requirement: 'liberado',
+  },
   // Rótulo por LADO político (pedido do dono) — o personagem é a caricatura,
   // o nome exibido é a posição. Ambos liberados de fábrica.
   {
