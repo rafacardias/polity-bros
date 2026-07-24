@@ -63,5 +63,10 @@ export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
 // deste mapa seguem com a cor sólida de fundo (WorldDef.bg). Preenchido à
 // medida que cada cenário 16-bit é aprovado (piloto: SP).
 export const WORLD_BACKGROUNDS: Readonly<Record<string, string>> = {
-  sp: 'assets/bg/sp-skyline.png', // piloto Fase 3: skyline 16-bit de São Paulo
+  // Fase 1 = INTERIOR (migração 3D-cartoon, 2026-07-24): cenário rural (casa de
+  // sapé, morros, capela). Bordas em campo aberto → sem casas cortadas e sem
+  // emenda visível (o fundo rola ~2100px < 3168px da textura na fase de 600m).
+  // O skyline 16-bit de SP (assets/bg/sp-skyline.png) fica p/ a futura fase
+  // "cidade grande" quando os mundos forem reorganizados.
+  sp: 'assets/bg/interior.jpg',
 } as const;
