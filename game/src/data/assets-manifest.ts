@@ -27,6 +27,8 @@ export interface SpriteSheetAsset {
 export const SPRITE_ASSETS: readonly SpriteAsset[] = [
   { key: 'centrao', path: 'assets/sprites/centrao.png' }, // Centrão (3D, personagem base default)
   { key: 'centrao-faixa', path: 'assets/sprites/centrao-faixa.png' }, // Centrão c/ faixa presidencial (só na fase capital)
+  { key: 'patriota', path: 'assets/sprites/patriota.png' }, // Militante Direita (3D): camisa amarela + boné da bandeira
+  { key: 'comunista', path: 'assets/sprites/comunista.png' }, // Militante Esquerda (3D): camisa vermelha + barba + bolsa
   { key: 'player', path: 'assets/sprites/player.png' }, // Candidato neutro (legado)
   { key: 'bolsonaro', path: 'assets/sprites/bolsonaro.png' }, // skin Direita
   { key: 'lula', path: 'assets/sprites/lula.png' }, // skin Esquerda
@@ -49,6 +51,13 @@ export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
   // aprovada; hitbox segue fixa em SIZES.PLAYER (RN-07).
   { key: 'centrao-faixa-run', path: 'assets/sprites/centrao-faixa-run.png', frameWidth: 59, frameHeight: 82 },
   { key: 'centrao-faixa-slide', path: 'assets/sprites/centrao-faixa-slide.png', frameWidth: 48, frameHeight: 61 },
+  // Militantes 3D (Direita/Esquerda) — mesma escala/altura do Centrão base (run ~82,
+  // slide forçado a ~60 pra ler como esquiva). Gerados por IA a partir dos protótipos
+  // do dono, re-renderizados no estilo 3D-cartoon da casa. Hitbox fixa (RN-07).
+  { key: 'patriota-run', path: 'assets/sprites/patriota-run.png', frameWidth: 58, frameHeight: 82 },
+  { key: 'patriota-slide', path: 'assets/sprites/patriota-slide.png', frameWidth: 65, frameHeight: 60 },
+  { key: 'comunista-run', path: 'assets/sprites/comunista-run.png', frameWidth: 57, frameHeight: 82 },
+  { key: 'comunista-slide', path: 'assets/sprites/comunista-slide.png', frameWidth: 67, frameHeight: 60 },
   { key: 'player-run', path: 'assets/sprites/player-run.png', frameWidth: 61, frameHeight: 74 },
   { key: 'player-slide', path: 'assets/sprites/player-slide.png', frameWidth: 60, frameHeight: 48 },
   { key: 'bolsonaro-run', path: 'assets/sprites/bolsonaro-run.png', frameWidth: 51, frameHeight: 72 },

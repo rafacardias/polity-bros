@@ -35,6 +35,24 @@ export const SKINS: readonly SkinDef[] = [
     unlock: { type: 'default' },
     requirement: 'liberado',
   },
+  // Militantes 3D (2026-07-24): a torcida política de rua, um por lado. Identificação
+  // ampla (o eleitor comum, não o político). Estilo 3D-cartoon coeso com o Centrão.
+  {
+    id: 'patriota',
+    label: 'Patriota',
+    side: 'Direita',
+    char: 'patriota',
+    unlock: { type: 'default' },
+    requirement: 'liberado',
+  },
+  {
+    id: 'comunista',
+    label: 'Comunista',
+    side: 'Esquerda',
+    char: 'comunista',
+    unlock: { type: 'default' },
+    requirement: 'liberado',
+  },
   // Rótulo por LADO político (pedido do dono) — o personagem é a caricatura,
   // o nome exibido é a posição. Ambos liberados de fábrica.
   {
