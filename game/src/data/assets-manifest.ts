@@ -69,4 +69,10 @@ export const WORLD_BACKGROUNDS: Readonly<Record<string, string>> = {
   // O skyline 16-bit de SP (assets/bg/sp-skyline.png) fica p/ a futura fase
   // "cidade grande" quando os mundos forem reorganizados.
   sp: 'assets/bg/interior.jpg',
+  // Fase 2 (cidade grande) e Fase 3 (capital): fundos 3D-cartoon. Bordas tornadas
+  // SEM-COSTURA (blend simétrico) porque estas fases são mais longas (900m/1200m)
+  // e o fundo rola além da largura da textura → a emenda apareceria. Ids sp/rj/bsb
+  // mantidos por ora; renomear p/ interior/cidade/capital fica p/ o refactor.
+  rj: 'assets/bg/cidade-grande.jpg',
+  bsb: 'assets/bg/capital.jpg',
 } as const;
