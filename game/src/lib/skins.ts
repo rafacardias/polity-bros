@@ -68,10 +68,16 @@ export const SKINS: readonly SkinDef[] = [
 ] as const;
 
 // texturas de um personagem — o Player e o menu derivam os keys daqui, sem
-// espalhar convenção de nome de asset pelo código
-export function skinTextures(def: SkinDef): { idle: string; run: string; slide: string } {
+// espalhar convenção de nome de asset pelo código. `variant='faixa'` devolve os
+// keys da faixa presidencial (<char>-faixa*), usados só na última fase (capital):
+// a mesma convenção vale pra qualquer skin — basta ter os assets carregados.
+export function skinTextures(
+  def: SkinDef,
+  variant?: 'faixa',
+): { idle: string; run: string; slide: string } {
   const char = def.char || 'player';
-  return { idle: char, run: `${char}-run`, slide: `${char}-slide` };
+  const s = variant === 'faixa' ? '-faixa' : '';
+  return { idle: `${char}${s}`, run: `${char}${s}-run`, slide: `${char}${s}-slide` };
 }
 
 export function isSkinUnlocked(def: SkinDef): boolean {

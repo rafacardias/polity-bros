@@ -26,6 +26,7 @@ export interface SpriteSheetAsset {
 // skin = personagem, não mais cor). O prefixo do key casa com SkinDef.char.
 export const SPRITE_ASSETS: readonly SpriteAsset[] = [
   { key: 'centrao', path: 'assets/sprites/centrao.png' }, // Centrão (3D, personagem base default)
+  { key: 'centrao-faixa', path: 'assets/sprites/centrao-faixa.png' }, // Centrão c/ faixa presidencial (só na fase capital)
   { key: 'player', path: 'assets/sprites/player.png' }, // Candidato neutro (legado)
   { key: 'bolsonaro', path: 'assets/sprites/bolsonaro.png' }, // skin Direita
   { key: 'lula', path: 'assets/sprites/lula.png' }, // skin Esquerda
@@ -42,6 +43,12 @@ export const SPRITESHEET_ASSETS: readonly SpriteSheetAsset[] = [
   // legados; hitbox segue fixa em SIZES.PLAYER (RN-07).
   { key: 'centrao-run', path: 'assets/sprites/centrao-run.png', frameWidth: 64, frameHeight: 82 },
   { key: 'centrao-slide', path: 'assets/sprites/centrao-slide.png', frameWidth: 53, frameHeight: 61 },
+  // Centrão com FAIXA presidencial (só carrega/usa na fase capital → D-27). Mesma
+  // escala compartilhada run↔slide do Centrão base; agachado forçado a ~61px pra
+  // ler como esquiva (bate com o agachado base). Faixa gerada por IA sobre a arte
+  // aprovada; hitbox segue fixa em SIZES.PLAYER (RN-07).
+  { key: 'centrao-faixa-run', path: 'assets/sprites/centrao-faixa-run.png', frameWidth: 59, frameHeight: 82 },
+  { key: 'centrao-faixa-slide', path: 'assets/sprites/centrao-faixa-slide.png', frameWidth: 48, frameHeight: 61 },
   { key: 'player-run', path: 'assets/sprites/player-run.png', frameWidth: 61, frameHeight: 74 },
   { key: 'player-slide', path: 'assets/sprites/player-slide.png', frameWidth: 60, frameHeight: 48 },
   { key: 'bolsonaro-run', path: 'assets/sprites/bolsonaro-run.png', frameWidth: 51, frameHeight: 72 },

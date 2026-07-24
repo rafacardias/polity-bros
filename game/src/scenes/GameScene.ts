@@ -13,7 +13,7 @@ import { WalletSystem } from '../systems/WalletSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS, type GameEventPayload } from '../lib/game-events';
-import { ECONOMY, ENEMY, JUICE, SCORE, SIZES, TERRAIN, type WorldDef } from '../config/constants';
+import { ECONOMY, ENEMY, JUICE, SCORE, SIZES, TERRAIN, WORLDS, type WorldDef } from '../config/constants';
 import { WorldSystem } from '../systems/WorldSystem';
 import { TerrainSystem } from '../systems/TerrainSystem';
 import { GemCollectionSystem } from '../systems/GemCollectionSystem';
@@ -112,8 +112,16 @@ export class GameScene extends Phaser.Scene {
     );
     this.groundTile.setDepth(-2); // base plana atrás da silhueta dos degraus (D-26)
 
+    // mundo selecionado (D-16): resolvido ANTES do Player — a faixa presidencial
+    // da ÚLTIMA fase (capital) depende do mundo já na criação da entidade. Layout
+    // FIXO via RNG semeado (mesma fase pra todos, em todas as partidas).
+    this.world = WorldSystem.selected();
+
     this.audio = new AudioSystem(this);
-    this.player = new Player(this, SIZES.PLAYER.SCREEN_X, groundTop);
+    // faixa presidencial só na ÚLTIMA fase da progressão de carreira (capital):
+    // comparar com o último mundo mantém a regra à prova do futuro rename sp/rj/bsb
+    const isCapital = this.world.id === WORLDS[WORLDS.length - 1].id;
+    this.player = new Player(this, SIZES.PLAYER.SCREEN_X, groundTop, { faixa: isCapital });
     this.inputSystem = new InputSystem(this, this.player, this.audio);
 
     // pools (RN-01): maxSize limita instâncias; get() reutiliza
@@ -137,9 +145,6 @@ export class GameScene extends Phaser.Scene {
       maxSize: 12, // inimigos (D-25) — pooling; update() recicla fora da tela
       runChildUpdate: true,
     });
-    // mundo selecionado (D-16): layout FIXO via RNG semeado — a mesma fase
-    // para todos os jogadores, em todas as partidas
-    this.world = WorldSystem.selected();
     this.won = false;
     this.stars = 1;
     this.stompCombo = 0;

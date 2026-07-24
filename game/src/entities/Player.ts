@@ -25,8 +25,14 @@ export class Player extends Entity {
   private terrainFeetY = Number.POSITIVE_INFINITY;
   private groundedOnTerrain = false;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
-    const tex = skinTextures(getSelectedSkin());
+  constructor(scene: Phaser.Scene, x: number, y: number, opts?: { faixa?: boolean }) {
+    const skin = getSelectedSkin();
+    // Faixa presidencial (D-27): na ÚLTIMA fase (capital) qualquer skin veste a
+    // faixa — payoff visual de "virei presidente". A Scene decide (é quem sabe o
+    // mundo); a entidade só troca a textura. Fallback seguro: se a skin ainda não
+    // tem a variante '<char>-faixa' carregada, cai na arte normal.
+    const useFaixa = !!opts?.faixa && scene.textures.exists(skinTextures(skin, 'faixa').idle);
+    const tex = skinTextures(skin, useFaixa ? 'faixa' : undefined);
     super(scene, x, y, tex.idle); // frame estático do personagem (pulo/queda)
     this.idleKey = tex.idle;
     this.runKey = tex.run;
