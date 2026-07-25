@@ -35,6 +35,8 @@
 | D-24 | Menu hub v2: Jogar fixo embaixo (sempre clicável); Fases/Ranking/Skins/Continue acima; tremidinha no Continue com ≥3 propinas | ✅ Ativa |
 | D-25 | Inimigos entram como mecânica central (stomp = votos); evolui D-06 | ✅ Ativa |
 | D-26 | Geometria estática NÃO mata; letalidade só nos inimigos (supersede D-22) | ✅ Ativa |
+| D-27 | Faixa presidencial na ÚLTIMA fase (capital): qualquer skin veste faixa = payoff "virei presidente" | ✅ Ativa |
+| D-28 | Elenco de skins 100% 3D; políticos por lado viram FICTÍCIOS (sem imitar pessoa real) | ✅ Ativa |
 
 ---
 
@@ -169,6 +171,16 @@
 **Contexto:** no D-22 o bloco flutuante matava pelas laterais/fundo. O dono quer que **nada estático mate** — degraus/plataformas só barram ou permitem subir; a ameaça vem **só dos inimigos** (D-25).
 **Decisão:** geometria estática (degraus, plataformas, ex-blocos) é **não-letal** — o player sobe ou é barrado, nunca morre por encostar. O terreno ganha **degraus**: pequenos com auto-step, altos exigem pulo; degrau que não vencer faz **auto-climb suave** (sem punição). Os obstáculos letais atuais (altos/baixos) são **substituídos** por degraus/inimigos. **Sem buracos** que matam no 1º corte.
 **Consequência:** remove a causa de morte `block` (D-22); simplifica o contrato de justiça (só inimigo mata). Rework de colisão no núcleo — cada passo re-testado no **Gate de Diversão** no celular (RN-IT3: nada validado pode regredir).
+
+## D-27 — Faixa presidencial na última fase (payoff de carreira)
+**Contexto:** a progressão de fases virou **carreira política** (interior → cidade grande → capital). O dono (2026-07-24) quer que chegar à **última fase (capital)** entregue um payoff visual: *"eu virei presidente"*.
+**Decisão:** na fase **capital** (último mundo da progressão), **qualquer skin** veste a **faixa presidencial** (verde com listra amarela + medalhão). Convenção de asset genérica: `<char>-faixa`, `<char>-faixa-run`, `<char>-faixa-slide`. A **Scene** decide (é quem conhece o mundo) e passa a flag ao Player; a entidade só troca a textura, com **fallback seguro** (skin sem a variante carregada segue na arte normal). Regra à prova de rename: compara com `WORLDS[último]`, não com o id `bsb`. Hitbox intocada (RN-07). Nas fases 1 e 2 o personagem é idêntico ao já validado.
+**Consequência:** só o **Centrão** tem a variante hoje (3D-cartoon gerada por IA sobre a arte aprovada, agachado forçado a ~61px pra ler como esquiva). Skins futuras (Direita/Esquerda, Fase 9) herdam a faixa sem novo código — basta subir os 3 assets `-faixa*`.
+
+## D-28 — Elenco de skins 100% 3D; políticos por lado são fictícios
+**Contexto:** migração pro 3D-cartoon (2026-07-24). O dono forneceu protótipos de militantes (direita/esquerda) e caricaturas 3D com o rosto REAL de Lula/Bolsonaro. Rosto real = risco de direito de imagem (lojas de app implicam) e foge do posicionamento "arquétipos, sem nomear pessoas reais". O próprio gerador de imagem **bloqueou** (filtro de pessoa pública) editar as fotos reais — confirmando o risco.
+**Decisão:** o elenco liberado passa a ser **todo 3D-cartoon coeso**: **Centrão** (default), militantes **Patriota** (direita) e **Comunista** (esquerda), e políticos **Direita**/**Esquerda** — estes últimos **personagens fictícios** que evocam o lado por sinais (gravata verde-amarela / camisa vermelha + barba grisalha) **sem imitar ninguém real**. As skins pixel Bolsonaro/Lula (pessoas reais) saem do menu; as figuras reais, se um dia, ficam p/ a Fase 9 (pagas) — decisão consciente do dono. Convenção de char: `centrao`/`patriota`/`comunista`/`direita`/`esquerda`; hitbox fixa (RN-07).
+**Consequência:** menu coeso e sem risco de imagem. Assets pixel `bolsonaro*`/`lula*` ficam órfãos (não carregados). Cada skin tem idle+corrida+agachado 3D; a faixa presidencial (D-27) hoje só o Centrão tem, mas qualquer skin herda ao ganhar a variante `<char>-faixa`.
 
 ---
 
