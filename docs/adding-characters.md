@@ -2,9 +2,47 @@
 
 > Manual para adicionar personagens ao Polity Bros Runner
 
-## Estrutura de Dados
+> ⚠️ **Este documento está defasado.** O `characters.json` descrito abaixo não
+> existe mais: o catálogo real vive em `game/src/lib/skins.ts` (`SKINS`) e os
+> assets em `game/src/data/assets-manifest.ts`. A seção "Assets por
+> personagem", logo abaixo, é a que vale hoje. O restante fica como histórico
+> até alguém reescrever o manual.
 
-Cada personagem é definido em `/game/src/data/characters.json`:
+## Assets por personagem (fonte da verdade, 2026-07-28)
+
+Todo personagem novo precisa de **4** arquivos em `game/public/assets/sprites/`:
+
+| Arquivo | O que é | Onde aparece |
+|---|---|---|
+| `<char>.png` | retrato de frente, parado | **só** na galeria de skins do menu |
+| `<char>-run.png` | sheet de 4 frames da corrida | correndo no chão |
+| `<char>-slide.png` | sheet de 4 frames da corrida agachada | esquiva (deve ser MAIS BAIXO e MAIS ESTREITO que a corrida) |
+| `<char>-air.png` | frame único do pulo/queda — **D-29** | no ar |
+
+O `-air` **não é desenhado à mão**: é o frame 1 do próprio `-run`, recortado.
+Sem ele o personagem salta no retrato de frente, encarando a câmera (o bug que
+o dono pegou em 2026-07-28). Extração:
+
+```bash
+# frameWidth/frameHeight vêm de SPRITESHEET_ASSETS no assets-manifest
+ffmpeg -y -i <char>-run.png -vf "crop=<fW>:<fH>:<fW>:0" <char>-air.png
+```
+
+Registre os 4 keys no `assets-manifest.ts` (estáticos em `SPRITE_ASSETS`,
+sheets em `SPRITESHEET_ASSETS`) e valide o agachado com:
+
+```bash
+node scripts/measure-slide-arms.mjs <char>   # braços precisam ANIMAR
+```
+
+A hitbox nunca muda (`SIZES.PLAYER`, RN-07): personagens trocam de arte, não
+de tamanho.
+
+---
+
+## Estrutura de Dados (histórico — não reflete o código atual)
+
+Cada personagem era definido em `/game/src/data/characters.json`:
 
 ```json
 {

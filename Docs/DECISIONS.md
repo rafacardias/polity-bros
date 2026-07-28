@@ -37,6 +37,8 @@
 | D-26 | Geometria estática NÃO mata; letalidade só nos inimigos (supersede D-22) | ✅ Ativa |
 | D-27 | Faixa presidencial na ÚLTIMA fase (capital): qualquer skin veste faixa = payoff "virei presidente" | ✅ Ativa |
 | D-28 | Elenco de skins 100% 3D; políticos por lado viram FICTÍCIOS (sem imitar pessoa real) | ✅ Ativa |
+| D-29 | Pose no ar = frame congelado da corrida (`<char>-air`), com fallback pro idle | ✅ Ativa |
+| D-30 | Fases exibem o nome da carreira (Interior/Cidade Grande/Capital); ids sp/rj/bsb são chave de persistência | ✅ Ativa |
 
 ---
 
@@ -181,6 +183,16 @@
 **Contexto:** migração pro 3D-cartoon (2026-07-24). O dono forneceu protótipos de militantes (direita/esquerda) e caricaturas 3D com o rosto REAL de Lula/Bolsonaro. Rosto real = risco de direito de imagem (lojas de app implicam) e foge do posicionamento "arquétipos, sem nomear pessoas reais". O próprio gerador de imagem **bloqueou** (filtro de pessoa pública) editar as fotos reais — confirmando o risco.
 **Decisão:** o elenco liberado passa a ser **todo 3D-cartoon coeso**: **Centrão** (default), militantes **Patriota** (direita) e **Comunista** (esquerda), e políticos **Direita**/**Esquerda** — estes últimos **personagens fictícios** que evocam o lado por sinais (gravata verde-amarela / camisa vermelha + barba grisalha) **sem imitar ninguém real**. As skins pixel Bolsonaro/Lula (pessoas reais) saem do menu; as figuras reais, se um dia, ficam p/ a Fase 9 (pagas) — decisão consciente do dono. Convenção de char: `centrao`/`patriota`/`comunista`/`direita`/`esquerda`; hitbox fixa (RN-07).
 **Consequência:** menu coeso e sem risco de imagem. Assets pixel `bolsonaro*`/`lula*` ficam órfãos (não carregados). Cada skin tem idle+corrida+agachado 3D; a faixa presidencial (D-27) hoje só o Centrão tem, mas qualquer skin herda ao ganhar a variante `<char>-faixa`.
+
+## D-29 — Pose no ar é um frame congelado da corrida (2026-07-28)
+**Contexto:** o dono testou e viu as skins Comunista/Patriota/Direita/Esquerda saltando "com a imagem do personagem parado olhando pra frente". Não era bug de animação: `Player.enterAir()` congela num frame ESTÁTICO durante o pulo — e esse frame era o `<char>.png`, que nessas skins é um retrato de frente, em pé. O Centrão parecia certo por acidente: o commit `75484c1` já havia sobrescrito `centrao.png` com um quadro da corrida (verificado: o arquivo é pixel-idêntico ao frame 1 de `centrao-run.png`).
+**Decisão:** a pose aérea passa a ter asset próprio, `<char>-air.png`, extraído do **frame 1 do respectivo `<char>-run.png`** — perfil, uma perna à frente e outra atrás, exatamente o "frame congelado da corrida" que o dono pediu. A extração é determinística (ffmpeg + validação por hash contra a origem), não gerada por IA. `Player` usa `airKey` no pulo, na queda e ao levantar do agachado, com **fallback pro idle** quando a variante não existe (mesma garantia do D-27).
+**Consequência:** os `<char>.png` seguem **intocados** e continuam servindo a galeria do menu — retrato de frente lá, perfil em jogo. O Centrão não muda em nada. Skin nova sem `-air` funciona como antes. Quem adicionar personagem deve gerar o `-air` junto (ver `docs/adding-characters.md`).
+
+## D-30 — Fases exibem o nome da carreira; os ids continuam sp/rj/bsb (2026-07-28)
+**Contexto:** o dono apontou que as fases ainda se chamavam "SP", "RJ" e "DF". O D-27 já descrevia a progressão como carreira política (interior → cidade grande → capital) e os assets já se chamavam `interior.jpg`/`cidade-grande.jpg`/`capital.jpg` — só os labels ficaram para trás.
+**Decisão:** `WORLDS[].name` passa a **Interior · Cidade Grande · Capital**. Os **ids `sp`/`rj`/`bsb` NÃO mudam**: são chave de persistência do localStorage (`polity-bros:best:*`, `votes-acc:*`, `gems-collected:*`, `worlds-unlocked`), da seed do layout fixo (D-16), do `CHECK` da migration 003 e do `WORLD_LENGTH_M` da Edge Function. Renomear id apagaria recordes e coleções de propina de todos os jogadores. Onde a UI mostrava o id cru em maiúsculas (ranking e spotlight), passa a usar `worldLabel(id)`.
+**Consequência:** rename de fase é operação de **label**, nunca de id. Um dia que os ids incomodem, a migração exige reescrever localStorage + `alter table` + deploy da Edge Function, e ainda assim invalidaria coleções — por isso o código compara com `WORLDS[último]`, não com a string `'bsb'`.
 
 ---
 

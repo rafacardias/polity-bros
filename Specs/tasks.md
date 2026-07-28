@@ -87,11 +87,17 @@
 - [~] [P0] T07E-03: 🎮 Gate da Fase 7 — build/lint/typecheck ✅ + E2E Playwright ✅ + celular real (aguarda dono) + deploy com OK explícito (aguarda dono)
 
 ## Fase 8 — QA
-- [ ] [P0] T08-01: Teste cross-device (5+ dispositivos)
-- [ ] [P0] T08-02: Performance (FPS, memória, loading)
-- [ ] [P0] T08-03: Playtesting com pessoas reais
-- [ ] [P0] T08-04: Corrigir bugs P0/P1
-- [ ] [P1] T08-05: Balanceamento final de dificuldade
+- [~] [P0] T08-01: Teste cross-device — automatizado em 4 perfis (Pixel 7, iPhone 13/WebKit, Galaxy S9+, iPad Mini): 59 testes verdes via `npm run test:e2e:devices`. **Falta a parte física (5+ aparelhos reais): GPU, calor, toque e Safari de verdade — aguarda o dono**
+- [x] [P0] T08-02: Performance — `e2e/perf.spec.ts` mede FPS (54,6 com CPU 4× throttled), boot (343ms), heap (28MB) e orçamento de assets. Órfãos removidos: 3,78MB → 2,89MB (−24%)
+- [ ] [P0] T08-03: Playtesting com pessoas reais ⚠️ 100% do dono — não automatizável
+- [~] [P0] T08-04: Corrigir bugs P0/P1 — 5 dos 6 relatos do dono (2026-07-28) corrigidos com regressão em `e2e/regressions.spec.ts`; falta a arte do agachado (ver 🎨 abaixo)
+- [ ] [P1] T08-05: Balanceamento final de dificuldade ⚠️ julgamento humano — depende do playtest
+
+### 🎨 Pendência de ARTE (bloqueia o fechamento da T08-04)
+- [ ] [P1] Corrida agachada de `patriota`/`comunista`/`direita`/`esquerda`: braços em pose de gorila (retos pra baixo) e congelados. 2 tentativas de regeração por IA nesta sessão produziram braços corretos mas o personagem **não agacha** — usar quebraria a leitura de esquiva. Assets atuais preservados. Critério objetivo de aceite em `scripts/measure-slide-arms.mjs` (`compact ≤ 0,90 · armAmp ≥ 6 · maxIoU ≤ 0,95`); hoje Centrão passa e as 4 falham. Propostas em `Visual/propostas-slide-2026-07-28/`
+
+### Backlog técnico levantado na Fase 8
+- [ ] [P2] Projeto Supabase separado para testes: a suíte E2E roda contra PRODUÇÃO e estoura o rate limit de sign-in anônimo quando executada em sequência
 
 ## Fase 9 — Monetização & GTM (pós-produto validado)
 - [ ] [P1] T09-01: Integrar ads (intersticial, rewarded, banner)
