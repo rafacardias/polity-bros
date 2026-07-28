@@ -1,3 +1,6 @@
+/* eslint-disable no-console -- os números medidos SÃO a entrega deste arquivo:
+   sem imprimi-los, um teste verde não diz se o jogo roda a 55fps ou a 51, e
+   comparar execuções (a regressão que queremos pegar) fica impossível. */
 import { test, expect } from '@playwright/test';
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -16,15 +19,22 @@ const CPU_THROTTLE = 4;
 const MAX_BOOT_MS = 12_000;
 const MAX_HEAP_MB = 400;
 
-test('mantém FPS jogável com CPU 4× mais lenta', async ({ page, browserName }) => {
+test('mantém FPS jogável com CPU 4× mais lenta', async ({ page, browserName }, testInfo) => {
   test.skip(browserName !== 'chromium', 'CPU throttling exige o protocolo do Chrome');
+  // Só no perfil principal e SEM paralelismo: browsers concorrentes disputam a
+  // mesma CPU e o número passa a medir a máquina, não o jogo (visto na prática:
+  // 54fps sozinho, 44fps concorrendo). Um teste de performance que roda em
+  // paralelo não mede performance — mede a carga do CI. `npm run test:e2e`
+  // força --workers=1; na bateria cross-device este teste é pulado de propósito.
+  test.skip(testInfo.project.name !== 'mobile', 'FPS mede-se num perfil por vez');
+  test.skip(testInfo.config.workers > 1, 'FPS exige --workers=1 para ser confiável');
 
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU_THROTTLE });
 
   await page.goto('/');
   await page.getByRole('button', { name: /JOGAR/i }).click();
-  await page.locator('#game-container canvas').waitFor({ state: 'visible', timeout: 15_000 });
+  await page.locator('#game-container canvas').first().waitFor({ state: 'visible', timeout: 15_000 });
   await page.waitForFunction(
     () => {
       const game = (window as unknown as { __game?: Phaser.Game }).__game;
@@ -59,7 +69,7 @@ test('jogo aparece dentro do orçamento de boot', async ({ page }) => {
   const started = Date.now();
   await page.goto('/');
   await page.getByRole('button', { name: /JOGAR/i }).click();
-  await page.locator('#game-container canvas').waitFor({ state: 'visible', timeout: MAX_BOOT_MS });
+  await page.locator('#game-container canvas').first().waitFor({ state: 'visible', timeout: MAX_BOOT_MS });
   const elapsed = Date.now() - started;
   console.log(`boot até o canvas: ${elapsed}ms`);
   expect(elapsed).toBeLessThan(MAX_BOOT_MS);
@@ -70,7 +80,7 @@ test('heap não estoura o orçamento durante a partida', async ({ page, browserN
 
   await page.goto('/');
   await page.getByRole('button', { name: /JOGAR/i }).click();
-  await page.locator('#game-container canvas').waitFor({ state: 'visible', timeout: 15_000 });
+  await page.locator('#game-container canvas').first().waitFor({ state: 'visible', timeout: 15_000 });
   await page.waitForTimeout(4000); // deixa o spawner reciclar o pool algumas vezes
 
   const heapMB = await page.evaluate(() => {

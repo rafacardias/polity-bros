@@ -38,7 +38,7 @@ async function stubScoreSubmit(page: Page): Promise<void> {
 // Mata o player de dentro da cena. Testar a morte "de verdade" (esperar bater
 // num inimigo) levaria dezenas de segundos e dependeria do balanceamento.
 async function forceGameOver(page: Page): Promise<void> {
-  await page.locator('#game-container canvas').waitFor({ state: 'visible', timeout: 15_000 });
+  await page.locator('#game-container canvas').first().waitFor({ state: 'visible', timeout: 15_000 });
   await page.waitForFunction(() => {
     const game = (window as unknown as { __game?: Phaser.Game }).__game;
     return !!game?.scene.keys.GameScene?.scene.isActive();
@@ -138,7 +138,7 @@ for (const char of ['patriota', 'comunista', 'direita', 'esquerda']) {
     );
     await page.goto('/');
     await page.getByRole('button', { name: /JOGAR/i }).click();
-    await page.locator('#game-container canvas').waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#game-container canvas').first().waitFor({ state: 'visible', timeout: 15_000 });
     // o canvas já aparece no preload — esperar o Player existir de fato
     await page.waitForFunction(
       () => {
@@ -150,18 +150,25 @@ for (const char of ['patriota', 'comunista', 'direita', 'esquerda']) {
       { timeout: 15_000 },
     );
 
-    // tira o player do chão e lê a textura que o estado aéreo escolheu
-    const textureInAir = await page.evaluate(async () => {
+    // Pula DE VERDADE e observa as texturas durante o voo. Empurrar o sprite
+    // pelo eixo y não serve: blocked.down só é recalculado no próximo passo da
+    // física, então em telas altas o player ainda se dizia "no chão" e o teste
+    // lia a textura de corrida — falha do teste, não do jogo.
+    const seen = await page.evaluate(async () => {
       const game = (window as unknown as { __game?: Phaser.Game }).__game;
       const scene = game?.scene.keys.GameScene as unknown as {
-        player: Phaser.Physics.Arcade.Sprite & { update: (t: number, d: number) => void };
+        player: Phaser.Physics.Arcade.Sprite;
       };
-      scene.player.setVelocityY(-400);
-      scene.player.y -= 120; // longe do chão: onGround falso com certeza
-      scene.player.update(0, 16);
-      return scene.player.texture.key;
+      const keys = new Set<string>();
+      scene.player.setVelocityY(-620); // impulso de pulo
+      // amostra ao longo do arco: subida, ápice e queda
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => requestAnimationFrame(() => r(null)));
+        keys.add(scene.player.texture.key);
+      }
+      return [...keys];
     });
 
-    expect(textureInAir).toBe(`${char}-air`);
+    expect(seen, `texturas vistas no voo: ${seen.join(', ')}`).toContain(`${char}-air`);
   });
 }
