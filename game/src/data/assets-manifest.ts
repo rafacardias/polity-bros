@@ -32,6 +32,16 @@ export const SPRITE_ASSETS: readonly SpriteAsset[] = [
   { key: 'player', path: 'assets/sprites/player.png' }, // Candidato neutro (legado)
   { key: 'direita', path: 'assets/sprites/direita.png' }, // Político Direita (3D fictício — substitui pixel Bolsonaro)
   { key: 'esquerda', path: 'assets/sprites/esquerda.png' }, // Político Esquerda (3D fictício — substitui pixel Lula)
+  // Pose AÉREA (D-29): frame 1 do respectivo '-run', recortado com ffmpeg — o
+  // personagem no ar aparece de perfil, mid-stride, em vez do retrato de frente.
+  // O Centrão não precisa: o commit 75484c1 já sobrescreveu 'centrao.png' com
+  // esse mesmo frame (verificado por hash), então ele cai no fallback do idle.
+  // Os '<char>.png' seguem intocados e continuam servindo a galeria do menu.
+  { key: 'patriota-air', path: 'assets/sprites/patriota-air.png' },
+  { key: 'comunista-air', path: 'assets/sprites/comunista-air.png' },
+  { key: 'direita-air', path: 'assets/sprites/direita-air.png' },
+  { key: 'esquerda-air', path: 'assets/sprites/esquerda-air.png' },
+  { key: 'centrao-faixa-air', path: 'assets/sprites/centrao-faixa-air.png' },
 ] as const;
 
 // Sheets animados por personagem: '<char>-run' (ciclo de corrida) e

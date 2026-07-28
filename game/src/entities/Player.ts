@@ -9,10 +9,14 @@ import { getSelectedSkin, skinTextures } from '../lib/skins';
 // no chão sem matemática de offset.
 export class Player extends Entity {
   // Keys de textura/animação do PERSONAGEM da skin selecionada (Fase 4).
-  // Derivados de skinTextures(): idle = '<char>', corrida = '<char>-run',
+  // Derivados de skinTextures(): ar = '<char>-air', corrida = '<char>-run',
   // agachado = '<char>-slide'. A skin é lida UMA vez na construção (a troca
   // acontece no menu, antes da partida).
-  private readonly idleKey: string;
+  //
+  // O idle ('<char>.png') NÃO é usado dentro do jogo: ele é o retrato de frente
+  // que a galeria do menu exibe. Em jogo o personagem está sempre correndo,
+  // pulando ou agachado — nunca parado encarando a câmera (D-29).
+  private readonly airKey: string;
   private readonly runKey: string;
   private readonly slideKey: string;
   private sliding = false;
@@ -33,8 +37,12 @@ export class Player extends Entity {
     // tem a variante '<char>-faixa' carregada, cai na arte normal.
     const useFaixa = !!opts?.faixa && scene.textures.exists(skinTextures(skin, 'faixa').idle);
     const tex = skinTextures(skin, useFaixa ? 'faixa' : undefined);
-    super(scene, x, y, tex.idle); // frame estático do personagem (pulo/queda)
-    this.idleKey = tex.idle;
+    // Pose no ar (D-29): frame congelado da corrida, usado no pulo/queda e como
+    // textura inicial. Fallback pro idle quando a skin não tem '-air' carregado
+    // — mesma garantia do D-27: arte que falta nunca quebra a cena.
+    const airTex = scene.textures.exists(tex.air) ? tex.air : tex.idle;
+    super(scene, x, y, airTex); // frame estático do personagem (pulo/queda)
+    this.airKey = airTex;
     this.runKey = tex.run;
     this.slideKey = tex.slide;
     this.setOrigin(0.5, 1);
@@ -230,9 +238,11 @@ export class Player extends Entity {
       this.lockSlideHitbox(); // hitbox 44×32 centrada na arte agachada, ancorada nos pés
       if (!body.blocked.down) this.setVelocityY(PHYSICS.FAST_FALL); // desce rápido no ar
     } else {
-      // volta ao estado em pé; o update() escolhe correr (chão) ou congelar (ar)
+      // volta ao estado em pé; o update() escolhe correr (chão) ou congelar (ar).
+      // Usa a pose aérea (D-29), não o idle: este frame é transitório, mas com
+      // o retrato de frente o personagem piscava encarando a câmera ao levantar.
       this.anims.stop();
-      this.setTexture(this.idleKey);
+      this.setTexture(this.airKey);
       this.lockStandingHitbox(); // arte em pé do personagem → hitbox 44×64 recentrada
     }
   }
@@ -245,12 +255,15 @@ export class Player extends Entity {
     this.lockStandingHitbox();
   }
 
-  // Estado visual no AR (pulo/queda): congela num sprite único em pé — sem
-  // ciclo de pernas correndo no meio do salto.
+  // Estado visual no AR (pulo/queda): congela num sprite único — sem ciclo de
+  // pernas correndo no meio do salto. O frame é a pose AÉREA (D-29): um quadro
+  // congelado da corrida (perfil, uma perna à frente e outra atrás). Antes usava
+  // o idle, que nas skins novas é um retrato DE FRENTE, parado — o personagem
+  // parecia encarar a câmera no meio do pulo.
   private enterAir(): void {
     if (this.anims.isPlaying) this.anims.stop();
-    if (this.texture.key !== this.idleKey) {
-      this.setTexture(this.idleKey);
+    if (this.texture.key !== this.airKey) {
+      this.setTexture(this.airKey);
       this.lockStandingHitbox();
     }
   }

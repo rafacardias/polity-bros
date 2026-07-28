@@ -93,10 +93,17 @@ export const SKINS: readonly SkinDef[] = [
 export function skinTextures(
   def: SkinDef,
   variant?: 'faixa',
-): { idle: string; run: string; slide: string } {
+): { idle: string; air: string; run: string; slide: string } {
   const char = def.char || 'player';
   const s = variant === 'faixa' ? '-faixa' : '';
-  return { idle: `${char}${s}`, run: `${char}${s}-run`, slide: `${char}${s}-slide` };
+  return {
+    idle: `${char}${s}`,
+    // pose no ar (D-29) — quem consome checa se a textura existe e cai no idle
+    // se não existir, então skins sem '-air' seguem funcionando como antes
+    air: `${char}${s}-air`,
+    run: `${char}${s}-run`,
+    slide: `${char}${s}-slide`,
+  };
 }
 
 export function isSkinUnlocked(def: SkinDef): boolean {

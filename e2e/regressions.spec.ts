@@ -126,3 +126,42 @@ test('botão do menu nomeia a moeda como propina', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('button', { name: /propina/i })).toBeVisible();
 });
+
+// BUG 5 — "o salto das skins mostra o personagem parado olhando pra frente".
+// enterAir() usava '<char>.png' (retrato de frente); agora usa '<char>-air',
+// que é um frame congelado da corrida (D-29).
+for (const char of ['patriota', 'comunista', 'direita', 'esquerda']) {
+  test(`skin ${char} pula na pose de perfil, não no retrato de frente`, async ({ page }) => {
+    await page.addInitScript(
+      (skin) => window.localStorage.setItem('polity-bros:skin', skin),
+      char,
+    );
+    await page.goto('/');
+    await page.getByRole('button', { name: /JOGAR/i }).click();
+    await page.locator('#game-container canvas').waitFor({ state: 'visible', timeout: 15_000 });
+    // o canvas já aparece no preload — esperar o Player existir de fato
+    await page.waitForFunction(
+      () => {
+        const game = (window as unknown as { __game?: Phaser.Game }).__game;
+        const scene = game?.scene.keys.GameScene as unknown as { player?: unknown } | undefined;
+        return !!scene?.player;
+      },
+      undefined,
+      { timeout: 15_000 },
+    );
+
+    // tira o player do chão e lê a textura que o estado aéreo escolheu
+    const textureInAir = await page.evaluate(async () => {
+      const game = (window as unknown as { __game?: Phaser.Game }).__game;
+      const scene = game?.scene.keys.GameScene as unknown as {
+        player: Phaser.Physics.Arcade.Sprite & { update: (t: number, d: number) => void };
+      };
+      scene.player.setVelocityY(-400);
+      scene.player.y -= 120; // longe do chão: onGround falso com certeza
+      scene.player.update(0, 16);
+      return scene.player.texture.key;
+    });
+
+    expect(textureInAir).toBe(`${char}-air`);
+  });
+}
