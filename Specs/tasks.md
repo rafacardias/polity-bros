@@ -76,15 +76,15 @@
 - [x] [P0] T07C-05: Menu hub v2 — Jogar fixo embaixo (sempre clicável); acima, na ordem: Fases · Ranking · Skins · Continue; Continue com ícone de propina + contagem e tremidinha a cada 1s quando ≥3 propinas; skins (galeria: amplia + nome, cinza "offline"); skins por votos acumulados POR MUNDO — *D-19, D-20, D-24*
 
 ### 7D — Identidade & Social
-- [ ] [P0] T07D-01: Google OAuth como upgrade da conta anônima (`linkIdentity`); pré-requisito: credencial OAuth do dono — *D-13, RF-14*
-- [ ] [P0] T07D-02: Migration `profiles` (username) + RLS + edição de nome + ranking exibe nome — *RN-04*
-- [ ] [P0] T07D-03: Pop-up final social — ranking em spotlight ~3s (atual + top-7 pessoal + top-7 global + posição), recolhe animado; integra com o pop-up de fim da 7C — *D-15, RN-02, RN-03*
-- [ ] [P1] T07D-04: Imagem de share para todos — canvas (screenshot + frame + score + CTA) via Web Share API + fallback download/galeria — *D-12, RF-16*
+- [ ] [P0] T07D-01: Google OAuth como upgrade da conta anônima (`linkIdentity`); pré-requisito: credencial OAuth do dono — *D-13, RF-14* ⚠️ BLOQUEADA: aguarda credencial OAuth do dono
+- [x] [P0] T07D-02: Migration `profiles` (username) + RLS + edição de nome + ranking exibe nome — *RN-04*
+- [x] [P0] T07D-03: Pop-up final social — ranking em spotlight ~3s (atual + top-7 pessoal + top-7 global + posição), recolhe animado; integra com o pop-up de fim da 7C — *D-15, RN-02, RN-03*
+- [x] [P1] T07D-04: Imagem de share para todos — canvas (screenshot + frame + score + CTA) via Web Share API + fallback download/galeria — *D-12, RF-16*
 
 ### 7E — Robustez & fechamento
-- [ ] [P0] T07E-01: Resiliência de rede — partida carregada roda 100% local; submit de score em fila com reenvio ao reconectar (sem prometer boot offline completo) — *RN-01*
-- [ ] [P0] T07E-02: Revisão de segurança da superfície nova (profiles RLS, OAuth, Edge Function v2) — *RN-04*
-- [ ] [P0] T07E-03: 🎮 Gate da Fase 7 — build/lint/typecheck verdes + E2E Playwright + celular real + deploy com OK explícito
+- [x] [P0] T07E-01: Resiliência de rede — partida carregada roda 100% local; submit de score em fila com reenvio ao reconectar (sem prometer boot offline completo) — *RN-01*
+- [x] [P0] T07E-02: Revisão de segurança da superfície nova (profiles RLS, OAuth, Edge Function v2) — *RN-04* → achado CRÍTICO corrigido: teto de elapsedSec/distância + votos atrelados à distância na Edge Function (anti-cheat); verificado ao vivo em produção
+- [~] [P0] T07E-03: 🎮 Gate da Fase 7 — build/lint/typecheck ✅ + E2E Playwright ✅ + celular real (aguarda dono) + deploy com OK explícito (aguarda dono)
 
 ## Fase 8 — QA
 - [ ] [P0] T08-01: Teste cross-device (5+ dispositivos)

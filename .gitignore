@@ -36,6 +36,12 @@ coverage/
 /assets-raw/*
 !/assets-raw/.gitkeep
 
+# Material visual bruto (referências, propostas de arte, previews de fase).
+# ~1,3 GB de PNG/GIF que só servem de apoio à direção de arte — o que entra no
+# jogo já vive otimizado em /game/public/assets. Sem esta regra, um `git add .`
+# incharia o repositório de forma permanente (histórico do git é imutável).
+/Visual/
+
 # ---------------------------------------------------------
 # Logs
 # ---------------------------------------------------------

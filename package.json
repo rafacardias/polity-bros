@@ -14,6 +14,7 @@
     "lint": "eslint \"{game,web,supabase}/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"{game,web,supabase}/**/*.{ts,tsx}\" --fix",
     "typecheck": "npm run typecheck -w game && npm run typecheck -w web",
+    "test:e2e": "playwright test",
     "format": "prettier . --write",
     "format:check": "prettier . --check ."
   },
