@@ -1,5 +1,6 @@
 import { useReducer, useState } from 'react';
 import {
+  ECONOMY,
   SKINS,
   WORLDS,
   WorldSystem,
@@ -44,7 +45,9 @@ interface MenuScreenProps {
 
 type Panel = 'fases' | 'skins' | 'continue' | null;
 
-const CONTINUE_COST = 3; // espelha ECONOMY.CONTINUE_COST (game/config)
+// Importado do pacote 'game', não copiado: o valor estava duplicado aqui e
+// divergiria em silêncio no dia em que a economia mudasse (D-11/D-18).
+const CONTINUE_COST = ECONOMY.CONTINUE_COST;
 
 // Menu hub da PLATAFORMA (D-07, D-20, D-24 — mockup do dono): JOGAR fixo
 // embaixo e sempre clicável (RN-03 vale no menu); acima, na ordem, os menus
@@ -164,7 +167,12 @@ export function MenuScreen({ onPlay, onRanking }: MenuScreenProps) {
                   </div>
                 );
               })()}
-            <div className="flex justify-between gap-1">
+            {/* Galeria ROLÁVEL na horizontal: antes era `justify-between` com
+                `flex-1`, que dividia ~310px por TODAS as skins — com o elenco
+                em 7 sobrou ~44px por célula e os labels ("Comunista", "1ª Dama")
+                estouravam, parecendo itens sobrepostos. Largura fixa + scroll
+                mantém cada card legível e aguenta o elenco crescer (Fase 9). */}
+            <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
               {SKINS.map((skin) => {
                 const unlocked = isSkinUnlocked(skin);
                 const selected = skin.id === selectedSkin.id;
@@ -176,12 +184,14 @@ export function MenuScreen({ onPlay, onRanking }: MenuScreenProps) {
                     aria-label={`Skin ${skin.label}${skin.side ? ' ' + skin.side : ''} — ${
                       unlocked ? 'disponível' : 'em breve'
                     }`}
-                    className={`flex flex-1 flex-col items-center gap-1 rounded-lg p-1.5 transition active:scale-95 ${
+                    className={`flex w-16 shrink-0 snap-start flex-col items-center gap-1 rounded-lg p-1.5 transition active:scale-95 ${
                       selected ? 'bg-slate-700 ring-2 ring-green-400' : 'hover:bg-slate-700/60'
                     }`}
                   >
                     <SkinThumb skin={skin} />
-                    <span className="text-[10px] leading-tight text-slate-400">{skin.label}</span>
+                    <span className="w-full truncate text-center text-[10px] leading-tight text-slate-400">
+                      {skin.label}
+                    </span>
                   </button>
                 );
               })}
@@ -227,7 +237,8 @@ export function MenuScreen({ onPlay, onRanking }: MenuScreenProps) {
           onClick={() => togglePanel('continue')}
           className={`${menuBtn} ${balance >= CONTINUE_COST ? 'menu-tremble border-green-500' : ''}`}
         >
-          💵 {balance} <span className="text-slate-400">— Continue</span>
+          💵 {balance} propina{balance === 1 ? '' : 's'}{' '}
+          <span className="text-slate-400">— Continue</span>
         </button>
 
         {/* JOGAR: fixo no rodapé do hub, clicável a qualquer momento (D-24) */}
