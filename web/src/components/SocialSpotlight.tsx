@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { worldLabel } from 'game';
 import type { GameEventPayload } from 'game';
 import type { RankingContext, RankingEntry } from '../lib/ranking';
 import { fetchOwnProfile } from '../lib/profile';
@@ -146,7 +147,7 @@ function PersonalColumn({ title, entries }: { title: string; entries: RankingEnt
         {entries.map((entry, i) => (
           <li key={`${entry.created_at}-${i}`} className="flex items-center justify-between gap-1">
             <span className="shrink-0 font-bold">{entry.score}</span>
-            <span className="truncate text-slate-400">{(entry.world ?? 'sp').toUpperCase()}</span>
+            <span className="truncate text-slate-400">{worldLabel(entry.world ?? 'sp')}</span>
           </li>
         ))}
       </ol>

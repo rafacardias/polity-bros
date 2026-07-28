@@ -105,13 +105,21 @@ export const GEM_BAR = {
 // Mundos/fases da campanha (D-16, supersede D-14): cada cidade é um MUNDO
 // selecionável com FIM e layout FIXO (semente). Paleta = tema do mundo —
 // silhueta/hitbox dos obstáculos seguem sagradas (SIZES congelado; tints
-// quase-brancos). Dificuldade cresce por mundo; SP é mais suave que o
+// quase-brancos). Dificuldade cresce por mundo; a 1ª fase é mais suave que o
 // balanceamento antigo (pedido do dono). Trocar o seed = trocar o layout —
 // versionar no sufixo ('-v1') para invalidar coleções antigas se preciso.
+//
+// ⚠️ `id` ≠ `name` (D-30). Os labels seguem a carreira política do D-27
+// (interior → cidade grande → capital), mas os ids 'sp'/'rj'/'bsb' são
+// CHAVE DE PERSISTÊNCIA e não podem mudar: nomeiam o localStorage
+// (polity-bros:best:*, votes-acc:*, gems-collected:*, worlds-unlocked), a
+// seed do layout fixo, o CHECK da migration 003 e o WORLD_LENGTH_M da Edge
+// Function. Renomear id apagaria recordes e coleções de todo mundo.
+// Para exibir o nome de um mundo a partir do id, use worldLabel().
 export const WORLDS = [
   {
     id: 'sp',
-    name: 'São Paulo',
+    name: 'Interior',
     lengthM: 600,
     seed: 'sp-v1',
     bg: 0x1e293b,
@@ -121,7 +129,7 @@ export const WORLDS = [
   },
   {
     id: 'rj',
-    name: 'Rio de Janeiro',
+    name: 'Cidade Grande',
     lengthM: 900,
     seed: 'rj-v1',
     bg: 0x134e4a,
@@ -131,7 +139,7 @@ export const WORLDS = [
   },
   {
     id: 'bsb',
-    name: 'Brasília',
+    name: 'Capital',
     lengthM: 1200,
     seed: 'bsb-v1',
     bg: 0x312e81,
@@ -141,6 +149,16 @@ export const WORLDS = [
   },
 ] as const;
 export type WorldDef = (typeof WORLDS)[number];
+
+// Nome exibível de um mundo a partir do id persistido (ranking, share, spotlight).
+// Antes esses lugares faziam `world.toUpperCase()` e mostravam o id cru ("SP",
+// "RJ", "BSB") — o jogador via a sigla técnica em vez do nome da fase. Id
+// desconhecido (score antigo, mundo removido) cai no próprio id em maiúsculas,
+// que é feio mas nunca fica vazio.
+export function worldLabel(id: string | null | undefined): string {
+  const world = WORLDS.find((w) => w.id === id);
+  return world ? world.name : String(id ?? '').toUpperCase();
+}
 
 // Inimigos (D-25, milestone Inimigos & Terreno): personagem que ANDA na direção
 // do player (mais rápido que o scroll → "vem pra cima"). Pisar em cima (stomp) =

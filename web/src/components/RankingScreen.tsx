@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { worldLabel } from 'game';
 import { fetchOwnProfile, saveUsername, USERNAME_RE } from '../lib/profile';
 import { fetchTopScores, type RankingEntry } from '../lib/ranking';
 
@@ -156,7 +157,7 @@ export function RankingScreen({ onBack }: RankingScreenProps) {
             <span className="text-right text-sm text-slate-400">
               {'⭐'.repeat(entry.stars ?? 1)}
               <br />
-              {entry.votes} votos · {entry.distance}m · {(entry.world ?? 'sp').toUpperCase()}
+              {entry.votes} votos · {entry.distance}m · {worldLabel(entry.world ?? 'sp')}
             </span>
           </li>
         ))}

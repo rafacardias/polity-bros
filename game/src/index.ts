@@ -18,8 +18,10 @@ export {
   skinTextures,
 } from './lib/skins';
 export type { SkinDef } from './lib/skins';
-// Mundos (T07C-01, D-16): catálogo + seleção/desbloqueio para o menu React
-export { WORLDS } from './config/constants';
+// Mundos (T07C-01, D-16): catálogo + seleção/desbloqueio para o menu React.
+// worldLabel traduz o id persistido no score ('sp') para o nome da fase
+// ('Interior') no ranking e no spotlight — D-30.
+export { WORLDS, worldLabel, ECONOMY } from './config/constants';
 export type { WorldDef } from './config/constants';
 export { WorldSystem } from './systems/WorldSystem';
 // Progresso de skin por mundo (D-19): a galeria mostra o farm de votos
