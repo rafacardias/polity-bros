@@ -98,6 +98,7 @@
 
 ### Backlog técnico levantado na Fase 8
 - [ ] [P2] Projeto Supabase separado para testes: a suíte E2E roda contra PRODUÇÃO e estoura o rate limit de sign-in anônimo quando executada em sequência
+- [ ] [P2] **Decisão do dono:** o fantasma do recorde (D-23) usa `<char>.png`, o retrato de FRENTE — hoje é o único lugar do jogo onde o personagem aparece encarando a câmera, justamente o visual reclamado no D-29. Defensável como "você de ontem, parado te esperando"; trocar pela pose de perfil deixaria a pista toda coerente. Não mexi porque o D-23 foi validado e o critério é estético, não técnico
 
 ## Fase 9 — Monetização & GTM (pós-produto validado)
 - [ ] [P1] T09-01: Integrar ads (intersticial, rewarded, banner)
