@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { worldLabel } from 'game';
+import { getLastScreenshot, worldLabel } from 'game';
 import type { GameEventPayload } from 'game';
 import type { RankingContext, RankingEntry } from '../lib/ranking';
 import { fetchOwnProfile } from '../lib/profile';
@@ -8,12 +8,16 @@ import { composeShareImage, shareScoreImage } from '../lib/shareImage';
 interface SocialSpotlightProps {
   payload: GameEventPayload;
   context: RankingContext;
+  loading: boolean;
   ownPlayerId: string | null;
 }
 
 const VISIBLE_MS = 3200;
+// Teto de segurança: se o ranking nunca chegar (rede caída), o sheet recolhe
+// assim mesmo em vez de ficar preso na tela cobrindo o jogo.
+const MAX_VISIBLE_MS = 9000;
 
-type PillState = 'idle' | 'loading' | 'saved';
+type PillState = 'idle' | 'loading' | 'saved' | 'error';
 
 // T07D-03/D-15: bottom sheet que aparece por cima do canvas logo após o
 // gameover — mostra onde o jogador ficou (position) e dois Top 7 (global e
@@ -24,7 +28,12 @@ type PillState = 'idle' | 'loading' | 'saved';
 // ao recolhimento do sheet — o componente inteiro só desmonta quando o App
 // descarta o spotlight por invalidação (reinício ou saída pro menu), nunca
 // por um timer interno.
-export function SocialSpotlight({ payload, context, ownPlayerId }: SocialSpotlightProps) {
+export function SocialSpotlight({
+  payload,
+  context,
+  loading,
+  ownPlayerId,
+}: SocialSpotlightProps) {
   const [entering, setEntering] = useState(true);
   const [leaving, setLeaving] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
@@ -39,9 +48,20 @@ export function SocialSpotlight({ payload, context, ownPlayerId }: SocialSpotlig
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // O sheet agora monta ANTES do ranking chegar (para o botão de compartilhar
+  // existir desde o 1º frame — RF-16). Se o relógio começasse na montagem, o
+  // ranking apareceria só nos segundos finais e o spotlight social do D-15
+  // perderia o efeito. Por isso os VISIBLE_MS contam a partir da CHEGADA dos
+  // dados; o MAX_VISIBLE_MS garante o recolhimento mesmo se eles não vierem.
   useEffect(() => {
+    if (loading) return;
     const showTimer = setTimeout(() => setLeaving(true), VISIBLE_MS);
     return () => clearTimeout(showTimer);
+  }, [loading]);
+
+  useEffect(() => {
+    const capTimer = setTimeout(() => setLeaving(true), MAX_VISIBLE_MS);
+    return () => clearTimeout(capTimer);
   }, []);
 
   // busca o username uma vez, best-effort — sem ele a imagem só sai sem a
@@ -60,23 +80,32 @@ export function SocialSpotlight({ payload, context, ownPlayerId }: SocialSpotlig
 
   const hidden = entering || leaving;
 
+  function flashPill(state: PillState): void {
+    setPillState(state);
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setPillState('idle'), 2000);
+  }
+
   async function handleShare(): Promise<void> {
     if (pillState === 'loading') return;
     setPillState('loading');
 
-    const blob = await composeShareImage(payload, username);
+    // payload.screenshot vem undefined quando a morte emitiu o gameover no
+    // mesmo tick da captura (o snapshot do Phaser é assíncrono). Como o clique
+    // acontece segundos depois, o frame já resolveu e está disponível aqui.
+    const screenshot = payload.screenshot ?? getLastScreenshot();
+    const blob = await composeShareImage({ ...payload, screenshot }, username);
     if (!blob) {
-      setPillState('idle');
+      flashPill('error'); // antes voltava mudo pra 'idle' — indistinguível de "nada aconteceu"
       return;
     }
 
     const result = await shareScoreImage(blob, payload.score);
-    if (result === 'downloaded') {
-      setPillState('saved');
-      savedTimerRef.current = setTimeout(() => setPillState('idle'), 2000);
-    } else {
-      setPillState('idle');
-    }
+    if (result === 'downloaded') flashPill('saved');
+    else if (result === 'failed') flashPill('error');
+    // 'shared' (o share sheet nativo já é o feedback) e 'cancelled' (o jogador
+    // desistiu de propósito — acusar erro seria injusto) voltam calados.
+    else setPillState('idle');
   }
 
   return (
@@ -90,8 +119,13 @@ export function SocialSpotlight({ payload, context, ownPlayerId }: SocialSpotlig
           VOCÊ{context.position !== null ? ` · #${context.position}` : ''} · {payload.score} pts
         </p>
         <div className="grid grid-cols-2 gap-3 text-xs">
-          <RankingColumn title="🌎 TOP 7" entries={context.topGlobal} ownPlayerId={ownPlayerId} />
-          <PersonalColumn title="📈 SEUS TOP 7" entries={context.topPersonal} />
+          <RankingColumn
+            title="🌎 TOP 7"
+            entries={context.topGlobal}
+            ownPlayerId={ownPlayerId}
+            loading={loading}
+          />
+          <PersonalColumn title="📈 SEUS TOP 7" entries={context.topPersonal} loading={loading} />
         </div>
       </div>
       <button
@@ -100,7 +134,13 @@ export function SocialSpotlight({ payload, context, ownPlayerId }: SocialSpotlig
         disabled={pillState === 'loading'}
         className="pointer-events-auto absolute bottom-5 right-4 z-30 rounded-full bg-emerald-500 px-4 py-2 font-mono text-xs font-bold text-slate-950 shadow-lg transition-opacity disabled:opacity-70"
       >
-        {pillState === 'loading' ? '…' : pillState === 'saved' ? 'salvo! ✓' : '📤 Compartilhar'}
+        {pillState === 'loading'
+          ? '…'
+          : pillState === 'saved'
+            ? 'salvo! ✓'
+            : pillState === 'error'
+              ? 'falhou — tentar de novo'
+              : '📤 Compartilhar'}
       </button>
     </div>
   );
@@ -110,16 +150,18 @@ function RankingColumn({
   title,
   entries,
   ownPlayerId,
+  loading,
 }: {
   title: string;
   entries: RankingEntry[];
   ownPlayerId: string | null;
+  loading: boolean;
 }) {
   return (
     <div className="min-w-0">
       <p className="mb-1 font-mono text-[11px] uppercase tracking-wide text-slate-400">{title}</p>
       <ol className="flex flex-col gap-0.5 font-mono">
-        {entries.length === 0 && <li className="text-slate-500">—</li>}
+        {entries.length === 0 && <li className="text-slate-500">{loading ? '…' : '—'}</li>}
         {entries.map((entry, i) => (
           <li
             key={`${entry.created_at}-${i}`}
@@ -138,12 +180,20 @@ function RankingColumn({
   );
 }
 
-function PersonalColumn({ title, entries }: { title: string; entries: RankingEntry[] }) {
+function PersonalColumn({
+  title,
+  entries,
+  loading,
+}: {
+  title: string;
+  entries: RankingEntry[];
+  loading: boolean;
+}) {
   return (
     <div className="min-w-0">
       <p className="mb-1 font-mono text-[11px] uppercase tracking-wide text-slate-400">{title}</p>
       <ol className="flex flex-col gap-0.5 font-mono">
-        {entries.length === 0 && <li className="text-slate-500">—</li>}
+        {entries.length === 0 && <li className="text-slate-500">{loading ? '…' : '—'}</li>}
         {entries.map((entry, i) => (
           <li key={`${entry.created_at}-${i}`} className="flex items-center justify-between gap-1">
             <span className="shrink-0 font-bold">{entry.score}</span>

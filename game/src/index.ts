@@ -7,6 +7,9 @@ import { GameOverScene } from './scenes/GameOverScene';
 
 export { GAME_EVENTS, SHELL_EVENTS, emitGameEvent, onGameEvent } from './lib/game-events';
 export type { GameEventPayload } from './lib/game-events';
+// Frame final da partida (T07D-04): o share lê daqui quando o payload do
+// gameover saiu sem screenshot — ver last-screenshot.ts para o porquê.
+export { getLastScreenshot } from './lib/last-screenshot';
 // Skins (T07B-04): catálogo/estado no pacote 'game' (fonte única);
 // o MenuScreen React consome daqui — nunca duplicar o catálogo no /web.
 export {

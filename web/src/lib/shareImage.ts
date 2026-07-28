@@ -126,7 +126,9 @@ function drawText(
   ctx.fillText('bata este recorde em polity-bros.vercel.app', SHARE_WIDTH / 2, SHARE_HEIGHT - 60);
 }
 
-export type ShareResult = 'shared' | 'downloaded' | 'failed';
+// 'cancelled' = o usuário fechou o share sheet de propósito. É separado de
+// 'failed' porque a UI não pode acusar erro de quem simplesmente desistiu.
+export type ShareResult = 'shared' | 'downloaded' | 'cancelled' | 'failed';
 
 // Tenta Web Share API (nativo em mobile — cai direto no WhatsApp/Instagram
 // do usuário); sem suporte/capability recusada, baixa o PNG via <a download>.
@@ -140,7 +142,7 @@ export async function shareScoreImage(blob: Blob, score: number): Promise<ShareR
       await navigator.share({ files: [file], text: shareText, url: SHARE_URL });
       return 'shared';
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return 'failed';
+      if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
       // qualquer outra falha (ex.: share sheet rejeitado pelo SO) cai pro download
     }
   }

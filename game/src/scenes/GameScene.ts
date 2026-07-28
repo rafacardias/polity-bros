@@ -18,6 +18,7 @@ import { WorldSystem } from '../systems/WorldSystem';
 import { TerrainSystem } from '../systems/TerrainSystem';
 import { GemCollectionSystem } from '../systems/GemCollectionSystem';
 import { WorldVotesSystem } from '../systems/WorldVotesSystem';
+import { setLastScreenshot } from '../lib/last-screenshot';
 
 const SCORE_EMIT_INTERVAL_MS = 250; // cadência do game:score (D-05) — 60/s seria ruído
 
@@ -825,10 +826,16 @@ export class GameScene extends Phaser.Scene {
   // PNG pronto pra uso — nunca aguardamos o callback (RN de fluxo: falha ou
   // atraso na captura jamais pode travar/adiar o game:gameover).
   private captureFinalFrame(): void {
+    setLastScreenshot(undefined); // não vazar o frame de uma run anterior
     try {
       this.game.renderer.snapshot((image) => {
         if (image instanceof HTMLImageElement) {
           this.finalScreenshot = image.src;
+          // publica também fora do payload: na DERROTA o game:gameover é
+          // emitido no mesmo tick da captura, então o snapshot ainda não
+          // resolveu e payload.screenshot sai undefined. O share lê daqui na
+          // hora do clique — segundos depois, com o frame já pronto.
+          setLastScreenshot(image.src);
         }
       });
     } catch {
