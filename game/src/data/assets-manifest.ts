@@ -95,13 +95,12 @@ export const WORLD_BACKGROUNDS: Readonly<Record<string, string>> = {
   // Fase 1 = INTERIOR (migração 3D-cartoon, 2026-07-24): cenário rural (casa de
   // sapé, morros, capela). Bordas em campo aberto → sem casas cortadas e sem
   // emenda visível (o fundo rola ~2100px < 3168px da textura na fase de 600m).
-  // O skyline 16-bit de SP (assets/bg/sp-skyline.png) fica p/ a futura fase
-  // "cidade grande" quando os mundos forem reorganizados.
   sp: 'assets/bg/interior.jpg',
   // Fase 2 (cidade grande) e Fase 3 (capital): fundos 3D-cartoon. Bordas tornadas
   // SEM-COSTURA (blend simétrico) porque estas fases são mais longas (900m/1200m)
-  // e o fundo rola além da largura da textura → a emenda apareceria. Ids sp/rj/bsb
-  // mantidos por ora; renomear p/ interior/cidade/capital fica p/ o refactor.
+  // e o fundo rola além da largura da textura → a emenda apareceria. Os ids
+  // sp/rj/bsb continuam por serem chave de persistência (D-30); os LABELS já
+  // seguem a carreira política: Interior · Cidade Grande · Capital.
   rj: 'assets/bg/cidade-grande.jpg',
   bsb: 'assets/bg/capital.jpg',
 } as const;
