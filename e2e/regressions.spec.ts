@@ -207,7 +207,9 @@ test('botão do menu nomeia a moeda como propina', async ({ page }) => {
 // BUG 5 — "o salto das skins mostra o personagem parado olhando pra frente".
 // enterAir() usava '<char>.png' (retrato de frente); agora usa '<char>-air',
 // que é um frame congelado da corrida (D-29).
-for (const char of ['patriota', 'comunista', 'direita', 'esquerda']) {
+// 'centrao' incluído de propósito: é a skin default de todo jogador novo, a
+// mais jogada, e era a única sem asset '-air' próprio (dependia do fallback).
+for (const char of ['centrao', 'patriota', 'comunista', 'direita', 'esquerda']) {
   test(`skin ${char} pula na pose de perfil, não no retrato de frente`, async ({ page }) => {
     await page.addInitScript(
       (skin) => window.localStorage.setItem('polity-bros:skin', skin),

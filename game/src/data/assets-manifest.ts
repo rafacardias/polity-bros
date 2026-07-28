@@ -34,9 +34,12 @@ export const SPRITE_ASSETS: readonly SpriteAsset[] = [
   { key: 'esquerda', path: 'assets/sprites/esquerda.png' }, // Político Esquerda (3D fictício — substitui pixel Lula)
   // Pose AÉREA (D-29): frame 1 do respectivo '-run', recortado com ffmpeg — o
   // personagem no ar aparece de perfil, mid-stride, em vez do retrato de frente.
-  // O Centrão não precisa: o commit 75484c1 já sobrescreveu 'centrao.png' com
-  // esse mesmo frame (verificado por hash), então ele cai no fallback do idle.
   // Os '<char>.png' seguem intocados e continuam servindo a galeria do menu.
+  // O Centrão entra na regra mesmo já funcionando (o commit 75484c1 tinha
+  // sobrescrito 'centrao.png' com esse mesmo frame — 'centrao-air.png' é
+  // pixel-idêntico a ele): sem isto, a skin DEFAULT seria a única a depender do
+  // fallback, e a única que o E2E não conseguiria verificar.
+  { key: 'centrao-air', path: 'assets/sprites/centrao-air.png' },
   { key: 'patriota-air', path: 'assets/sprites/patriota-air.png' },
   { key: 'comunista-air', path: 'assets/sprites/comunista-air.png' },
   { key: 'direita-air', path: 'assets/sprites/direita-air.png' },
