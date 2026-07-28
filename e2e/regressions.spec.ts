@@ -13,6 +13,22 @@ import { test, expect, type Page } from '@playwright/test';
 // rede) também passaria, e a regressão voltaria sem ninguém notar.
 const SLOW_NETWORK_MS = 2500;
 
+// A carteira vive em localStorage e o storageState compartilhado fotografa a
+// origem inteira. Com 3+ propinas, gameOver() desvia para a oferta de continue
+// (4s) e só emite o game:gameover depois — os testes quebrariam com um timeout
+// que não explica nada. Zerar deixa o caminho de morte determinístico.
+async function emptyWallet(page: Page): Promise<void> {
+  await page.addInitScript(() => window.localStorage.setItem('polity-bros:gems', '0'));
+}
+
+// O ranking também é stubado: sem isto o teste depende da latência do Supabase
+// de produção e do conteúdo real do Top 7 — a fonte de flake mais provável.
+async function stubRanking(page: Page): Promise<void> {
+  await page.route('**/rest/v1/scores*', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+  );
+}
+
 async function stubScoreSubmit(page: Page): Promise<void> {
   await page.route('**/functions/v1/submit-score', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, SLOW_NETWORK_MS));
@@ -55,6 +71,8 @@ async function forceGameOver(page: Page): Promise<void> {
 // fetchRankingContext; como o game over aceita toque em ~400ms, na derrota o
 // jogador reiniciava antes e o botão nunca existia.
 test('compartilhar aparece na DERROTA, sem esperar a rede', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
   await stubScoreSubmit(page);
   await page.goto('/');
   await page.getByRole('button', { name: /JOGAR/i }).click();
@@ -65,24 +83,83 @@ test('compartilhar aparece na DERROTA, sem esperar a rede', async ({ page }) => 
   await expect(page.getByRole('button', { name: /Compartilhar/i })).toBeVisible({
     timeout: SLOW_NETWORK_MS - 1_000,
   });
+
+  // ...e o ranking REALMENTE chega depois: sem isto o teste passaria com o
+  // spotlight preso em "carregando" para sempre.
+  await expect(page.getByText('…').first()).toBeHidden({ timeout: SLOW_NETWORK_MS + 5_000 });
+});
+
+// O pill é a única ilha clicável do overlay e sobrevive ao recolhimento do
+// sheet. Ele NÃO pode atravessar para a run seguinte: durante a intro (~900ms)
+// o update() não emite game:score, e o botão da partida anterior ficava vivo
+// por cima do jogo novo — no canto do polegar, compartilhando o score velho e
+// engolindo o toque que deveria pular a intro.
+test('compartilhar some ao recomeçar, não vaza para a run seguinte', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await stubScoreSubmit(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: /JOGAR/i }).click();
+  await forceGameOver(page);
+  await expect(page.getByRole('button', { name: /Compartilhar/i })).toBeVisible({
+    timeout: 5_000,
+  });
+
+  // Reinicia como o jogador faria: um toque na tela do game over. Mouse cru
+  // porque o overlay do spotlight cobre a viewport (pointer-events-none, o
+  // toque atravessa até o Phaser) e o actionability check do Playwright ficaria
+  // esperando um elemento que nunca "recebe" o clique.
+  // O GameOverScene só arma o listener de reinício 400ms após a morte
+  // (GameOverScene.ts:104) — antes disso o toque não faz nada.
+  await page.waitForTimeout(900);
+  const box = await page.locator('#game-container canvas').first().boundingBox();
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 3);
+  // confirma que a run nova realmente começou — sem isto, um clique que não
+  // reinicia nada faria o teste falhar por um motivo que não é o testado
+  await page.waitForFunction(
+    () => {
+      const game = (window as unknown as { __game?: Phaser.Game }).__game;
+      return game?.scene.getScenes(true).some((s) => s.scene.key === 'GameScene');
+    },
+    undefined,
+    { timeout: 5_000 },
+  );
+
+  // já no primeiro instante da run nova o pill tem de ter sumido — não depois
+  // de a intro terminar (a intro leva ~900ms sem emitir game:score)
+  await expect(page.getByTestId('share-pill')).toHaveCount(0, { timeout: 800 });
 });
 
 // O botão precisa continuar CLICÁVEL: ele é uma ilha pointer-events-auto
 // dentro de um overlay pointer-events-none, e some se o jogador reiniciar.
-test('compartilhar responde ao clique e gera a imagem', async ({ page }) => {
+test('compartilhar responde ao clique e gera a imagem', async ({ page, browserName }) => {
+  // Só no Chromium: este teste afirma o caminho de FALLBACK (<a download>), que
+  // o WebKit headless não dispara. E no iPhone real o fallback nem é usado —
+  // lá existe navigator.share, então o caminho é o share sheet nativo, que
+  // nenhum browser headless consegue exercitar. Rodar aqui provaria o oposto
+  // do que acontece no aparelho.
+  test.skip(browserName !== 'chromium', 'fallback de download não existe no WebKit');
+  await emptyWallet(page);
+  await stubRanking(page);
   await stubScoreSubmit(page);
   await page.goto('/');
   await page.getByRole('button', { name: /JOGAR/i }).click();
   await forceGameOver(page);
 
-  const shareBtn = page.getByRole('button', { name: /Compartilhar/i });
+  // localiza pelo testid, não pelo texto: o rótulo muda para "salvo! ✓" e um
+  // locator por nome perderia o botão justamente no estado que queremos afirmar
+  const shareBtn = page.getByTestId('share-pill');
+  const download = page.waitForEvent('download', { timeout: 10_000 });
   await shareBtn.click();
-  // sem Web Share API no Chromium headless, o caminho é o download do PNG —
-  // 'salvo! ✓'. O que NÃO pode acontecer é o pill dizer que falhou.
-  await expect(page.getByRole('button', { name: /salvo!|Compartilhar/i })).toBeVisible({
-    timeout: 10_000,
-  });
-  await expect(page.getByRole('button', { name: /falhou/i })).toHaveCount(0);
+
+  // Sem Web Share API no browser de teste, o caminho é determinístico:
+  // compõe o PNG → baixa → pill vira 'salvo! ✓'. Afirmar o ESTADO TERMINAL,
+  // e não "salvo OU Compartilhar": 'Compartilhar' é o rótulo ocioso, presente
+  // antes do clique e de volta 2s após um erro — a asserção passaria com o
+  // share 100% quebrado.
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/\.png$/);
+  await expect(shareBtn).toHaveText(/salvo!/i, { timeout: 5_000 });
 });
 
 // BUG 2 — "itens sobrepostos na galeria de skins". Com 7 skins em flex-1 cada

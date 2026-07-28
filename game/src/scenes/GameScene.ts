@@ -237,7 +237,12 @@ export class GameScene extends Phaser.Scene {
     this.continueUsed = false;
     this.invulnerableUntil = 0;
     this.pendingGameOverPayload = undefined;
-    this.finalScreenshot = undefined; // T07D-04: não vazar frame de uma run anterior
+    // T07D-04: não vazar frame de uma run anterior. Zera os DOIS lugares — o
+    // campo da cena e o global do módulo que o share lê. Limpar só um deixa a
+    // invariante dependendo de todo caminho de gameover passar por
+    // captureFinalFrame(), o que é verdade hoje mas não está protegido.
+    this.finalScreenshot = undefined;
+    setLastScreenshot(undefined);
     // rede de segurança do score (review 7B): sair da cena com uma morte
     // pendente (oferta aberta) ainda emite o game:gameover — o listener de
     // submit vive no App React, que sobrevive ao unmount do GameShell
@@ -464,6 +469,13 @@ export class GameScene extends Phaser.Scene {
   // Enquanto ativa, o update() só anima o player (mundo/score congelados).
   private startIntro(): void {
     this.introActive = true;
+    // A run NOVA começa aqui: anuncia score zerado imediatamente para o shell
+    // React descartar o spotlight da run anterior. Sem isto, o update() fica
+    // ~900ms retornando cedo (mundo congelado durante a intro) sem emitir
+    // SCORE, e o pill "Compartilhar" da partida passada sobrevive por cima do
+    // jogo novo — clicável, no canto do polegar, compartilhando o score velho
+    // e engolindo o toque que deveria pular a intro.
+    emitGameEvent(GAME_EVENTS.SCORE, this.score.getSnapshot());
     const { width, height } = this.scale;
     const cam = this.cameras.main;
     this.setHudVisible(false); // "o tempo ainda não conta"

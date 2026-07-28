@@ -78,10 +78,14 @@ export default function App() {
           : null,
       );
 
+      // fora do try e antes do submit: a telemetria não depende do envio do
+      // score, e ficando depois ela se perdia em silêncio sempre que
+      // submitScore lançasse (localStorage cheio, Safari privado)
+      trackRunEnd(payload); // telemetria leve (T07A-05, D-10)
+
       void (async () => {
         try {
           await submitScore(payload);
-          trackRunEnd(payload); // telemetria leve (T07A-05, D-10)
           const context = await fetchRankingContext(payload.score); // T07D-03/D-15
 
           // invalidado por um reinício (game:score) ou por um gameover mais novo

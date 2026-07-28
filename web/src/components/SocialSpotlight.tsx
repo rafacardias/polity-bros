@@ -39,6 +39,9 @@ export function SocialSpotlight({
   const [username, setUsername] = useState<string | null>(null);
   const [pillState, setPillState] = useState<PillState>('idle');
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // guarda de reentrância própria: derivar de pillState não bastava, porque o
+  // estado sai de 'loading' assim que um flash começa, mesmo com share em voo
+  const sharingRef = useRef(false);
 
   // dois frames de raf pra garantir que o navegador pinte o estado "fora da
   // tela" antes de animar pra dentro — senão o slide-up não roda (CSS transition
@@ -87,25 +90,35 @@ export function SocialSpotlight({
   }
 
   async function handleShare(): Promise<void> {
-    if (pillState === 'loading') return;
+    if (sharingRef.current) return;
+    sharingRef.current = true;
+    // mata o timer de um flash anterior: sem isto ele dispararia no meio deste
+    // share, devolvendo o pill a 'idle' com a operação ainda em voo — o botão
+    // reabilitava e um segundo navigator.share() concorrente rejeitava com
+    // InvalidStateError, acusando "falhou" num compartilhamento que deu certo.
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     setPillState('loading');
 
     // payload.screenshot vem undefined quando a morte emitiu o gameover no
     // mesmo tick da captura (o snapshot do Phaser é assíncrono). Como o clique
     // acontece segundos depois, o frame já resolveu e está disponível aqui.
     const screenshot = payload.screenshot ?? getLastScreenshot();
-    const blob = await composeShareImage({ ...payload, screenshot }, username);
-    if (!blob) {
-      flashPill('error'); // antes voltava mudo pra 'idle' — indistinguível de "nada aconteceu"
-      return;
-    }
+    try {
+      const blob = await composeShareImage({ ...payload, screenshot }, username);
+      if (!blob) {
+        flashPill('error'); // antes voltava mudo pra 'idle' — indistinguível de "nada aconteceu"
+        return;
+      }
 
-    const result = await shareScoreImage(blob, payload.score);
-    if (result === 'downloaded') flashPill('saved');
-    else if (result === 'failed') flashPill('error');
-    // 'shared' (o share sheet nativo já é o feedback) e 'cancelled' (o jogador
-    // desistiu de propósito — acusar erro seria injusto) voltam calados.
-    else setPillState('idle');
+      const result = await shareScoreImage(blob, payload.score);
+      if (result === 'downloaded') flashPill('saved');
+      else if (result === 'failed') flashPill('error');
+      // 'shared' (o share sheet nativo já é o feedback) e 'cancelled' (o jogador
+      // desistiu de propósito — acusar erro seria injusto) voltam calados.
+      else setPillState('idle');
+    } finally {
+      sharingRef.current = false;
+    }
   }
 
   return (
@@ -130,6 +143,10 @@ export function SocialSpotlight({
       </div>
       <button
         type="button"
+        // seletor estável para o E2E: o rótulo muda com o estado (Compartilhar
+        // → … → salvo! ✓ → falhou), então localizar pelo texto perderia o
+        // botão exatamente no instante que o teste quer observar
+        data-testid="share-pill"
         onClick={() => void handleShare()}
         disabled={pillState === 'loading'}
         className="pointer-events-auto absolute bottom-5 right-4 z-30 rounded-full bg-emerald-500 px-4 py-2 font-mono text-xs font-bold text-slate-950 shadow-lg transition-opacity disabled:opacity-70"
