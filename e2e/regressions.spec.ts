@@ -109,21 +109,43 @@ test('compartilhar some ao recomeçar, não vaza para a run seguinte', async ({ 
   // porque o overlay do spotlight cobre a viewport (pointer-events-none, o
   // toque atravessa até o Phaser) e o actionability check do Playwright ficaria
   // esperando um elemento que nunca "recebe" o clique.
-  // O GameOverScene só arma o listener de reinício 400ms após a morte
-  // (GameOverScene.ts:104) — antes disso o toque não faz nada.
-  await page.waitForTimeout(900);
-  const box = await page.locator('#game-container canvas').first().boundingBox();
-  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 3);
-  // confirma que a run nova realmente começou — sem isto, um clique que não
-  // reinicia nada faria o teste falhar por um motivo que não é o testado
+  //
+  // ⚠️ O toque é RETENTADO em vez de um sleep fixo de 900ms. O GameOverScene só
+  // arma o listener de reinício 400ms depois de entrar (GameOverScene.ts:104), e
+  // ele próprio entra 450ms após a morte — sob carga (a suíte cross-device roda
+  // 4 perfis de aparelho em paralelo) esse orçamento estoura, o clique cai antes
+  // do listener existir e o teste falhava esperando um restart que nunca vinha.
+  // Cliques extras são inofensivos: na run nova um toque só pula a intro.
+  // ⚠️ Esperar a GameOverScene ENTRAR antes de clicar. gameOver() não derruba a
+  // GameScene: a troca de cena acontece 450ms depois, num delayedCall. Sem este
+  // guard, "a GameScene está ativa?" já responde SIM no instante da morte e o
+  // teste se declararia reiniciado sem nunca ter reiniciado.
   await page.waitForFunction(
     () => {
       const game = (window as unknown as { __game?: Phaser.Game }).__game;
-      return game?.scene.getScenes(true).some((s) => s.scene.key === 'GameScene');
+      return !!game?.scene.getScenes(true).some((s) => s.scene.key === 'GameOverScene');
     },
     undefined,
-    { timeout: 5_000 },
+    { timeout: 10_000 },
   );
+
+  const box = await page.locator('#game-container canvas').first().boundingBox();
+  await expect
+    .poll(
+      async () => {
+        await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 3);
+        return page.evaluate(() => {
+          const game = (window as unknown as { __game?: Phaser.Game }).__game;
+          return !!game?.scene.getScenes(true).some((s) => s.scene.key === 'GameScene');
+        });
+      },
+      {
+        message: 'o toque na tela de game over não reiniciou a partida',
+        intervals: [300, 300, 300, 500, 500, 500, 1000],
+        timeout: 10_000,
+      },
+    )
+    .toBe(true);
 
   // já no primeiro instante da run nova o pill tem de ter sumido — não depois
   // de a intro terminar (a intro leva ~900ms sem emitir game:score)
