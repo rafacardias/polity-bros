@@ -81,6 +81,10 @@ export class GameScene extends Phaser.Scene {
   private continueUsed = false;
   private invulnerableUntil = 0;
   private blinkTween?: Phaser.Tweens.Tween;
+  // Aprovação (D-31): a "vida". Barra de HEALTH.MAX segmentos no HUD.
+  private health = HEALTH.MAX;
+  private approvalTrack!: Phaser.GameObjects.Rectangle;
+  private approvalSegments: Phaser.GameObjects.Rectangle[] = [];
   private continueUi: Phaser.GameObjects.GameObject[] = [];
   private continueTimers: Phaser.Time.TimerEvent[] = [];
   private continueTapHandler?: (p: Phaser.Input.Pointer) => void;
@@ -150,6 +154,7 @@ export class GameScene extends Phaser.Scene {
     this.won = false;
     this.stars = 1;
     this.stompCombo = 0;
+    this.health = HEALTH.MAX; // aprovação cheia a cada run (D-31)
     this.unlockedWorldName = null;
     const rng = new Phaser.Math.RandomDataGenerator([this.world.seed]);
     // Terreno em degraus (D-26): criado ANTES do spawner — as entidades
@@ -222,6 +227,9 @@ export class GameScene extends Phaser.Scene {
 
     this.score = new ScoreSystem();
     this.createHud(width);
+    // a barra deriva do estado (this.health), em vez de nascer "verde" por
+    // coincidência da cor de construção — restart nunca herda barra suja
+    this.refreshApprovalBar();
     this.bestRecord = BestScoreSystem.load(this.world.id);
     this.recordCelebrated = false;
     this.createRecordMarker();
@@ -322,6 +330,38 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(11)
       .setVisible(false);
+
+    // Barra de APROVAÇÃO (D-31) — a "vida" do candidato. 3ª linha da coluna
+    // direita (10 → 32 → 54), na mesma âncora do 🗳️ e do 💵. Três segmentos
+    // discretos esvaziando da DIREITA para a esquerda (convenção de barra de
+    // vida). Criada 1× aqui e daqui pra frente só MUTADA (RN-01): nada de
+    // recriar retângulo por impacto.
+    //
+    // Sem rótulo textual de propósito: y=54 é a última linha antes de invadir a
+    // pista, e o significado é ensinado pelo texto flutuante do impacto e da
+    // coleta ("ESCÂNDALO! APROVAÇÃO -1" / "APROVAÇÃO +1").
+    const barW = HEALTH.MAX * HEALTH.BAR_SEG_W + (HEALTH.MAX - 1) * HEALTH.BAR_SEG_GAP;
+    const barLeft = width - 12 - barW;
+    const barCy = HEALTH.BAR_Y + HEALTH.BAR_SEG_H / 2;
+    // depth 9 = atrás dos segmentos, imune a reordenação da display list
+    this.approvalTrack = this.add
+      .rectangle(barLeft + barW / 2, barCy, barW + 6, HEALTH.BAR_SEG_H + 6, HEALTH.BAR_TRACK, 0.75)
+      .setDepth(9);
+    this.approvalSegments = [];
+    for (let i = 0; i < HEALTH.MAX; i++) {
+      this.approvalSegments.push(
+        this.add
+          .rectangle(
+            barLeft + HEALTH.BAR_SEG_W / 2 + i * (HEALTH.BAR_SEG_W + HEALTH.BAR_SEG_GAP),
+            barCy,
+            HEALTH.BAR_SEG_W,
+            HEALTH.BAR_SEG_H,
+            HEALTH.BAR_COLORS[HEALTH.MAX - 1],
+            1,
+          )
+          .setDepth(10),
+      );
+    }
 
     this.muteButton = this.add
       .text(width - 12, this.scale.height - 10, this.sound.mute ? '🔇' : '🔊', {
@@ -508,7 +548,22 @@ export class GameScene extends Phaser.Scene {
     this.votesText.setVisible(v);
     this.gemText.setVisible(v);
     this.distanceText.setVisible(v);
+    // sem isto a barra vaza por cima do close-up da intro cinematográfica
+    this.approvalTrack.setVisible(v);
+    this.approvalSegments.forEach((s) => s.setVisible(v));
   }
+
+  // Estado atual da barra → cor e preenchimento. Chamada SEMPRE antes do pulso:
+  // é o pulso que anima o segmento que acabou de mudar, sobrescrevendo o
+  // resultado desta função só naquele segmento.
+  private refreshApprovalBar(): void {
+    const color = HEALTH.BAR_COLORS[Math.max(0, this.health - 1)];
+    this.approvalSegments.forEach((seg, i) => {
+      this.tweens.killTweensOf(seg);
+      seg.setScale(1).setAlpha(1).setFillStyle(i < this.health ? color : HEALTH.BAR_EMPTY, 1);
+    });
+  }
+
 
   // Micro-onboarding (T07A-06, RF-15): hint de controles UMA vez por
   // aparelho, mínimo e não-bloqueante. Some na 1ª interação (o jogador agiu

@@ -66,9 +66,11 @@ export const JUICE = {
   RECORD_GHOST_ALPHA: 0.1,
 } as const;
 
-// Carência de invulnerabilidade. Estava como um 1500 solto dentro de revive()
-// junto de um tween de blink escrito à mão — números de game feel moram AQUI.
+// APROVAÇÃO = a "vida" do candidato (D-31). O contato com o inimigo deixa de
+// matar na hora e derruba 1/3 da barra; zerar cai no MESMO fluxo de gameOver()
+// de sempre, inclusive a oferta paga de CONTINUE, que restaura a barra cheia.
 export const HEALTH = {
+  MAX: 3, // 3 impactos por vida; 1 impacto = 1 segmento = 1/3
   // O revive é uma 2ª chance COMPRADA: a pista à frente é limpa e o player
   // precisa de tempo para reentrar no flow sem morrer de novo de graça.
   REVIVE_IFRAME_MS: 1500,
@@ -76,6 +78,22 @@ export const HEALTH = {
   // carência (ver blinkPlayer), em vez de ser um literal solto: com 140ms e
   // 1500ms de carência dá repeat 4, exatamente o que estava escrito à mão.
   BLINK_HALF_MS: 140,
+  // HUD: 3ª linha da coluna direita (y 10 → 32 → 54), ancorada na direita como
+  // o 🗳️ e o 💵. Segmentos DISCRETOS: lê como "caiu 33%" e como barra ao mesmo
+  // tempo. 3×26 + 2×3 = 84px de largura total.
+  BAR_Y: 54,
+  BAR_SEG_W: 26,
+  BAR_SEG_H: 8,
+  BAR_SEG_GAP: 3,
+  // Cor dos segmentos RESTANTES por nível de aprovação (1/3 · 2/3 · cheia) — o
+  // vocabulário de cor do resto do jogo: vermelho do flash de morte, amarelo
+  // dos votos, verde da propina.
+  BAR_COLORS: [0xef4444, 0xfacc15, 0x4ade80],
+  BAR_LOST: 0xef4444, // segmento no instante em que colapsa
+  BAR_EMPTY: 0x334155, // slot gasto (ainda legível como "havia 3 casas")
+  // Trilha/contorno: garante contraste sobre QUALQUER céu de mundo (SP azul,
+  // RJ teal, BSB índigo) — mesmo truque do stroke do distanceText.
+  BAR_TRACK: 0x0f172a,
 } as const;
 
 export const INPUT = {
