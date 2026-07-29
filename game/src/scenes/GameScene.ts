@@ -13,7 +13,7 @@ import { WalletSystem } from '../systems/WalletSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS, type GameEventPayload } from '../lib/game-events';
-import { ECONOMY, ENEMY, JUICE, SCORE, SIZES, TERRAIN, WORLDS, type WorldDef } from '../config/constants';
+import { ECONOMY, ENEMY, HEALTH, JUICE, SCORE, SIZES, TERRAIN, WORLDS, type WorldDef } from '../config/constants';
 import { WorldSystem } from '../systems/WorldSystem';
 import { TerrainSystem } from '../systems/TerrainSystem';
 import { GemCollectionSystem } from '../systems/GemCollectionSystem';
@@ -80,6 +80,7 @@ export class GameScene extends Phaser.Scene {
   private introActive = false;
   private continueUsed = false;
   private invulnerableUntil = 0;
+  private blinkTween?: Phaser.Tweens.Tween;
   private continueUi: Phaser.GameObjects.GameObject[] = [];
   private continueTimers: Phaser.Time.TimerEvent[] = [];
   private continueTapHandler?: (p: Phaser.Input.Pointer) => void;
@@ -996,6 +997,29 @@ export class GameScene extends Phaser.Scene {
     this.continueUi = [];
   }
 
+  // Pisca do período de invulnerabilidade — UM lugar só, para que toda carência
+  // do jogo tenha o mesmo vocabulário visual.
+  //
+  // O nº de repetições DERIVA da duração em vez de ser um literal: com
+  // BLINK_HALF_MS=140 e REVIVE_IFRAME_MS=1500 dá repeat 4, exatamente o valor
+  // que estava escrito à mão — o comportamento antigo é derivado, não alterado.
+  //
+  // Usa blinkTween?.stop() e NÃO killTweensOf(player): o tween de squash do
+  // Player também tem o player como alvo, e matar tudo engoliria o game feel
+  // do pulo/aterrissagem.
+  private blinkPlayer(durationMs: number): void {
+    this.blinkTween?.stop();
+    this.player.setAlpha(1);
+    this.blinkTween = this.tweens.add({
+      targets: this.player,
+      alpha: 0.3,
+      duration: HEALTH.BLINK_HALF_MS,
+      yoyo: true,
+      repeat: Math.max(0, Math.round(durationMs / (HEALTH.BLINK_HALF_MS * 2)) - 1),
+      onComplete: () => this.player.setAlpha(1),
+    });
+  }
+
   private revive(): void {
     this.continueUsed = true; // 1x por partida
     this.pendingGameOverPayload = undefined; // a run continua — morte cancelada
@@ -1024,16 +1048,9 @@ export class GameScene extends Phaser.Scene {
     this.isGameOver = false;
     this.physics.resume();
     this.inputSystem.setEnabled(true);
-    // carência com blink: invencível por 1.5s para reentrar no flow
-    this.invulnerableUntil = this.time.now + 1500;
-    this.tweens.add({
-      targets: this.player,
-      alpha: 0.3,
-      duration: 140,
-      yoyo: true,
-      repeat: 4,
-      onComplete: () => this.player.setAlpha(1),
-    });
+    // carência com blink: invencível para reentrar no flow
+    this.invulnerableUntil = this.time.now + HEALTH.REVIVE_IFRAME_MS;
+    this.blinkPlayer(HEALTH.REVIVE_IFRAME_MS);
     // elapsedMs NÃO andou durante a oferta (update retorna cedo no game
     // over) — o teto de plausibilidade da Edge Function segue coerente
   }

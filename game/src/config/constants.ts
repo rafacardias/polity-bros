@@ -66,6 +66,18 @@ export const JUICE = {
   RECORD_GHOST_ALPHA: 0.1,
 } as const;
 
+// Carência de invulnerabilidade. Estava como um 1500 solto dentro de revive()
+// junto de um tween de blink escrito à mão — números de game feel moram AQUI.
+export const HEALTH = {
+  // O revive é uma 2ª chance COMPRADA: a pista à frente é limpa e o player
+  // precisa de tempo para reentrar no flow sem morrer de novo de graça.
+  REVIVE_IFRAME_MS: 1500,
+  // Meio-ciclo do pisca. O número de repetições do tween DERIVA da duração da
+  // carência (ver blinkPlayer), em vez de ser um literal solto: com 140ms e
+  // 1500ms de carência dá repeat 4, exatamente o que estava escrito à mão.
+  BLINK_HALF_MS: 140,
+} as const;
+
 export const INPUT = {
   HOLD_MAX_MS: 220, // janela do pulo variável (RF-05)
   // Gesto touch (RN-02/RN-08): o toque no chão pula IMEDIATAMENTE (mesmo
