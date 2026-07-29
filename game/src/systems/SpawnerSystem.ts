@@ -174,6 +174,15 @@ export class SpawnerSystem {
     this.missedVotes += 1;
   }
 
+  // Impacto (D-31): o escândalo QUEBRA as linhas de voto em curso — o bônus de
+  // LINHA PERFEITA que estava a caminho é perdido. É um custo real e imediato
+  // que NÃO toca na fórmula do score (RN-04): nenhum voto é subtraído, apenas
+  // deixa de haver bônus. Também não mexe nas 3⭐ — isPerfectRun() olha
+  // missedVotes e barOutcomes, não este ledger.
+  breakOpenLines(): void {
+    this.lineLedger.clear();
+  }
+
   // propina coletada → o bloco dela está resolvido (D-17)
   onGemCollected(gemIndex: number): void {
     const outcome = this.barOutcomes.get(gemIndex);

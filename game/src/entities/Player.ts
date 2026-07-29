@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Entity } from './Entity';
-import { JUICE, PHYSICS, SIZES, TERRAIN } from '../config/constants';
+import { HEALTH, JUICE, PHYSICS, SIZES, TERRAIN } from '../config/constants';
 import { getSelectedSkin, skinTextures } from '../lib/skins';
 
 // Auto-run (RF-04, D-03): o avanço é do CENÁRIO (world-scroll) — o Player
@@ -176,14 +176,35 @@ export class Player extends Entity {
     this.playJuiceTween(1 + JUICE.SQUASH_SCALE, 1 - JUICE.SQUASH_SCALE);
   }
 
-  private playJuiceTween(scaleX: number, scaleY: number): void {
+  // Squash do IMPACTO (D-31): mais forte que o do pouso — "levou o golpe".
+  //
+  // A amplitude maior é segura sem ferir RN-07 (fairness): o corpo do Arcade
+  // acompanha a escala do sprite, mas o tween inteiro roda DENTRO da carência de
+  // invulnerabilidade, janela em que nenhuma colisão conta. Durante o slide não
+  // age: a hitbox agachada (44×32) é intencional e não pode ser escalada.
+  playHitSquash(): void {
+    if (this.sliding) return;
+    this.playJuiceTween(
+      1 + HEALTH.HIT_SQUASH,
+      1 - HEALTH.HIT_SQUASH,
+      HEALTH.HIT_SQUASH_MS,
+    );
+  }
+
+  private playJuiceTween(
+    scaleX: number,
+    scaleY: number,
+    // `number` explícito: JUICE é `as const`, então sem a anotação o TS inferiria
+    // o tipo literal 90 e recusaria qualquer outra duração
+    duration: number = JUICE.SQUASH_DURATION_MS,
+  ): void {
     this.juiceTween?.stop();
     this.setScale(1, 1); // baseline estável mesmo interrompendo o tween anterior
     this.juiceTween = this.scene.tweens.add({
       targets: this,
       scaleX,
       scaleY,
-      duration: JUICE.SQUASH_DURATION_MS,
+      duration,
       yoyo: true,
       ease: 'Sine.easeOut',
       onComplete: () => this.setScale(1, 1),

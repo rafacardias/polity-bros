@@ -31,6 +31,12 @@ export const PROGRESSION = {
   // subindo linearmente até a BASE do mundo em WARMUP_DISTANCE px (~3s).
   // As curvas de velocidade em si vivem POR MUNDO em WORLDS (D-16).
   WARMUP_DISTANCE: 700,
+  // Tropeço pós-impacto (D-31): o custo REAL do escândalo além da barra — o
+  // mundo desacelera e recupera o passo. Menos distância percorrida = menos
+  // pontos, SEM tocar na fórmula validada pela Edge Function (RN-04): nada é
+  // subtraído do score, apenas deixa de ser somado.
+  STUMBLE_MS: 420,
+  STUMBLE_FACTOR: 0.72,
 } as const;
 
 export const SCORE = {
@@ -78,6 +84,24 @@ export const HEALTH = {
   // carência (ver blinkPlayer), em vez de ser um literal solto: com 140ms e
   // 1500ms de carência dá repeat 4, exatamente o que estava escrito à mão.
   BLINK_HALF_MS: 140,
+  // Carência pós-IMPACTO. Menor que a do revive de propósito: o revive é uma 2ª
+  // chance comprada (a pista à frente é LIMPA), o impacto acontece no meio do
+  // flow, com a pista intacta.
+  HIT_IFRAME_MS: 1100,
+  // Feedback do impacto — TODO menor que o da morte (cf. JUICE.SHAKE_*/FLASH_*):
+  // a morte tem de continuar sendo o evento mais forte da tela.
+  HIT_SHAKE_MS: 120, // morte: 200
+  HIT_SHAKE_INTENSITY: 0.008, // morte: 0.012
+  HIT_FLASH_MS: 90, // morte: 120
+  // Squash mais forte que o do pouso (JUICE.SQUASH_SCALE 0.12) e ainda seguro:
+  // o tween roda inteiro DENTRO da carência (ver Player.playHitSquash).
+  HIT_SQUASH: 0.18,
+  HIT_SQUASH_MS: 130,
+  // Empurrão: recua e "recupera o passo" voltando a SCREEN_X por ease-out.
+  // Recuar (para a esquerda) afasta das ameaças, que vêm da direita — o
+  // empurrão nunca pode criar uma colisão nova.
+  KNOCKBACK_PX: 34,
+  KNOCKBACK_MS: 220,
   // HUD: 3ª linha da coluna direita (y 10 → 32 → 54), ancorada na direita como
   // o 🗳️ e o 💵. Segmentos DISCRETOS: lê como "caiu 33%" e como barra ao mesmo
   // tempo. 3×26 + 2×3 = 84px de largura total.

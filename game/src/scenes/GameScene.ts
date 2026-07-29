@@ -85,6 +85,7 @@ export class GameScene extends Phaser.Scene {
   private health = HEALTH.MAX;
   private approvalTrack!: Phaser.GameObjects.Rectangle;
   private approvalSegments: Phaser.GameObjects.Rectangle[] = [];
+  private knockbackAt = Number.NEGATIVE_INFINITY;
   private continueUi: Phaser.GameObjects.GameObject[] = [];
   private continueTimers: Phaser.Time.TimerEvent[] = [];
   private continueTapHandler?: (p: Phaser.Input.Pointer) => void;
@@ -155,6 +156,7 @@ export class GameScene extends Phaser.Scene {
     this.stars = 1;
     this.stompCombo = 0;
     this.health = HEALTH.MAX; // aprovação cheia a cada run (D-31)
+    this.knockbackAt = Number.NEGATIVE_INFINITY;
     this.unlockedWorldName = null;
     const rng = new Phaser.Math.RandomDataGenerator([this.world.seed]);
     // Terreno em degraus (D-26): criado ANTES do spawner — as entidades
@@ -416,28 +418,87 @@ export class GameScene extends Phaser.Scene {
     this.showFloatingText(x, y - 24, 'PROPINA! 💵');
   }
 
-  // Inimigo tocado (D-25): "veio de cima" → STOMP; senão, morte (respeitando a
-  // carência pós-revive). O teste por body.prev é imune ao eixo que o Arcade
-  // escolhe ao colidir com um corpo que anda para a esquerda.
+  // Inimigo tocado (D-25 → D-31): "veio de cima" → STOMP; senão, IMPACTO.
+  //
+  // A morte instantânea saiu daqui: quem decide se a partida acaba é
+  // takeDamage(), no 3º impacto. O teste por body.prev segue idêntico — é imune
+  // ao eixo que o Arcade escolhe ao colidir com um corpo que anda para a esquerda.
   private hitEnemy(enemy: Enemy): void {
     if (this.isGameOver) return;
-    // Câmera voadora (D-25): ameaça PURA — não stompável. Qualquer contato mata;
-    // o dodge é deslizar por baixo (geométrico: a hitbox agachada passa por baixo
-    // e nem chega a chamar hitEnemy). Se encostou, não desviou.
+    // Câmera voadora (D-25): ameaça PURA, não stompável. Encostar CUSTA 1/3 da
+    // aprovação (antes matava na hora). O dodge segue geométrico: a hitbox
+    // agachada (44×32) passa por baixo e nem chega a chamar hitEnemy.
     if (enemy.getData('kind') === 'camera') {
-      if (this.time.now < this.invulnerableUntil) return; // carência pós-revive
-      this.gameOver(enemy);
+      this.takeDamage(enemy);
       return;
     }
     const pb = this.player.body as Phaser.Physics.Arcade.Body;
     const eb = enemy.body as Phaser.Physics.Arcade.Body;
     const cameFromAbove = pb.prev.y + pb.height <= eb.prev.y + 6;
+    // ORDEM PRESERVADA: o stomp continua ANTES do teste de carência — pisar no
+    // repórter vale votos até durante os i-frames, como já era.
     if (cameFromAbove) {
       this.stompEnemy(enemy);
       return;
     }
-    if (this.time.now < this.invulnerableUntil) return; // carência pós-revive (T07B-03)
-    this.gameOver(enemy);
+    this.takeDamage(enemy);
+  }
+
+  // IMPACTO (D-31): substitui a morte instantânea. Derruba 1 segmento de
+  // aprovação; no último cai no gameOver() de SEMPRE — o fluxo de morte (oferta
+  // paga de CONTINUE, screenshot, payload, submit de score) fica INTACTO, este
+  // método só decide QUANDO ele começa.
+  //
+  // Sobrevivendo, aplica a carência com o mesmo padrão do revive
+  // (invulnerableUntil + blink) e cobra um preço real pelo escândalo: o jogo foi
+  // calibrado em one-hit-kill, e 3 chances de graça esvaziariam a tensão.
+  private takeDamage(source?: Entity): void {
+    if (this.isGameOver) return;
+    if (this.time.now < this.invulnerableUntil) return; // carência (impacto ou revive)
+
+    this.health -= 1;
+    this.refreshApprovalBar();
+    this.pulseApprovalSegment(this.health, true); // o segmento que acabou de cair
+
+    if (this.health <= 0) {
+      this.gameOver(source); // 3º impacto: fluxo de morte inalterado
+      return;
+    }
+
+    // Anti-dano-duplo: a ameaça que acertou SAI DE CENA. Sem isto um único
+    // repórter consumiria 2 segmentos — o overlap dispara em frames seguidos e a
+    // carência só começa agora. Os i-frames cobrem o RESTO da pista.
+    source?.deactivate();
+
+    this.invulnerableUntil = this.time.now + HEALTH.HIT_IFRAME_MS;
+    this.blinkPlayer(HEALTH.HIT_IFRAME_MS);
+    this.knockbackAt = this.time.now; // empurrão + volta a SCREEN_X (playerAnchorX)
+    // Três custos que NÃO violam RN-04 — nada é subtraído de votes/score, só
+    // deixa de ser somado:
+    this.progression.stumble(); // 1. menos distância percorrida = menos pontos
+    this.spawner.breakOpenLines(); // 2. perde o bônus das linhas na tela
+    this.stompCombo = 0; // 3. perde a escada de combo aéreo em curso
+    this.player.playHitSquash();
+    this.audio.hit();
+    this.cameras.main.shake(HEALTH.HIT_SHAKE_MS, HEALTH.HIT_SHAKE_INTENSITY);
+    this.cameras.main.flash(HEALTH.HIT_FLASH_MS, 239, 68, 68);
+    this.showFloatingText(
+      this.player.x,
+      this.player.y - SIZES.PLAYER.H - 8,
+      'ESCÂNDALO! APROVAÇÃO -1',
+    );
+  }
+
+  // Âncora horizontal do player no frame atual.
+  //
+  // O empurrão do impacto é o ÚNICO deslocamento permitido no eixo X, e ele
+  // mesmo devolve o player a SCREEN_X com ease-out. Aritmético de propósito: sem
+  // tween e sem alocação por impacto (RN-01), e determinístico frame a frame.
+  private playerAnchorX(): number {
+    const elapsed = this.time.now - this.knockbackAt;
+    if (elapsed >= HEALTH.KNOCKBACK_MS) return SIZES.PLAYER.SCREEN_X;
+    const t = elapsed / HEALTH.KNOCKBACK_MS;
+    return SIZES.PLAYER.SCREEN_X - HEALTH.KNOCKBACK_PX * (1 - Phaser.Math.Easing.Cubic.Out(t));
   }
 
   // STOMP (D-25, §7-F): derrota o inimigo, quica o player e credita votos com
@@ -561,6 +622,30 @@ export class GameScene extends Phaser.Scene {
     this.approvalSegments.forEach((seg, i) => {
       this.tweens.killTweensOf(seg);
       seg.setScale(1).setAlpha(1).setFillStyle(i < this.health ? color : HEALTH.BAR_EMPTY, 1);
+    });
+  }
+
+  // Pulso do segmento que mudou. É o que amarra o impacto ao HUD: sem ele o
+  // jogador sente o shake mas não entende que perdeu 1/3 da aprovação.
+  // lost=true → fica vermelho e COLAPSA (estica e apaga) antes de virar slot
+  // vazio; lost=false → acende com um "pop" (recuperou um segmento).
+  private pulseApprovalSegment(index: number, lost: boolean): void {
+    const seg = this.approvalSegments[index];
+    if (!seg) return;
+    this.tweens.killTweensOf(seg);
+    seg.setScale(lost ? 1 : 1.9).setAlpha(1);
+    if (lost) seg.setFillStyle(HEALTH.BAR_LOST, 1);
+    this.tweens.add({
+      targets: seg,
+      scaleX: lost ? 1.6 : 1,
+      scaleY: lost ? 2.2 : 1,
+      alpha: lost ? 0 : 1,
+      duration: lost ? 260 : 200,
+      ease: lost ? 'Cubic.easeOut' : 'Back.easeOut',
+      onComplete: () => {
+        seg.setScale(1).setAlpha(1);
+        if (lost) seg.setFillStyle(HEALTH.BAR_EMPTY, 1);
+      },
     });
   }
 
@@ -814,11 +899,15 @@ export class GameScene extends Phaser.Scene {
     this.rideEnemiesOnTerrain(); // inimigos seguem o terreno (derivam por andar mais rápido)
     this.syncWorldSpeed(speed);
     this.player.update(time, delta);
-    // Invariante do auto-runner (RF-04): o player fica SEMPRE em SCREEN_X — só
-    // controla o eixo vertical. Trava o X para que NENHUMA colisão (bloco D-22,
-    // resíduo físico) possa arrastá-lo para fora da posição fixa. Inimigos já são
-    // overlap (não empurram), mas isto blinda a invariante contra qualquer fonte.
-    if (this.player.x !== SIZES.PLAYER.SCREEN_X) this.player.x = SIZES.PLAYER.SCREEN_X;
+    // Invariante do auto-runner (RF-04): o X do player é 100% controlado por
+    // CÓDIGO — nenhuma colisão (bloco D-22, resíduo físico) pode arrastá-lo.
+    //
+    // O empurrão do impacto (D-31) é o ÚNICO deslocamento permitido, e ele mesmo
+    // devolve o player a SCREEN_X. A invariante passa de "é sempre SCREEN_X" para
+    // "é sempre o que este código disser" — a blindagem contra física é idêntica
+    // (hard-set por frame), só a constante virou função.
+    const anchorX = this.playerAnchorX();
+    if (this.player.x !== anchorX) this.player.x = anchorX;
     if (this.player.onGround) this.stompCombo = 0; // combo de stomp exige encadear NO AR
     this.updateHud();
     this.updateRecordMarker();
@@ -1078,6 +1167,10 @@ export class GameScene extends Phaser.Scene {
   private revive(): void {
     this.continueUsed = true; // 1x por partida
     this.pendingGameOverPayload = undefined; // a run continua — morte cancelada
+    // CONTINUE pago restaura a APROVAÇÃO cheia (D-31): quem paga 3 propinas
+    // compra uma segunda vida inteira, não um fiapo de barra.
+    this.health = HEALTH.MAX;
+    this.refreshApprovalBar();
     // review 7B: morrer DESLIZANDO deixava a postura de slide congelada
     // (hitbox 32px "de graça" contra obstáculos baixos — fere RN-08)
     this.player.slide(false);

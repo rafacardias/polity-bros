@@ -24,6 +24,20 @@ export class AudioSystem {
     this.scene.sound.play('sfx-death', { volume: AUDIO.SFX_VOLUME });
   }
 
+  // IMPACTO (D-31): não é a morte. Mesmo timbre, mais curto/agudo e mais baixo.
+  // Reuso deliberado do sfx-death em vez de um arquivo novo: o vocabulário
+  // sonoro do "escândalo" tem de soar PARENTE do da morte (é a mesma família de
+  // evento, em intensidade menor), e um sfx novo seria um asset a mais para
+  // produzir, otimizar e versionar por um som de 100ms.
+  hit(): void {
+    this.scene.sound.play('sfx-death', { volume: AUDIO.SFX_VOLUME * 0.55, rate: 1.7 });
+  }
+
+  // aprovação recuperada (D-31): parente da fanfarra de linha perfeita, mais agudo
+  approval(): void {
+    this.scene.sound.play('sfx-combo', { volume: AUDIO.SFX_VOLUME, rate: 1.25 });
+  }
+
   // fanfarra curta do momento "uau" — linha de votos completa (T07A-03)
   combo(): void {
     this.scene.sound.play('sfx-combo', { volume: AUDIO.SFX_VOLUME });
