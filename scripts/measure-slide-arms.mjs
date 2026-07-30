@@ -54,10 +54,11 @@ const SPRITES = fileURLToPath(new URL('../game/public/assets/sprites/', import.m
 const SLIDES = {
   centrao: { w: 53, h: 61, runW: 64 },
   'centrao-faixa': { w: 48, h: 61, runW: 59 },
-  patriota: { w: 65, h: 60, runW: 58 },
-  comunista: { w: 67, h: 60, runW: 57 },
-  direita: { w: 65, h: 61, runW: 58 },
-  esquerda: { w: 62, h: 61, runW: 63 },
+  // slides DERIVADOS do run (D-34) — ver scripts/derive-slide-from-run.mjs
+  patriota: { w: 51, h: 60, runW: 58 },
+  comunista: { w: 50, h: 60, runW: 57 },
+  direita: { w: 51, h: 61, runW: 58 },
+  esquerda: { w: 55, h: 61, runW: 63 },
 };
 
 const RUNS = {
