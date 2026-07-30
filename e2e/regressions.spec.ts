@@ -208,6 +208,25 @@ test('galeria de skins rola na horizontal, sem sobreposição', async ({ page })
   for (const w of widths) expect(w).toBeGreaterThanOrEqual(60);
 });
 
+// D-33 — "queria adicionar um '>' nas skins pro usuário saber que pode deslizar".
+// Com 7 skins de ~72px numa caixa de ~310px, ~2 cards ficam escondidos e nada
+// indicava que a fileira rola.
+test('galeria mostra a dica de swipe só no lado que tem conteúdo', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Skins/i }).click();
+
+  // no início: dá pra rolar para a direita, não para a esquerda
+  await expect(page.getByTestId('skin-rail-end')).toBeVisible();
+  await expect(page.getByTestId('skin-rail-start')).toHaveCount(0);
+
+  // rola até o fim: a dica inverte de lado
+  await page.getByTestId('skin-rail').evaluate((el) => {
+    el.scrollTo({ left: el.scrollWidth });
+  });
+  await expect(page.getByTestId('skin-rail-start')).toBeVisible();
+  await expect(page.getByTestId('skin-rail-end')).toHaveCount(0);
+});
+
 // BUG 3 — "as fases ainda se chamam SP, RJ e DF".
 test('fases usam os nomes da carreira política, não as siglas', async ({ page }) => {
   await page.goto('/');

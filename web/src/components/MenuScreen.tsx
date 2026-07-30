@@ -1,4 +1,4 @@
-import { useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
 import {
   ECONOMY,
   SKINS,
@@ -35,6 +35,69 @@ function SkinThumb({ skin, big }: { skin: SkinDef; big?: boolean }) {
         style={{ imageRendering: 'pixelated' }}
       />
     </span>
+  );
+}
+
+// Indicador de swipe da galeria (D-33): com 7 skins de ~72px numa caixa de
+// ~310px, ~2 cards ficam escondidos e NADA dizia que a fileira rola — o dono
+// pediu um ">" para deixar isso óbvio.
+//
+// Chevron + fade na borda em vez de setas clicáveis: setas por cima dos cards
+// roubariam área de toque num layout já apertado, e o alvo é comunicar o
+// gesto, não substituí-lo. Cada indicador só existe se houver conteúdo naquele
+// lado — um chevron que não leva a nada é pior que nenhum.
+//
+// O `-mx-1` MIGROU da fileira para este wrapper. Ele é o bleed que impede o
+// `ring-2` do card selecionado de ser cortado, e os overlays precisam se ancorar
+// nas bordas REAIS da fileira; o painel pai não é `relative`.
+function SkinRail({ children }: { children: ReactNode }) {
+  const rail = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ start: false, end: false });
+
+  const measure = useCallback((): void => {
+    const el = rail.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    // tolerância de 4px: subpixel de zoom/DPR deixaria o chevron da direita
+    // aceso para sempre ao chegar no fim do scroll
+    setEdges({ start: el.scrollLeft > 4, end: el.scrollLeft < max - 4 });
+  }, []);
+
+  useEffect(() => {
+    measure(); // no mount o painel já está montado e os cards têm largura fixa
+    window.addEventListener('resize', measure); // rotação de celular/tablet
+    return () => window.removeEventListener('resize', measure);
+  }, [measure]);
+
+  return (
+    <div className="relative -mx-1">
+      <div
+        ref={rail}
+        onScroll={measure}
+        data-testid="skin-rail"
+        className="flex snap-x gap-2 overflow-x-auto px-1 pb-1"
+      >
+        {children}
+      </div>
+      {edges.start && (
+        <div
+          aria-hidden
+          data-testid="skin-rail-start"
+          className="pointer-events-none absolute inset-y-0 left-0 flex w-9 items-center justify-start bg-linear-to-r from-slate-800 to-transparent"
+        >
+          <span className="skin-rail-nudge-left text-xl leading-none text-slate-300">‹</span>
+        </div>
+      )}
+      {edges.end && (
+        <div
+          aria-hidden
+          data-testid="skin-rail-end"
+          className="pointer-events-none absolute inset-y-0 right-0 flex w-9 items-center justify-end bg-linear-to-l from-slate-800 to-transparent"
+        >
+          <span className="skin-rail-nudge text-xl leading-none text-slate-300">›</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -172,7 +235,7 @@ export function MenuScreen({ onPlay, onRanking }: MenuScreenProps) {
                 em 7 sobrou ~44px por célula e os labels ("Comunista", "1ª Dama")
                 estouravam, parecendo itens sobrepostos. Largura fixa + scroll
                 mantém cada card legível e aguenta o elenco crescer (Fase 9). */}
-            <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
+            <SkinRail>
               {SKINS.map((skin) => {
                 const unlocked = isSkinUnlocked(skin);
                 const selected = skin.id === selectedSkin.id;
@@ -195,7 +258,7 @@ export function MenuScreen({ onPlay, onRanking }: MenuScreenProps) {
                   </button>
                 );
               })}
-            </div>
+            </SkinRail>
           </div>
         )}
 

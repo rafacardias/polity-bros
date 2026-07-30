@@ -21,3 +21,35 @@
 .menu-tremble {
   animation: menu-tremble 1s infinite;
 }
+
+/* Indicador de swipe da galeria de skins (D-33): empurrãozinho horizontal — o
+   mesmo vocabulário de movimento da tremidinha acima, chamando o dedo sem
+   competir com o conteúdo. Amplitude pequena de propósito: o chevron informa,
+   não disputa atenção com os personagens. */
+@keyframes skin-rail-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+.skin-rail-nudge {
+  animation: skin-rail-nudge 1.4s ease-in-out infinite;
+}
+
+@keyframes skin-rail-nudge-left {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-3px);
+  }
+}
+
+.skin-rail-nudge-left {
+  animation: skin-rail-nudge-left 1.4s ease-in-out infinite;
+}
