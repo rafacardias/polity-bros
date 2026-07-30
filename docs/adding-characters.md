@@ -29,11 +29,35 @@ ffmpeg -y -i <char>-run.png -vf "crop=<fW>:<fH>:<fW>:0" <char>-air.png
 ```
 
 Registre os 4 keys no `assets-manifest.ts` (estáticos em `SPRITE_ASSETS`,
-sheets em `SPRITESHEET_ASSETS`) e valide o agachado com:
+sheets em `SPRITESHEET_ASSETS`).
+
+### 🚧 PORTÃO BLOQUEANTE: os braços precisam ANIMAR
 
 ```bash
-node scripts/measure-slide-arms.mjs <char>   # braços precisam ANIMAR
+node scripts/measure-slide-arms.mjs --all     # os DOIS ciclos, todos os chars
+node scripts/measure-slide-arms.mjs <char>            # só o agachado
+node scripts/measure-slide-arms.mjs --run <char>      # só a corrida em pé
 ```
+
+**Nenhum spritesheet entra no repositório com este script vermelho.** A regra
+existe porque em 2026-07-24 a arte foi commitada REPROVANDO no próprio teste do
+projeto: o script já existia, mas não era bloqueante, e o defeito só apareceu
+quando o dono testou no celular — duas vezes.
+
+O que cada número quer dizer está documentado no topo do script. Os dois
+sintomas que ele pega, ambos relatados pelo dono:
+
+| Sintoma | Métrica | Como aparece |
+|---|---|---|
+| braço pendurado à frente ("pose de gorila") | `compact` > 0.9 | agachado mais LARGO que a corrida |
+| braço congelado (ciclo falso) | `armAmp` baixo · `maxIoU` ~1.0 | os 4 frames quase idênticos |
+
+Referência aprovada pelo dono: **`centrao`**. Se um personagem novo não bate nos
+números dele, o problema é o desenho — a animação Phaser (4 frames, 12/14fps,
+loop) é a mesma para todos e está correta.
+
+> Quando o `-run` mudar, **reextraia o `-air`**: ele é um recorte do frame 1 do
+> run e sobraria desalinhado com a arte nova.
 
 A hitbox nunca muda (`SIZES.PLAYER`, RN-07): personagens trocam de arte, não
 de tamanho.
