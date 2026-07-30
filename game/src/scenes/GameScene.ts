@@ -86,6 +86,10 @@ export class GameScene extends Phaser.Scene {
   private approvalTrack!: Phaser.GameObjects.Rectangle;
   private approvalSegments: Phaser.GameObjects.Rectangle[] = [];
   private knockbackAt = Number.NEGATIVE_INFINITY;
+  // "levou algum impacto nesta run" (D-31). NUNCA resetado pelo revive: quem
+  // revive necessariamente esgotou a aprovação, então usar CONTINUE já exclui
+  // a 3ª estrela sem precisar de regra nova.
+  private tookDamage = false;
   private continueUi: Phaser.GameObjects.GameObject[] = [];
   private continueTimers: Phaser.Time.TimerEvent[] = [];
   private continueTapHandler?: (p: Phaser.Input.Pointer) => void;
@@ -157,6 +161,7 @@ export class GameScene extends Phaser.Scene {
     this.stompCombo = 0;
     this.health = HEALTH.MAX; // aprovação cheia a cada run (D-31)
     this.knockbackAt = Number.NEGATIVE_INFINITY;
+    this.tookDamage = false;
     this.unlockedWorldName = null;
     const rng = new Phaser.Math.RandomDataGenerator([this.world.seed]);
     // Terreno em degraus (D-26): criado ANTES do spawner — as entidades
@@ -457,6 +462,7 @@ export class GameScene extends Phaser.Scene {
     if (this.time.now < this.invulnerableUntil) return; // carência (impacto ou revive)
 
     this.health -= 1;
+    this.tookDamage = true; // exclui a 3ª estrela desta run (D-31)
     this.refreshApprovalBar();
     this.pulseApprovalSegment(this.health, true); // o segmento que acabou de cair
 
@@ -832,7 +838,18 @@ export class GameScene extends Phaser.Scene {
     // votos deixados para trás ainda ativos contam como perdidos ANTES de
     // fechar a conta das estrelas
     this.spawner.finalizeMisses(this.player.x - SIZES.PLAYER.W / 2);
-    this.stars = this.spawner.isPerfectRun() ? 3 : 2;
+    // D-31: a 3ª estrela agora exige terminar SEM ESCÂNDALO, além de com todos
+    // os coletáveis. Com 3 impactos por vida a fase virou acessível ao novato, e
+    // o PRESTÍGIO tinha de continuar custando caro — quem busca 3⭐ segue jogando
+    // um one-hit-kill de fato. Sem isto, terminar (e portanto ganhar estrelas,
+    // que MULTIPLICAM o score) fica muito mais fácil que nas linhas de ranking
+    // históricas, e o Top some atrás de scores inflados.
+    //
+    // Seguro em RN-04: o valor segue 1..3, a fórmula (distance + votes×10) ×
+    // stars fecha, e a vitória satisfaz as duas exigências da Edge Function para
+    // stars > 1 (world declarado e distance >= lengthM). tookDamage não é
+    // resetado pelo revive, então usar CONTINUE já exclui a 3⭐ de graça.
+    this.stars = this.spawner.isPerfectRun() && !this.tookDamage ? 3 : 2;
     this.inputSystem.setEnabled(false);
     this.physics.pause();
     this.audio.combo();

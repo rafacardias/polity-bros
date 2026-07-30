@@ -307,6 +307,55 @@ test('a barra fica oculta durante a intro cinematográfica', async ({ page }) =>
   );
 });
 
+// D-31: com 3 impactos por vida terminar a fase ficou acessível, então o
+// prestígio migrou para a 3ª estrela — que MULTIPLICA o score. Sem esta regra o
+// ranking encheria de scores inflados em relação às linhas históricas, feitas
+// quando um toque matava.
+test('a 3ª estrela exige terminar sem escândalo', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await stubScoreSubmit(page);
+  await startRun(page);
+
+  // vitória LIMPA: nenhum coletável perdido e nenhum impacto → 3⭐
+  const clean = await page.evaluate(() => {
+    const game = (window as unknown as { __game?: Phaser.Game }).__game;
+    const scene = game?.scene.keys.GameScene as unknown as {
+      tookDamage: boolean;
+      stars: number;
+      finishWorld: () => void;
+    };
+    scene.tookDamage = false;
+    scene.finishWorld();
+    return scene.stars;
+  });
+  expect(clean, 'terminar limpo tem de valer 3 estrelas').toBe(3);
+
+  // mesma vitória, mas tendo levado um escândalo → 2⭐
+  await page.reload();
+  await page.getByRole('button', { name: /JOGAR/i }).click();
+  await page.waitForFunction(
+    () => {
+      const game = (window as unknown as { __game?: Phaser.Game }).__game;
+      return !!game?.scene.keys.GameScene?.scene.isActive();
+    },
+    undefined,
+    { timeout: 15_000 },
+  );
+  const damaged = await page.evaluate(() => {
+    const game = (window as unknown as { __game?: Phaser.Game }).__game;
+    const scene = game?.scene.keys.GameScene as unknown as {
+      tookDamage: boolean;
+      stars: number;
+      finishWorld: () => void;
+    };
+    scene.tookDamage = true;
+    scene.finishWorld();
+    return scene.stars;
+  });
+  expect(damaged, 'terminar tendo levado impacto tem de valer 2 estrelas').toBe(2);
+});
+
 // RN-02 (mobile): a barra não pode encostar no "faltam Xm", que fica na
 // esquerda. Roda nos 4 perfis de aparelho da suíte cross-device — a tela de
 // 320px é a apertada.
