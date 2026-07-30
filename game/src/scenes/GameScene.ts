@@ -236,7 +236,14 @@ export class GameScene extends Phaser.Scene {
       speed: { min: 80, max: 220 },
       angle: { min: 200, max: 340 }, // leque pra cima (o mundo corre pra esquerda)
       gravityY: 600,
-      scale: { start: 0.7, end: 0 },
+      // D-32: ajustado junto com a cédula. A arte nova é BRANCA e tem margem
+      // transparente em cima/embaixo, então em 0.7 as partículas viravam traços
+      // claros e a explosão perdia o "confete amarelo" que dizia RECOMPENSA. O
+      // tint devolve o amarelo (papel branco tinge por inteiro) e o rotate faz a
+      // nota tombar, como o gemBurst já faz com a propina.
+      scale: { start: 0.95, end: 0 },
+      tint: 0xfacc15,
+      rotate: { min: -30, max: 30 },
       quantity: JUICE.VOTE_BURST_COUNT,
     });
     this.voteBurst.setDepth(5);

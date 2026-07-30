@@ -13,7 +13,8 @@ const PLACEHOLDERS = [
   { key: 'obstacle-low', width: 44, height: 160, color: 0xf97316 },
   // inimigo (D-25): agora arte real de arquivo — sheet 'enemy-walk' (repórter)
   // carregado via SPRITESHEET_ASSETS. Sem placeholder aqui (saiu do runtime).
-  { key: 'vote', width: 24, height: 24, color: 0xfacc15 },
+  // 'vote' já saiu daqui: o quadrado amarelo lia como MOEDA (feedback do dono).
+  // Virou cédula desenhada em canvas — ver generateVoteTexture (D-32).
   // bloco flutuante (D-22 → D-26): plataforma NÃO-LETAL. Cor de concreto/slate
   // (não mais vermelho de "perigo") — o player pousa no topo (propina); não mata
   { key: 'gem-bar', width: GEM_BAR.WIDTH, height: GEM_BAR.HEIGHT, color: 0x64748b },
@@ -57,9 +58,45 @@ export class PreloadScene extends Phaser.Scene {
   create(): void {
     this.generatePlaceholderTextures();
     this.generatePropinaTexture();
+    this.generateVoteTexture();
     this.generateApprovalTexture();
     this.generateGroundTexture();
     this.scene.start('GameScene');
+  }
+
+  // VOTO = CÉDULA (D-32): sai o quadrado amarelo sólido, entra uma cédula branca
+  // com "V" verde. O quadrado lia como MOEDA — feedback do dono; num jogo sobre
+  // eleição o coletável principal tem de ler como voto, não como dinheiro
+  // (dinheiro já é a PROPINA, e ter os dois iguais confundia as duas moedas).
+  //
+  // Canvas (não Graphics) porque precisa desenhar TEXTO. O key segue 'vote'.
+  //
+  // ⚠️ A textura fica em 24×24, as MESMAS dimensões de antes — mas por segurança
+  // dupla, não por necessidade: o corpo Arcade do voto é fixado na CONSTRUÇÃO do
+  // Collectible pooled (Group#defaultKey é null → textura __MISSING de 32×32) e
+  // setTexture() nunca redimensiona corpo (Phaser 3.90: Size.setSizeToFrame só
+  // toca width/height/hitArea). O raio de coleta JÁ era independente desta arte,
+  // e o baseline de 32×32 está travado em e2e/determinism.spec.ts.
+  //
+  // A nota é desenhada com margem vertical (y 4..20) dentro do quadro 24×24:
+  // arte ≠ hitbox (RN-07), como no inimigo e na câmera. O filete AMARELO é o que
+  // mantém a coerência com o 🗳️ amarelo do HUD.
+  private generateVoteTexture(): void {
+    if (this.textures.exists('vote')) return; // idempotente em restart
+    const canvas = this.textures.createCanvas('vote', 24, 24);
+    if (!canvas) return;
+    const ctx = canvas.context;
+    ctx.fillStyle = '#f8fafc'; // papel
+    ctx.fillRect(0, 4, 24, 16);
+    ctx.strokeStyle = '#facc15'; // filete amarelo = "voto" na linguagem do HUD
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 5, 22, 14);
+    ctx.fillStyle = '#15803d'; // verde escuro: contraste sobre papel branco
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('V', 12, 12);
+    canvas.refresh();
   }
 
   // APROVAÇÃO (D-31): santinho de campanha em forma de CORAÇÃO — branco com
