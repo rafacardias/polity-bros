@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GEM_BAR } from '../config/constants';
+import { GEM_BAR, HEALTH } from '../config/constants';
 import { SPRITE_ASSETS, SPRITESHEET_ASSETS, WORLD_BACKGROUNDS } from '../data/assets-manifest';
 
 // Placeholders visuais (RN-07): retângulos coloridos gerados em runtime.
@@ -57,8 +57,42 @@ export class PreloadScene extends Phaser.Scene {
   create(): void {
     this.generatePlaceholderTextures();
     this.generatePropinaTexture();
+    this.generateApprovalTexture();
     this.generateGroundTexture();
     this.scene.start('GameScene');
+  }
+
+  // APROVAÇÃO (D-31): santinho de campanha em forma de CORAÇÃO — branco com
+  // borda verde. O coração é a única forma que lê como "vida" a 26px num
+  // celular; o santinho é o que amarra na satírica política.
+  //
+  // Desenhado com arcos + linhas (geometria), NÃO com fillText('♥'): emoji e
+  // glifos decorativos em canvas renderizam diferente entre iOS e Android e
+  // podem ser cortados pela métrica da fonte. O 'V' da cédula e o '$' da propina
+  // são aceitáveis porque são ASCII em monospace; um coração não é.
+  private generateApprovalTexture(): void {
+    if (this.textures.exists('approval')) return; // idempotente em restart
+    const s = HEALTH.PICKUP_W;
+    const canvas = this.textures.createCanvas('approval', s, s);
+    if (!canvas) return;
+    const ctx = canvas.context;
+    const heart = (scale: number): void => {
+      const cx = s / 2;
+      const top = s * (0.5 - 0.22 * scale); // altura dos dois lóbulos
+      const r = s * 0.24 * scale; // raio de cada lóbulo
+      const bottom = s * (0.5 + 0.4 * scale); // ponta inferior
+      ctx.beginPath();
+      ctx.arc(cx - r * 0.92, top, r, Math.PI * 0.9, Math.PI * 2.1);
+      ctx.arc(cx + r * 0.92, top, r, Math.PI * 0.9, Math.PI * 2.1);
+      ctx.lineTo(cx, bottom);
+      ctx.closePath();
+      ctx.fill();
+    };
+    ctx.fillStyle = '#16a34a'; // borda verde (mesmo verde da nota de propina)
+    heart(1);
+    ctx.fillStyle = '#f8fafc'; // papel do santinho
+    heart(0.72);
+    canvas.refresh();
   }
 
   // PROPINA (D-21): nota verde com $ no centro — o colecionável raro do jogo.

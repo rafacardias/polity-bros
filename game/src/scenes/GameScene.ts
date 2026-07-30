@@ -37,6 +37,8 @@ export class GameScene extends Phaser.Scene {
   private votes!: Phaser.Physics.Arcade.Group;
   private gems!: Phaser.Physics.Arcade.Group;
   private bars!: Phaser.Physics.Arcade.Group;
+  private approvals!: Phaser.Physics.Arcade.Group; // santinhos de aprovação (D-31)
+  private approvalBurst!: Phaser.GameObjects.Particles.ParticleEmitter;
   private enemies!: Phaser.Physics.Arcade.Group; // inimigos (D-25) — stomp por votos
   private stompCombo = 0; // stomps encadeados NO AR; zera ao tocar o chão (§7-F)
   private gemText!: Phaser.GameObjects.Text;
@@ -82,7 +84,9 @@ export class GameScene extends Phaser.Scene {
   private invulnerableUntil = 0;
   private blinkTween?: Phaser.Tweens.Tween;
   // Aprovação (D-31): a "vida". Barra de HEALTH.MAX segmentos no HUD.
-  private health = HEALTH.MAX;
+  // `: number` explícito — HEALTH é `as const`, então sem a anotação o TS
+  // inferiria o tipo literal 3 e recusaria qualquer outro valor
+  private health: number = HEALTH.MAX;
   private approvalTrack!: Phaser.GameObjects.Rectangle;
   private approvalSegments: Phaser.GameObjects.Rectangle[] = [];
   private knockbackAt = Number.NEGATIVE_INFINITY;
@@ -156,6 +160,13 @@ export class GameScene extends Phaser.Scene {
       maxSize: 12, // inimigos (D-25) — pooling; update() recicla fora da tela
       runChildUpdate: true,
     });
+    this.approvals = this.physics.add.group({
+      classType: Collectible,
+      // 3 = PICKUP_MIN_GAP_PX já impede dois na tela; o resto é folga. Pool
+      // exausto apenas PULA o spawn (caminho já tratado em spawnApproval).
+      maxSize: 3,
+      runChildUpdate: true,
+    });
     this.won = false;
     this.stars = 1;
     this.stompCombo = 0;
@@ -164,6 +175,10 @@ export class GameScene extends Phaser.Scene {
     this.tookDamage = false;
     this.unlockedWorldName = null;
     const rng = new Phaser.Math.RandomDataGenerator([this.world.seed]);
+    // RNG PRÓPRIO do item de aprovação (D-31), pelo mesmo motivo do terreno:
+    // sortear do `rng` acima deslocaria a sequência de ameaças e trocaria o
+    // layout das 3 fases já jogadas (D-16). Ver e2e/determinism.spec.ts.
+    const approvalRng = new Phaser.Math.RandomDataGenerator([`${this.world.seed}-approval`]);
     // Terreno em degraus (D-26): criado ANTES do spawner — as entidades
     // "montam" no degrau local (offset de altura). RNG PRÓPRIO (seed+'-terrain')
     // para não deslocar a sequência de obstáculos/inimigos do rng acima (D-16).
@@ -178,6 +193,8 @@ export class GameScene extends Phaser.Scene {
       this.world.lengthM * SCORE.PX_PER_M,
       GemCollectionSystem.collected(this.world.id),
       this.terrain,
+      approvalRng,
+      this.approvals,
     );
 
     // RF-11: coletar voto incrementa o contador do HUD
@@ -206,6 +223,10 @@ export class GameScene extends Phaser.Scene {
     // alvo em movimento). Overlap NÃO separa corpos: sem isto, o inimigo imóvel
     // empurrava o player para fora do X fixo (bug do "não pulava direito").
     this.physics.add.overlap(this.player, this.enemies, (_p, e) => this.hitEnemy(e as Enemy));
+    // D-31: santinho de aprovação — cabeçada estilo Mario recupera 1 segmento
+    this.physics.add.overlap(this.player, this.approvals, (_p, a) =>
+      this.collectApproval(a as Collectible),
+    );
 
     // emitter ÚNICO criado fora do loop; explode() reutiliza partículas do
     // pool interno do Phaser (RN-01 — nada de new/destroy por coleta)
@@ -230,6 +251,19 @@ export class GameScene extends Phaser.Scene {
       quantity: 14,
     });
     this.gemBurst.setDepth(5);
+    // emitter ÚNICO do santinho de aprovação (RN-01) — sobe do ponto do contato
+    // como a moeda do bloco do Mario, vendendo a "cabeçada" por juice
+    this.approvalBurst = this.add.particles(0, 0, 'approval', {
+      emitting: false,
+      lifespan: 500,
+      speed: { min: 90, max: 220 },
+      angle: { min: 220, max: 320 },
+      gravityY: 400,
+      scale: { start: 0.8, end: 0 },
+      rotate: { min: -40, max: 40 },
+      quantity: HEALTH.PICKUP_BURST_COUNT,
+    });
+    this.approvalBurst.setDepth(5);
     this.runGems = 0;
 
     this.score = new ScoreSystem();
@@ -421,6 +455,29 @@ export class GameScene extends Phaser.Scene {
     this.audio.gem();
     this.gemBurst.explode(14, x, y);
     this.showFloatingText(x, y - 24, 'PROPINA! 💵');
+  }
+
+  // APROVAÇÃO recuperada (D-31): cabeçada num santinho na altura da cabeça.
+  //
+  // Dá ZERO votos/pontos de propósito: a APARIÇÃO do item depende da barra do
+  // jogador (regra da escassez), então creditar score aqui faria o teto de pontos
+  // variar de jogador para jogador e destruiria a comparabilidade do ranking
+  // (RN-04).
+  //
+  // Não exige velocity.y < 0 ("bateu subindo"): puniria quem pega na descida do
+  // arco, o que é injusto num item de recuperação. A cabeçada é vendida por
+  // GEOMETRIA — o item está acima da cabeça em pé, então só há um jeito de
+  // alcançá-lo — e pelo burst que sobe do ponto do contato.
+  private collectApproval(item: Collectible): void {
+    const { x, y } = item;
+    item.deactivate(); // pooling: nunca destroy (RN-01)
+    if (this.health >= HEALTH.MAX) return; // rede de segurança da escassez
+    this.health = Math.min(HEALTH.MAX, this.health + HEALTH.PICKUP_RESTORE);
+    this.refreshApprovalBar();
+    this.pulseApprovalSegment(this.health - 1, false); // o segmento que acendeu
+    this.audio.approval();
+    this.approvalBurst.explode(HEALTH.PICKUP_BURST_COUNT, x, y);
+    this.showFloatingText(x, y - 20, 'APROVAÇÃO +1 👍');
   }
 
   // Inimigo tocado (D-25 → D-31): "veio de cima" → STOMP; senão, IMPACTO.
@@ -910,7 +967,9 @@ export class GameScene extends Phaser.Scene {
     this.groundTile.tilePositionX += step;
     if (this.skyTile) this.skyTile.tilePositionX += step * this.SKY_PARALLAX; // parallax (Fase 3)
     this.score.addDistance(step); // pontos por distância/tempo (RF-08)
-    this.spawner.update(this.progression.distance, speed);
+    // needsApproval: a regra da escassez (D-31) — o item só se materializa com a
+    // barra incompleta, para que a recompensa nunca seja desperdiçada
+    this.spawner.update(this.progression.distance, speed, this.health < HEALTH.MAX);
     this.terrain.update(this.progression.distance); // degraus: gera/recicla + desenha
     this.updateTerrainFloor(); // informa a altura do degrau sob o player (auto-climb)
     this.rideEnemiesOnTerrain(); // inimigos seguem o terreno (derivam por andar mais rápido)
@@ -951,6 +1010,7 @@ export class GameScene extends Phaser.Scene {
     this.votes.children.iterate(sync);
     this.gems.children.iterate(sync);
     this.bars.children.iterate(sync);
+    this.approvals.children.iterate(sync);
     // inimigos andam MAIS rápido que o scroll (aproximação) — sync com o offset
     this.enemies.children.iterate((child) => {
       const e = child as Phaser.Physics.Arcade.Sprite;
@@ -1188,6 +1248,13 @@ export class GameScene extends Phaser.Scene {
     // compra uma segunda vida inteira, não um fiapo de barra.
     this.health = HEALTH.MAX;
     this.refreshApprovalBar();
+    // santinhos à frente também somem: com a barra cheia seriam recompensa
+    // desperdiçada, e a regra da escassez (D-31) vale aqui também
+    this.approvals.children.iterate((child) => {
+      const item = child as Collectible;
+      if (item.active) item.deactivate();
+      return true;
+    });
     // review 7B: morrer DESLIZANDO deixava a postura de slide congelada
     // (hitbox 32px "de graça" contra obstáculos baixos — fere RN-08)
     this.player.slide(false);

@@ -132,6 +132,51 @@ test('o rng do layout consome exatamente 3 sorteios por slot de ameaça', async 
   ).toBe('low,low,high,high');
 });
 
+// O coletável de aprovação (D-31) tem uma regra que depende do JOGADOR: só se
+// materializa com a barra incompleta. O desenho resolve isso sorteando SEMPRE e
+// materializando condicionalmente — o stream do rng próprio corre igual para
+// todos, aparecendo o item ou não.
+//
+// Este é o teste que prova isso: com a barra forçada em 1/3 (item aparecendo), a
+// sequência de ameaças tem de ser IDÊNTICA à da barra cheia. Se um dia alguém
+// mover o sorteio para dentro do `if`, o layout passa a divergir entre um
+// jogador que tomou dano e um que não tomou — e é aqui que isso aparece.
+test('a regra de escassez do item de vida não desloca o layout', async ({ page }) => {
+  await stubRanking(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: /JOGAR/i }).click();
+  await waitForLiveGameScene(page);
+  await makeInvulnerable(page);
+  // barra em 1/3: daqui pra frente o item PODE se materializar
+  await page.evaluate(() => {
+    const game = (window as unknown as { __game?: Phaser.Game }).__game;
+    const scene = game?.scene.keys.GameScene as unknown as {
+      health: number;
+      refreshApprovalBar: () => void;
+    };
+    scene.health = 1;
+    scene.refreshApprovalBar();
+  });
+  await spyOnSpawnerRng(page);
+
+  await page.waitForFunction(
+    () => (window as unknown as { __draws: number[] }).__draws.length >= 12,
+    undefined,
+    { timeout: 25_000 },
+  );
+  const draws = await page.evaluate(
+    () => (window as unknown as { __draws: number[] }).__draws.slice(),
+  );
+  const kinds = draws.filter((_, i) => i % 3 === 0).map((v) => (v < 0.5 ? 'high' : 'low'));
+
+  expect(draws.length % 3, 'o item de vida está consumindo do rng de LAYOUT').toBe(0);
+  expect(
+    kinds.slice(0, 4).join(','),
+    'com a barra em 1/3 o layout de ameaças divergiu — o sorteio do item de vida ' +
+      'deixou de correr sempre e passou a depender do estado do jogador',
+  ).toBe('low,low,high,high');
+});
+
 // A hitbox de coleta do voto NÃO deriva da textura: o Collectible pooled é
 // construído com a textura __MISSING (Group#defaultKey é null) e setTexture()
 // não redimensiona corpo Arcade no Phaser 3.90. Este número é o baseline para

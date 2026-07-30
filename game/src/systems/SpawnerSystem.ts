@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Enemy } from '../entities/Enemy';
 import { Collectible } from '../entities/Collectible';
-import { CAMERA, ECONOMY, ENEMY, FINISH_CLEAR_M, GEM_BAR, SCORE, SPAWN, SIZES } from '../config/constants';
+import { CAMERA, ECONOMY, ENEMY, FINISH_CLEAR_M, GEM_BAR, HEALTH, SCORE, SPAWN, SIZES } from '../config/constants';
 import type { TerrainSystem } from './TerrainSystem';
 
 type Kind = 'high' | 'low'; // high = pular por cima; low/suspenso = deslizar por baixo
@@ -11,6 +11,7 @@ type Kind = 'high' | 'low'; // high = pular por cima; low/suspenso = deslizar po
 export class SpawnerSystem {
   private lastSpawnX = 0;
   private currentDistance = 0; // mundo do player no frame atual (offset de terreno)
+  private lastApprovalAt = Number.NEGATIVE_INFINITY; // espaçamento do item de vida
   // ledger das linhas de voto (T07A-03): lineId → progresso. Entrada some na
   // primeira quebra (voto perdido) ou na completude — não cresce sem limite.
   private lineLedger = new Map<number, { total: number; collected: number }>();
@@ -40,6 +41,13 @@ export class SpawnerSystem {
     private worldLengthPx: number,
     collectedGemIndices: number[],
     private terrain: TerrainSystem,
+    // Coletável de aprovação (D-31) com RNG PRÓPRIO, semeado com
+    // `${seed}-approval`. Mesmo motivo do TerrainSystem: um sorteio novo no
+    // `rng` acima deslocaria toda a sequência seguinte e trocaria o layout de
+    // ameaças das 3 fases já jogadas, depois de recordes e coleções terem sido
+    // feitos nelas (D-16). Ver o portão em e2e/determinism.spec.ts.
+    private approvalRng: Phaser.Math.RandomDataGenerator,
+    private approvals: Phaser.Physics.Arcade.Group,
   ) {
     const lengthM = worldLengthPx / SCORE.PX_PER_M;
     const playableEndM = lengthM - FINISH_CLEAR_M;
@@ -50,7 +58,10 @@ export class SpawnerSystem {
     }));
   }
 
-  update(distance: number, speed: number): void {
+  // needsApproval entra por PARÂMETRO (não por callback nem referência à cena):
+  // Systems são lógica pura (RN-06). É o único ponto em que o estado do jogador
+  // influencia o spawn — ver a nota de determinismo em spawnObstacle.
+  update(distance: number, speed: number, needsApproval: boolean): void {
     this.currentDistance = distance; // usado por spawnGroundTop (offset do degrau)
     const gap = Math.max(SPAWN.GAP_MIN, SPAWN.GAP_BASE - distance * SPAWN.GAP_TIGHTEN);
     // 1º obstáculo usa FIRST_GAP (T07A-05): respiro de leitura pro novato
@@ -68,7 +79,7 @@ export class SpawnerSystem {
         this.gemTargets = this.gemTargets.filter((g) => g !== gemTarget);
         this.spawnGemBar(speed, gemTarget);
       } else {
-        this.spawnObstacle(speed, gap);
+        this.spawnObstacle(speed, gap, needsApproval);
       }
       this.lastSpawnX = distance;
     }
@@ -145,6 +156,12 @@ export class SpawnerSystem {
     this.bars.children.iterate((child) => {
       const bar = child as Collectible;
       if (bar.active && bar.x < -bar.width) bar.deactivate();
+      return true;
+    });
+    // aprovação perdida só volta ao pool — não conta miss (não entra nas 3⭐)
+    this.approvals.children.iterate((child) => {
+      const item = child as Collectible;
+      if (item.active && item.x < -item.width) item.deactivate();
       return true;
     });
   }
@@ -231,7 +248,7 @@ export class SpawnerSystem {
   // por cima OU pisar/stomp por votos); 'low' = câmera voadora (deslizar por
   // baixo ou morrer). O desafio de "subir/vencer plataforma" agora é o próprio
   // TERRENO em degraus (tarefa 1). rng semeado mantém o layout FIXO (D-16).
-  private spawnObstacle(speed: number, gap: number): void {
+  private spawnObstacle(speed: number, gap: number, needsApproval: boolean): void {
     const { width } = this.scene.scale;
     const kind: Kind = this.rng.frac() < 0.5 ? 'high' : 'low';
     if (kind === 'high') this.spawnEnemy(speed);
@@ -248,6 +265,49 @@ export class SpawnerSystem {
     if (this.rng.frac() < SPAWN.EASY_VOTE_CHANCE) {
       this.spawnVoteLine(refX + gap / 2, groundTop - SPAWN.VOTE_EASY_HEIGHT, speed);
     }
+
+    // Aprovação (D-31): o SORTEIO SEMPRE acontece — rng próprio semeado, uma
+    // tirada por slot de ameaça. Só a MATERIALIZAÇÃO depende da barra do jogador
+    // (regra da escassez: recompensa nunca desperdiçada).
+    //
+    // Sortear sempre é o que mantém o stream sincronizado entre jogadores mesmo
+    // quando o item não aparece; e como nada aqui consome do `this.rng`, o layout
+    // de AMEAÇAS/votos/propina continua bit-idêntico ao de antes desta feature.
+    //
+    // ⚠️ Exceção declarada ao determinismo: QUAIS itens aparecem varia por
+    // jogador, por design da escassez. É seguro porque o item dá ZERO
+    // votos/pontos (RN-04) — não move o teto de score de ninguém — e não entra em
+    // isPerfectRun(): contá-lo faria a 3ª estrela depender de ter levado dano.
+    const wantsApproval = this.approvalRng.frac() < HEALTH.PICKUP_CHANCE;
+    const spacedOut = this.currentDistance - this.lastApprovalAt >= HEALTH.PICKUP_MIN_GAP_PX;
+    if (wantsApproval && needsApproval && spacedOut) {
+      // 0.72 do vão: DEPOIS da ameaça (quem acabou de escapar do repórter tem o
+      // respiro para o pulinho) e longe da linha fácil, que fica em gap/2.
+      const px = refX + gap * 0.72;
+      // amostra o chão no X REAL do item: como item e terreno rolam na mesma
+      // velocidade, a altura relativa ao degrau se mantém por toda a vida dele
+      this.spawnApproval(px, this.spawnGroundTop(px) - HEALTH.PICKUP_ABOVE_GROUND, speed);
+      this.lastApprovalAt = this.currentDistance;
+    }
+  }
+
+  // Coletável de APROVAÇÃO (D-31): voa na altura da CABEÇA — acima do player em
+  // pé (64px) e dentro do apex do tap (~90px), então só se pega com um pulinho:
+  // cabeçada estilo Mario. Molde do spawnGem (pooled, sem gravidade, rola com o
+  // mundo), com UMA diferença: o corpo é DECLARADO. Confiar na textura seria
+  // frágil — setTexture() não redimensiona corpo Arcade no Phaser 3.90 — e RN-07
+  // manda a hitbox ser intencional, não herdada da arte.
+  private spawnApproval(x: number, y: number, speed: number): void {
+    const item = this.approvals.get(x, y) as Collectible | null;
+    if (!item) return; // pool exausto — nunca criar além do maxSize (RN-01)
+    item.setTexture('approval');
+    item.setOrigin(0.5, 0.5);
+    item.reset(x, y);
+    item.setAngle(0);
+    const body = item.body as Phaser.Physics.Arcade.Body;
+    body.setSize(HEALTH.PICKUP_BODY_W, HEALTH.PICKUP_BODY_H, true);
+    body.setAllowGravity(false);
+    item.setVelocityX(-speed);
   }
 
   // Inimigo (D-25): nasce no chão à direita e ANDA para a esquerda mais rápido

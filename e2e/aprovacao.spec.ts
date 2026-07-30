@@ -307,6 +307,94 @@ test('a barra fica oculta durante a intro cinematográfica', async ({ page }) =>
   );
 });
 
+// REGRA DA ESCASSEZ (D-31): com a barra cheia o santinho não pode aparecer —
+// recompensa que não recompensa nada vira ruído e queima a raridade do item.
+test('o santinho NÃO aparece com a aprovação cheia', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await startRun(page);
+
+  // invulnerável para a barra ficar cheia toda a run (sem isso o player
+  // esbarraria, a barra cairia e o item passaria a poder aparecer — o teste
+  // mediria o oposto do que pretende)
+  await page.evaluate(() => {
+    const game = (window as unknown as { __game?: Phaser.Game }).__game;
+    const scene = game?.scene.keys.GameScene as unknown as { invulnerableUntil: number };
+    scene.invulnerableUntil = Number.MAX_SAFE_INTEGER;
+  });
+  await page.waitForTimeout(18_000); // vários slots de ameaça passam nesse tempo
+
+  const state = await page.evaluate(() => {
+    const game = (window as unknown as { __game?: Phaser.Game }).__game;
+    const scene = game?.scene.keys.GameScene as unknown as {
+      health: number;
+      approvals: Phaser.Physics.Arcade.Group;
+    };
+    return { health: scene.health, used: scene.approvals.getTotalUsed() };
+  });
+
+  expect(state.health, 'o teste precisa da barra cheia para valer').toBe(3);
+  expect(state.used, 'nenhum santinho deveria ter se materializado').toBe(0);
+});
+
+// ...e com a barra incompleta ele aparece e recupera 1 segmento, sem tocar nos
+// votos (RN-04: a aparição varia por jogador, então creditar score aqui faria o
+// teto de pontos variar também).
+test('o santinho aparece com a barra incompleta e recupera 1 segmento', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await startRun(page);
+
+  await page.evaluate(() => {
+    const game = (window as unknown as { __game?: Phaser.Game }).__game;
+    const scene = game?.scene.keys.GameScene as unknown as {
+      invulnerableUntil: number;
+      health: number;
+      refreshApprovalBar: () => void;
+    };
+    scene.invulnerableUntil = Number.MAX_SAFE_INTEGER; // não morrer durante a espera
+    scene.health = 1;
+    scene.refreshApprovalBar();
+  });
+
+  await page.waitForFunction(
+    () => {
+      const game = (window as unknown as { __game?: Phaser.Game }).__game;
+      const scene = game?.scene.keys.GameScene as unknown as
+        | { approvals?: Phaser.Physics.Arcade.Group }
+        | undefined;
+      if (!scene?.approvals?.children) return false;
+      return scene.approvals.getTotalUsed() > 0;
+    },
+    undefined,
+    { timeout: 30_000 },
+  );
+
+  // coleta chamando o mesmo caminho do overlap (mover o player até o item
+  // dependeria de acertar o pulo e tornaria o teste um teste de física)
+  const result = await page.evaluate(() => {
+    const game = (window as unknown as { __game?: Phaser.Game }).__game;
+    const scene = game?.scene.keys.GameScene as unknown as {
+      health: number;
+      approvals: Phaser.Physics.Arcade.Group;
+      collectApproval: (item: unknown) => void;
+      score: { getSnapshot: () => { votes: number } };
+    };
+    const before = scene.score.getSnapshot().votes;
+    const item = scene.approvals.children.entries.find(
+      (c) => (c as Phaser.Physics.Arcade.Sprite).active,
+    );
+    scene.collectApproval(item);
+    return { health: scene.health, votesBefore: before, votesAfter: scene.score.getSnapshot().votes };
+  });
+
+  expect(result.health, 'coletar deveria devolver exatamente 1 segmento').toBe(2);
+  expect(
+    result.votesAfter,
+    'o santinho não pode creditar votos — a fórmula de score é validada no servidor',
+  ).toBe(result.votesBefore);
+});
+
 // D-31: com 3 impactos por vida terminar a fase ficou acessível, então o
 // prestígio migrou para a 3ª estrela — que MULTIPLICA o score. Sem esta regra o
 // ranking encheria de scores inflados em relação às linhas históricas, feitas

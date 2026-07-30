@@ -118,6 +118,24 @@ export const HEALTH = {
   // Trilha/contorno: garante contraste sobre QUALQUER céu de mundo (SP azul,
   // RJ teal, BSB índigo) — mesmo truque do stroke do distanceText.
   BAR_TRACK: 0x0f172a,
+  // Coletável de aprovação (D-31): santinho de campanha em forma de CORAÇÃO.
+  // O coração é a única forma que lê como "vida" num sprite de 26px no celular;
+  // o santinho amarra na satírica política. Recupera 1 segmento e ZERO
+  // votos/pontos — recompensa deliberadamente FORA da fórmula validada pela
+  // Edge Function (RN-04), porque a aparição depende da barra do jogador.
+  PICKUP_RESTORE: 1,
+  PICKUP_W: 26, // arte
+  PICKUP_H: 26,
+  // hitbox DECLARADA (RN-07), um pouco generosa: a cabeçada tem de perdoar
+  // alguns pixels de timing. Nunca herdada da textura.
+  PICKUP_BODY_W: 30,
+  PICKUP_BODY_H: 30,
+  // altura do CENTRO acima do chão local: acima da cabeça em pé (64px) e bem
+  // dentro do apex do tap (~90px) → cabeçada estilo Mario, sem exigir o hold
+  PICKUP_ABOVE_GROUND: 100,
+  PICKUP_CHANCE: 0.3, // sorteio POR slot de ameaça (rng próprio, SEMPRE corre)
+  PICKUP_MIN_GAP_PX: 600, // nunca dois na tela, mesmo com a barra em 1/3
+  PICKUP_BURST_COUNT: 12,
 } as const;
 
 export const INPUT = {
