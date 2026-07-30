@@ -39,6 +39,10 @@
 | D-28 | Elenco de skins 100% 3D; políticos por lado viram FICTÍCIOS (sem imitar pessoa real) | ✅ Ativa |
 | D-29 | Pose no ar = frame congelado da corrida (`<char>-air`), com fallback pro idle | ✅ Ativa |
 | D-30 | Fases exibem o nome da carreira (Interior/Cidade Grande/Capital); ids sp/rj/bsb são chave de persistência | ✅ Ativa |
+| D-31 | **APROVAÇÃO** substitui a morte instantânea: 3 impactos por vida, com custo real por impacto; 3⭐ exige dano zero; emenda RF-07 | ✅ Ativa |
+| D-32 | Voto vira **cédula** branca com "V" verde (era quadrado amarelo, lia como moeda) | ✅ Ativa |
+| D-33 | Galeria de skins ganha dica de swipe (chevron + fade) no lado que tem conteúdo | ✅ Ativa |
+| D-34 | Agachado das skins não-Centrão é **derivado** do ciclo em pé; portão de medição vira bloqueante | ⚠️ Ativa (esquerda pendente) |
 
 ---
 
@@ -193,6 +197,41 @@
 **Contexto:** o dono apontou que as fases ainda se chamavam "SP", "RJ" e "DF". O D-27 já descrevia a progressão como carreira política (interior → cidade grande → capital) e os assets já se chamavam `interior.jpg`/`cidade-grande.jpg`/`capital.jpg` — só os labels ficaram para trás.
 **Decisão:** `WORLDS[].name` passa a **Interior · Cidade Grande · Capital**. Os **ids `sp`/`rj`/`bsb` NÃO mudam**: são chave de persistência do localStorage (`polity-bros:best:*`, `votes-acc:*`, `gems-collected:*`, `worlds-unlocked`), da seed do layout fixo (D-16), do `CHECK` da migration 003 e do `WORLD_LENGTH_M` da Edge Function. Renomear id apagaria recordes e coleções de propina de todos os jogadores. Onde a UI mostrava o id cru em maiúsculas (ranking e spotlight), passa a usar `worldLabel(id)`.
 **Consequência:** rename de fase é operação de **label**, nunca de id. Um dia que os ids incomodem, a migração exige reescrever localStorage + `alter table` + deploy da Edge Function, e ainda assim invalidaria coleções — por isso o código compara com `WORLDS[último]`, não com a string `'bsb'`.
+
+---
+
+## D-31 — APROVAÇÃO substitui a morte instantânea (2026-07-29)
+**Contexto:** o dono pediu que o candidato tenha "uma vida que se esvai conforme choca com os objetos, ao invés de morrer logo de cara e ter que voltar do início". Morte instantânea num auto-runner de celular mata a quase-vitória: o jogador voltava ao início antes de aprender a fase.
+**Decisão:** a "vida" é a **APROVAÇÃO popular** — barra de 3 segmentos no HUD. Contato com repórter ou câmera voadora custa 1 segmento ("ESCÂNDALO"); no 3º cai no `gameOver()` de sempre, com o fluxo de morte (oferta paga de CONTINUE, screenshot, payload, submit) **inalterado**. O CONTINUE restaura a barra cheia. Coletável de recuperação: **santinho em forma de coração**, na altura da cabeça, pego com cabeçada — só se materializa com a barra incompleta (escassez: recompensa nunca desperdiçada).
+**Preço do impacto (o jogo foi calibrado em one-hit-kill; 3 chances de graça esvaziariam a tensão):** tropeço do mundo a 72% por 420ms · quebra das linhas de voto em curso · combo de stomp zerado. Nenhum deles subtrai votos ou pontos — apenas deixa de somar, então a fórmula validada na Edge Function (RN-04) continua fechando.
+**Determinismo (D-16):** o item usa rng PRÓPRIO `${seed}-approval`, pelo mesmo motivo do terreno — sortear do rng de layout deslocaria a sequência de ameaças das 3 fases já jogadas. E o sorteio **sempre corre**, só a materialização olha a barra, para o stream não desincronizar entre jogadores. Exceção declarada: *quais* itens aparecem varia por jogador; é seguro porque o item dá zero pontos. Dois portões em `e2e/determinism.spec.ts` provam as duas coisas.
+**Consequência 1 — emenda ao RF-07:** "colidir DEVE encerrar a partida" passa a ser satisfeito no 3º impacto, não no 1º.
+**Consequência 2 — 3⭐ exige dano zero:** terminar ficou acessível, e estrelas MULTIPLICAM o score. Sem contrapeso o ranking encheria de scores inflados frente às linhas históricas. `tookDamage` não é resetado pelo revive, então usar CONTINUE já exclui a 3ª estrela. Mudança de comportamento: morrer → CONTINUE → terminar coletando tudo dava 3⭐ e passa a dar 2⭐.
+**Consequência 3 — deriva de comparabilidade, aceita:** runs mais longas elevam distância e score frente aos recordes feitos em one-hit-kill. Formalmente válido (a fórmula fecha); o prestígio migra para as estrelas. Recalibrar `WORLDS.speed` foi considerado e recusado por agora — mexeria em tudo.
+**Consequência 4 — invariante do X (RF-04) reescrita:** de "o player está sempre em `SCREEN_X`" para "está sempre onde `playerAnchorX()` disser", para o empurrão do impacto não ser desfeito no frame seguinte. A blindagem contra física residual é idêntica.
+
+---
+
+## D-32 — Voto vira cédula, não moeda (2026-07-29)
+**Contexto:** o dono apontou que o voto "está parecendo algo como moeda". Era um quadrado amarelo 24×24 sólido — e havia um problema real de linguagem: dinheiro já é a PROPINA, então dois coletáveis com cara de moeda embaralhavam as duas moedas do jogo.
+**Decisão:** cédula desenhada em canvas — papel branco, filete amarelo, "V" verde. Key segue `'vote'`. O `votesText` fica `#facc15`: pintá-lo de verde colidiria com o `#4ade80` do `gemText` na linha imediatamente abaixo e recriaria a confusão por outro caminho. O filete amarelo é o que mantém a coerência com o 🗳️ do HUD.
+**Consequência:** neutro em balanceamento, e provado: o corpo Arcade do voto é fixado na construção do `Collectible` pooled (textura `__MISSING`, 32×32) e `setTexture()` não redimensiona corpo no Phaser 3.90 — o raio de coleta já era independente da arte. O baseline 32×32 está travado em `e2e/determinism.spec.ts`. O `voteBurst` foi ajustado junto (`tint` amarelo + `rotate`): sem isso a cédula branca virava traço claro e a explosão perdia o "confete" que comunica recompensa.
+
+---
+
+## D-33 — Dica de swipe na galeria de skins (2026-07-29)
+**Contexto:** pedido do dono — "queria adicionar um `>` nas skins pro usuário saber que pode deslizar". Com 7 skins de ~72px numa caixa de ~310px, ~2 cards ficam escondidos e nada comunicava que a fileira rola.
+**Decisão:** chevron + fade na borda, condicionado ao scroll — cada indicador só existe se houver conteúdo naquele lado. Não são setas clicáveis: roubariam área de toque num layout apertado, e o objetivo é ensinar o gesto, não substituí-lo. `pointer-events-none` + `aria-hidden` (decorativo).
+**Consequência:** a fileira virou o componente `SkinRail` (hooks não podem viver dentro do bloco condicional do painel), e o `-mx-1` — bleed que impede o `ring-2` do card selecionado de ser cortado — migrou para o wrapper, porque os overlays precisam se ancorar nas bordas reais da fileira.
+
+---
+
+## D-34 — Agachado derivado do ciclo em pé; portão de medição vira bloqueante (2026-07-29)
+**Contexto:** terceira vez que o dono reporta o mesmo defeito — "as skins continuam sem animação no braço quando correm abaixadas". A animação Phaser está correta (4 frames, 14fps, loop): o defeito é o DESENHO. Medido: patriota e direita com `armAmp=1` (braço literalmente congelado) e `maxIoU` 0.97–0.99 (frames repetidos), e os 4 com o agachado mais LARGO que a corrida (`compact` 1.12–1.18 contra 0.83 do Centrão aprovado). Modelos de imagem geram cada frame quase independentemente e não têm noção de ciclo coerente; num agachado o braço é pequeno e ocluso, então o modelo converge para a mesma pose "segura" nos 4 frames.
+**Causa-raiz de PROCESSO, mais importante que a do modelo:** o script de medição já existia desde 2026-07-28, mas não era bloqueante — a arte foi commitada reprovando no próprio teste do projeto.
+**Decisão:** (1) o portão passa a ser **bloqueante** e a cobrir os DOIS ciclos (`--all`), porque a skin `esquerda` também corre errado em pé e não havia número para isso; (2) o agachado das skins não-Centrão passa a ser **derivado deterministicamente** do ciclo em pé (comprimido a 88% da largura do run), em vez de uma 3ª aposta na IA. `centrao`/`centrao-faixa` ficam intocados — são a referência de calibração.
+**Trade-off aceito pelo dono, depois de ver as opções lado a lado:** o derivado lê como "personagem mais baixo correndo", não como "agachando para passar por baixo". Perde legibilidade contra a câmera voadora; ganha braços que se movem e silhueta que não estica. Custo zero de créditos, reversível num commit. A alternativa (regenerar por IA) custaria 15–30 dos 31,5 créditos disponíveis, sem garantia de passar.
+**PENDÊNCIA DECLARADA:** a skin **`esquerda` continua reprovando nos dois modos** e não é corrigível por derivação — a fonte é o problema (`esquerda-run` tem `armAmp=5` contra 24 do Centrão), então o derivado herda braço parado. A derivação ficou aplicada porque melhora o `compact` de 0.98 → 0.87, mas essa skin precisa de arte desenhada para o ciclo em pé. O portão segue vermelho para ela, de propósito.
 
 ---
 

@@ -29,7 +29,7 @@ por cima E por baixo, votos colecionáveis, pontuação, game over e ranking onl
   - **Pulo alto (variável):** tap segurado / ↑ ou Espaço segurado — quanto mais tempo, mais alto (até um teto).
   - **Descer/deslizar:** swipe ↓ ou tap no ar (mobile) / ↓ (desktop) — desce rápido no ar e desliza sob obstáculos baixos no chão.
 - **RF-06** — O SpawnerSystem DEVE gerar proceduralmente obstáculos **altos** (pular por cima) e **baixos/suspensos** (deslizar por baixo), reutilizando objetos de um pool.
-- **RF-07** — QUANDO o personagem colide com um obstáculo, o sistema DEVE encerrar a partida.
+- **RF-07** — QUANDO o personagem colide com uma ameaça, o sistema DEVE reduzir a **aprovação** em 1 segmento; QUANDO a aprovação zera, DEVE encerrar a partida. _(emendado por D-31: antes o 1º contato encerrava a partida. Hoje são 3 impactos por vida, cada um com custo real — tropeço, quebra de linha de votos e perda de combo. O fluxo de encerramento em si não mudou.)_
 - **RF-08** — ENQUANTO a partida ocorre, o ScoreSystem DEVE incrementar a pontuação por distância/tempo sobrevivido.
 - **RF-09** — CONFORME o tempo passa, o ProgressionSystem DEVE aumentar a dificuldade (velocidade e densidade de obstáculos).
 - **RF-10** — O AudioSystem DEVE tocar SFX de pulo, voto, colisão e música de fundo, respeitando a política de autoplay (só após interação).
