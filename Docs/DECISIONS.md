@@ -43,6 +43,9 @@
 | D-32 | Voto vira **cédula** branca com "V" verde (era quadrado amarelo, lia como moeda) | ✅ Ativa |
 | D-33 | Galeria de skins ganha dica de swipe (chevron + fade) no lado que tem conteúdo | ✅ Ativa |
 | D-34 | Agachado das skins não-Centrão é **derivado** do ciclo em pé; portão de medição vira bloqueante | ⚠️ Ativa (esquerda pendente) |
+| D-35 | Impacto devolve o controle: jump buffer + coyote time + supressão do fast-fall na recuperação | ✅ Ativa |
+| D-36 | Santinho ganha **teto por fase** (1/2/3) e espaçamento derivado do mundo | ✅ Ativa |
+| D-37 | Bandeira de chegada paga **bônus de altura** (bronze/prata/ouro), concedido em votos | ✅ Ativa |
 
 ---
 
@@ -232,6 +235,33 @@
 **Decisão:** (1) o portão passa a ser **bloqueante** e a cobrir os DOIS ciclos (`--all`), porque a skin `esquerda` também corre errado em pé e não havia número para isso; (2) o agachado das skins não-Centrão passa a ser **derivado deterministicamente** do ciclo em pé (comprimido a 88% da largura do run), em vez de uma 3ª aposta na IA. `centrao`/`centrao-faixa` ficam intocados — são a referência de calibração.
 **Trade-off aceito pelo dono, depois de ver as opções lado a lado:** o derivado lê como "personagem mais baixo correndo", não como "agachando para passar por baixo". Perde legibilidade contra a câmera voadora; ganha braços que se movem e silhueta que não estica. Custo zero de créditos, reversível num commit. A alternativa (regenerar por IA) custaria 15–30 dos 31,5 créditos disponíveis, sem garantia de passar.
 **PENDÊNCIA DECLARADA:** a skin **`esquerda` continua reprovando nos dois modos** e não é corrigível por derivação — a fonte é o problema (`esquerda-run` tem `armAmp=5` contra 24 do Centrão), então o derivado herda braço parado. A derivação ficou aplicada porque melhora o `compact` de 0.98 → 0.87, mas essa skin precisa de arte desenhada para o ciclo em pé. O portão segue vermelho para ela, de propósito.
+
+---
+
+## D-35 — Impacto devolve o controle ao jogador (2026-07-31)
+**Contexto:** o dono, testando a fase 2 no celular: "ao atingir algum obstáculo, o player fica piscando (isto é ok), mas enquanto está piscando não aceita comandos de saltar ou abaixar, e acaba atingindo outros obstáculos na sequência (e morrendo)". É a pior morte possível para retenção — o jogador não sente "da próxima eu consigo", sente que o jogo tirou o controle dele.
+**Causa-raiz (não era o pisca):** era o impacto acontecer **com o player no ar** — comum na fase 2, onde a câmera voadora acerta quem acabou de pular um repórter. `takeDamage()` não separa corpos nem zera velocidade (decisão anterior, deliberada), então o player seguia no ar com o mesmo arco. E enquanto `!onGround`, `onPointerDown` desviava **100%** dos toques para o fast-fall: não existia caminho de código que chamasse `startJump()` com sucesso até os pés tocarem o chão. Agravante: segurando o dedo (o reflexo de pânico), o `sliding` só se desfazia no `pointerup` — o player aterrissava agachado e **seguia agachado**, com a hitbox 44×32 que não passa por obstáculo alto nem por repórter. Terceiro fator, silencioso: não havia memória de intenção, então um toque 1-3 frames antes do pouso simplesmente evaporava (isso já custava toques legítimos fora do dano, no celular real).
+**Decisão:** (1) **jump buffer** (`INPUT.JUMP_BUFFER_MS` 140) — a intenção de pulo que chega no ar é cobrada no instante do pouso, correção universal que vale também fora do dano; (2) **coyote time** (`PHYSICS.COYOTE_MS` 90) — graça para pular após deixar o chão; (3) **janela de recuperação** — durante ela o toque no ar vira intenção de pulo em vez de mergulho; (4) `resetTransient()` chamado no impacto, matando o gesto em curso; (5) `pointerupoutside` + watchdog por frame, para soltura perdida (fora do canvas, `touchcancel` do iOS) não deixar o player correndo agachado para sempre.
+**Sem pulo duplo, por construção:** `startJump()` exige `velocity.y >= 0` **e** consome a janela de coyote ao pular. O quique do stomp (−380) é negativo, então também não abre brecha. E o buffer só é gravado por `beginJump()` — o fast-fall não passa por lá, então quem mergulha para stompar nunca quica sozinho ao tocar o chão.
+**A janela fecha no pouso, não no relógio:** a recuperação existe para trazer o jogador de volta ao chão em controle; cumprida a missão, ela acaba e o fast-fall volta. `HEALTH.RECOVERY_INPUT_MS` (1300) é só o **teto** para quem ainda está no ar. O primeiro dimensionamento (600ms) foi derivado só da queda e estava errado: quem é atingido na **decolagem** de um pulo alto fica ~1,2s no ar (≈630ms subindo + ≈573ms caindo) e perderia o pulo justamente no salto mais longo.
+**RF-05 preservado:** fora da recuperação, tap no ar continua sendo descida rápida. Há um teste dedicado só para isso — sem ele, alguém "melhora" a correção e mata o fast-fall de vez.
+**Consequência de processo:** `e2e/aprovacao.spec.ts` mexia em `invulnerableUntil` desde o D-31 mas **não tinha um único caso de pular/agachar durante a carência** — foi essa lacuna que deixou o bug passar para produção. A suíte nova mede **impulso vertical** (a gravidade só faz `vy` crescer, então qualquer queda de `vy` terminando em valor negativo é um pulo), e não o pico de velocidade: o pico de −520 vive menos de um quadro e o `requestAnimationFrame` passa por cima dele. Verificado nos dois sentidos — sem a correção o teste de repro registra **zero** impulsos.
+
+---
+
+## D-36 — Santinho ganha teto por fase e espaçamento derivado do mundo (2026-07-31)
+**Contexto:** pedido do dono após o playtest — "os corações podiam ser menos frequentes (2 por fase talvez)". O item não tinha teto nenhum: era sorteado por slot de ameaça (30%) com apenas 60m de espaçamento mínimo, então numa run com dano cedo a capital cuspia ~10 santinhos. Item de resgate abundante esvazia a tensão da barra de APROVAÇÃO — o jogador deixa de temer o escândalo, que é exatamente o que o D-31 criou.
+**Decisão:** `WorldDef` ganha `approvalCap`, com escala **1/2/3** (interior/cidade grande/capital) em vez do teto fixo de 2 sugerido. A fase 3 tem o dobro da distância e o dobro de ameaças da fase 1 — um teto fixo a tornaria injusta, e a escala ainda deixa o item raro (≈1 a cada 450m). O espaçamento passa a ser derivado do mundo (comprimento ÷ teto+1), o que dá 300m uniformes nas três fases e distribui os santinhos ao longo da corrida, em vez de deixá-los sair em sequência logo depois do primeiro dano. `HEALTH.PICKUP_MIN_GAP_PX` vira piso de segurança para um mundo futuro curto demais.
+**Determinismo (D-16) preservado:** a tirada do `approvalRng` continua sendo a **primeira** da expressão. `&&` avalia da esquerda para a direita, então mover o teto ou a escassez para a frente dela faria o sorteio deixar de correr em algumas partidas e dessincronizaria o stream entre jogadores. Portões de `e2e/determinism.spec.ts` verdes.
+
+---
+
+## D-37 — Bandeira de chegada paga bônus de altura (2026-07-31)
+**Contexto:** pedido do dono — "na bandeira de marcação de chegada, quanto mais alto o player atingir, mais pontos podem ser ganho (como no Mario Bros)". O fim de fase era um anticlímax: os últimos 60m são limpos de ameaças (`FINISH_CLEAR_M`) e o jogador só atravessava a linha.
+**Decisão:** três faixas calibradas na régua de pulo já medida (tap ≈ 90px de apex, hold ≈ 230px) — bronze ≥40px (+10), prata ≥110px (+30), ouro ≥180px (+60). O ouro **exige segurar o dedo**: não sai de tap. O fim de fase dispara por distância e a geometria coincide (no frame do trigger o player está dentro do mastro), então basta ler o Y dos pés antes de pausar a física.
+**Concedido em VOTOS, nunca em pontos avulsos:** a Edge Function valida `score === (distance + votes × VOTE_POINTS) × stars` (RN-04) — pontos fora da fórmula seriam rejeitados como trapaça. Mesmo caminho do `LINE_BONUS_VOTES`. Cabe folgado no teto de plausibilidade do servidor (`distance × 0.75 + 20`): 470 votos disponíveis na fase 1 contra os 6 do bônus. **Nenhuma mudança no servidor.**
+**O mastro vira a régua:** os 220px ganham três traços coloridos (bronze/prata/ouro) nas alturas exatas. Sem pista visual o bônus seria um segredo — com a reta final limpa, pular na chegada é 100% escolha do jogador, e ele precisa **ver** que há algo lá em cima. Feedback fecha com texto flutuante no acerto e linha "🏁 ALTURA +N" na tela de fim (o bloco de score é ancorado 0,015 mais alto quando ela existe, para crescer só para cima e não encostar na linha de quase-vitória).
+**Não afeta as 3 estrelas:** `isPerfectRun()` conta coletáveis do spawner, não votos — o bônus não pode comprar prestígio.
 
 ---
 
