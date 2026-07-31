@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { onGameEvent, SHELL_EVENTS } from '../lib/game-events';
 import type { ScoreSnapshot } from '../systems/ScoreSystem';
 import { WalletSystem } from '../systems/WalletSystem';
-import { ECONOMY } from '../config/constants';
+import { ECONOMY, SCORE } from '../config/constants';
 
 // snapshot + contexto de quase-vitória (T07A-04), calculado pela GameScene
 // contra o recorde ANTERIOR à partida
@@ -16,6 +16,7 @@ export interface GameOverData extends ScoreSnapshot {
   gems?: number; // propinas coletadas NA run (educação da 1ª — D-18)
   worldName?: string;
   unlockedWorld?: string | null; // nome do mundo recém-desbloqueado
+  flagBonusVotes?: number; // D-37: bônus de altura conquistado na bandeira
 }
 
 // educação da 1ª propina (D-18/D-21): UMA vez por aparelho, na primeira
@@ -76,11 +77,18 @@ export class GameOverScene extends Phaser.Scene {
           .setOrigin(0.5);
       }
     }
+    // Bônus de altura da bandeira (D-37): entra como 4ª linha do bloco de score.
+    // O bloco é ancorado 0.015 mais alto quando a linha existe — assim ele cresce
+    // só para cima e a borda de baixo não encosta na linha de quase-vitória, que
+    // continua em 0.555. Nada mais no layout se move.
+    const flagBonus = data.flagBonusVotes ?? 0;
+    const bonusLine = flagBonus > 0 ? `\n🏁 ALTURA +${flagBonus * SCORE.VOTE_POINTS}` : '';
+    const scoreBlockY = data.won ? (flagBonus > 0 ? 0.455 : 0.47) : 0.42;
     this.add
       .text(
         width / 2,
-        height * (data.won ? 0.47 : 0.42),
-        `SCORE ${data.score ?? 0}\n\nVOTOS ${data.votes ?? 0} · ${data.distance ?? 0}m`,
+        height * scoreBlockY,
+        `SCORE ${data.score ?? 0}\n\nVOTOS ${data.votes ?? 0} · ${data.distance ?? 0}m${bonusLine}`,
         { ...style, fontSize: '20px' },
       )
       .setOrigin(0.5);

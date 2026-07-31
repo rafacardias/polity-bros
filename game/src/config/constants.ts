@@ -54,6 +54,30 @@ export const SCORE = {
   LINE_BONUS_VOTES: 2,
 } as const;
 
+// Bônus de ALTURA na bandeira (D-37), na linhagem do mastro do Mario Bros:
+// quanto mais alto o player cruza a chegada, mais vale. O fim de fase era um
+// anticlímax — os últimos 60m são limpos (FINISH_CLEAR_M) e só se atravessava a
+// linha. Agora o encerramento é decisão de risco/recompensa e motivo para
+// repetir a fase ("dessa vez eu pego o ouro").
+//
+// Concedido em VOTOS, nunca em pontos avulsos: a Edge Function valida
+// score === (distance + votes × VOTE_POINTS) × stars (RN-04), então pontos fora
+// da fórmula seriam rejeitados como trapaça. Mesmo caminho do LINE_BONUS_VOTES.
+// Cabe folgado no teto de plausibilidade do servidor (distance × 0.75 + 20).
+//
+// Alturas na régua de pulo já medida (PHYSICS): tap ≈ 90px de apex, hold ≈ 230px
+// — ou seja, o ouro EXIGE segurar o dedo. Como o mastro tem 220px, as três
+// faixas cabem nele e a própria bandeira vira a régua (ver createFinishMarker).
+// Ordem DECRESCENTE: o primeiro tier que couber é o que vale.
+export const FLAG_BONUS = {
+  TICK_W: 22, // largura do traço de cada faixa no mastro
+  TIERS: [
+    { minHeightPx: 180, votes: 6, label: 'OURO', color: 0xfacc15 },
+    { minHeightPx: 110, votes: 3, label: 'PRATA', color: 0xc0c0c0 },
+    { minHeightPx: 40, votes: 1, label: 'BRONZE', color: 0xcd7f32 },
+  ],
+} as const;
+
 export const AUDIO = {
   SFX_VOLUME: 0.5,
   MUSIC_VOLUME: 0.4,

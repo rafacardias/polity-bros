@@ -766,3 +766,54 @@ test('o santinho respeita o teto de aparições da fase', async ({ page }) => {
   expect(result.spawned, 'o teto por fase não pode ser furado').toBeLessThanOrEqual(result.cap);
   expect(result.spawned, 'o santinho não pode ter sumido do jogo').toBeGreaterThan(0);
 });
+
+// D-37 — bônus de altura na bandeira (linhagem do mastro do Mario Bros). O fim
+// de fase era um anticlímax: os últimos 60m são limpos e só se atravessava a
+// linha. O bônus é concedido em VOTOS, nunca em pontos avulsos — a Edge Function
+// valida score === (distance + votes × 10) × stars (RN-04).
+interface FlagScene {
+  player: { y: number };
+  finishLine: { y: number };
+  finishWorld: () => void;
+  flagBonusVotes: number;
+  score: { getSnapshot: () => { votes: number } };
+}
+
+async function crossFlagAt(page: Page, heightPx: number): Promise<{ votes: number; gained: number; bonus: number }> {
+  return page.evaluate((h) => {
+    const scene = (window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as FlagScene;
+    // finishLine tem origem (0.5, 1) no chão: o Y dele É o groundTop
+    const before = scene.score.getSnapshot().votes;
+    scene.player.y = scene.finishLine.y - h;
+    scene.finishWorld();
+    const after = scene.score.getSnapshot().votes;
+    return { votes: after, gained: after - before, bonus: scene.flagBonusVotes };
+  }, heightPx);
+}
+
+test('cruzar a bandeira mais alto vale mais votos', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await stubScoreSubmit(page);
+  await startRun(page);
+  await waitForRunReady(page);
+
+  // acima de 180px = OURO (exige segurar o dedo: o tap só chega a ~90px)
+  const gold = await crossFlagAt(page, 200);
+  expect(gold.bonus, 'a faixa mais alta tem de valer 6 votos (+60 pts)').toBe(6);
+  expect(gold.gained, 'o bônus tem de entrar como VOTOS, não como pontos soltos').toBe(6);
+
+  // rasteiro = nada: o bônus é conquistado, não dado por atravessar
+  await page.reload();
+  await page.getByRole('button', { name: /JOGAR/i }).click();
+  await page.waitForFunction(
+    () => !!(window as unknown as { __game?: Phaser.Game }).__game?.scene.keys.GameScene?.scene.isActive(),
+    undefined,
+    { timeout: 15_000 },
+  );
+  await waitForRunReady(page);
+  const ground = await crossFlagAt(page, 0);
+  expect(ground.bonus, 'passar rente ao chão não pode valer bônus').toBe(0);
+  expect(ground.gained).toBe(0);
+});

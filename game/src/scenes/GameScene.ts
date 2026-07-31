@@ -13,7 +13,7 @@ import { WalletSystem } from '../systems/WalletSystem';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AudioSystem } from '../systems/AudioSystem';
 import { emitGameEvent, GAME_EVENTS, type GameEventPayload } from '../lib/game-events';
-import { ECONOMY, ENEMY, HEALTH, JUICE, SCORE, SIZES, TERRAIN, WORLDS, type WorldDef } from '../config/constants';
+import { ECONOMY, ENEMY, FLAG_BONUS, HEALTH, JUICE, SCORE, SIZES, TERRAIN, WORLDS, type WorldDef } from '../config/constants';
 import { WorldSystem } from '../systems/WorldSystem';
 import { TerrainSystem } from '../systems/TerrainSystem';
 import { GemCollectionSystem } from '../systems/GemCollectionSystem';
@@ -76,6 +76,10 @@ export class GameScene extends Phaser.Scene {
   private announceBanner!: Phaser.GameObjects.Text;
   private finishLine!: Phaser.GameObjects.Rectangle;
   private finishLabel!: Phaser.GameObjects.Text;
+  // Faixas de altura do mastro (D-37), criadas UMA vez (RN-01) e só
+  // reposicionadas por frame junto com a bandeira.
+  private finishTicks: Phaser.GameObjects.Rectangle[] = [];
+  private flagBonusVotes = 0; // bônus de altura conquistado na chegada
   private emitAccumulator = 0;
   private elapsedMs = 0;
   private isGameOver = false;
@@ -173,6 +177,7 @@ export class GameScene extends Phaser.Scene {
     this.health = HEALTH.MAX; // aprovação cheia a cada run (D-31)
     this.knockbackAt = Number.NEGATIVE_INFINITY;
     this.tookDamage = false;
+    this.flagBonusVotes = 0; // D-37: bônus de altura é por run
     this.unlockedWorldName = null;
     const rng = new Phaser.Math.RandomDataGenerator([this.world.seed]);
     // RNG PRÓPRIO do item de aprovação (D-31), pelo mesmo motivo do terreno:
@@ -888,6 +893,17 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setDepth(4)
       .setVisible(false);
+    // Faixas bronze/prata/ouro (D-37): sem elas o bônus de altura seria um
+    // segredo — os últimos 60m são limpos, então pular na chegada é 100% escolha
+    // do jogador e ele precisa VER que há algo lá em cima. Com os traços, o
+    // mastro se lê como régua na primeira passagem.
+    this.finishTicks = FLAG_BONUS.TIERS.map((tier) =>
+      this.add
+        .rectangle(0, groundTop - tier.minHeightPx, FLAG_BONUS.TICK_W, 4, tier.color, 0.95)
+        .setOrigin(0.5, 0.5)
+        .setDepth(4)
+        .setVisible(false),
+    );
   }
 
   private updateFinishMarker(): void {
@@ -896,6 +912,26 @@ export class GameScene extends Phaser.Scene {
     const visible = x > -24 && x < this.scale.width + 48;
     this.finishLine.setVisible(visible).setX(x);
     this.finishLabel.setVisible(visible).setX(x);
+    for (const tick of this.finishTicks) tick.setVisible(visible).setX(x);
+  }
+
+  // Bônus de altura da bandeira (D-37). O fim de fase dispara por DISTÂNCIA, e a
+  // geometria coincide: no frame do trigger o player está dentro do mastro, com o
+  // Y já resolvido pelo player.update() do mesmo frame. Origem do sprite nos pés,
+  // então a altura é a distância do chão até eles.
+  private awardFlagBonus(): void {
+    const heightPx = this.scale.height - SIZES.GROUND_H - this.player.y;
+    const tier = FLAG_BONUS.TIERS.find((t) => heightPx >= t.minHeightPx);
+    if (!tier) return;
+    this.flagBonusVotes = tier.votes;
+    // EM VOTOS (RN-04): somar pontos direto seria rejeitado pela Edge Function
+    this.score.addVotes(tier.votes);
+    this.votesText.setText(`🗳️ ${this.score.getSnapshot().votes}`);
+    this.showFloatingText(
+      this.player.x,
+      this.player.y - 24,
+      `${tier.label}! +${tier.votes * SCORE.VOTE_POINTS}`,
+    );
   }
 
   // Vitória (D-16): cruzou a linha — celebração + desbloqueio do próximo
@@ -905,6 +941,9 @@ export class GameScene extends Phaser.Scene {
     if (this.isGameOver) return;
     this.isGameOver = true;
     this.won = true;
+    // ANTES de tudo: o Y do player ainda é o do frame do cruzamento, e o bônus
+    // precisa entrar no score antes de buildGameOverPayload() lá embaixo (D-37)
+    this.awardFlagBonus();
     // T07D-04: frame da vitória, ANTES de qualquer transição de cena — dá o
     // maior tempo possível pro snapshot assíncrono resolver antes do emit
     // (finalizeGameOver só roda 1500ms depois, via delayedCall abaixo)
@@ -1337,6 +1376,7 @@ export class GameScene extends Phaser.Scene {
       won: this.won, // D-16: muda o pop-up (vitória vs derrota)
       worldName: this.world.name,
       unlockedWorld: this.unlockedWorldName, // D-16: anúncio de desbloqueio
+      flagBonusVotes: this.flagBonusVotes, // D-37: bônus de altura da chegada
     };
     // beat curto para a morte "registrar" antes da troca de tela
     this.time.delayedCall(450, () => this.scene.start('GameOverScene', gameOverData));
