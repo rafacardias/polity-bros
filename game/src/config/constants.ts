@@ -11,6 +11,12 @@ export const PHYSICS = {
   // 72px com margem justa); segurar ≈ 230px (rotas de risco/recompensa RF-11)
   FAST_FALL: 700,
   MAX_FALL_SPEED: 900,
+  // Coyote time (D-35): graça para pular alguns frames DEPOIS de deixar o chão
+  // (borda de degrau D-26, canto do bloco flutuante D-22, queda de frame no
+  // celular). Abaixo de 100ms de propósito — acima disso vira "pulo do nada"
+  // perceptível. Não abre pulo duplo: startJump() exige velocity.y >= 0 E
+  // consome a janela ao pular.
+  COYOTE_MS: 90,
 } as const;
 
 export const SPAWN = {
@@ -102,6 +108,17 @@ export const HEALTH = {
   // empurrão nunca pode criar uma colisão nova.
   KNOCKBACK_PX: 34,
   KNOCKBACK_MS: 220,
+  // Recuperação de CONTROLE pós-impacto (D-35). Durante esta janela, o toque com
+  // o player NO AR vira intenção de pulo (bufferizada) em vez de descida rápida:
+  // quem toma o impacto no ar não tinha caminho de código nenhum para pular até
+  // tocar o chão, e morria na sequência de obstáculos.
+  // Teto de segurança, derivado do PIOR caso de tempo no ar: levar o impacto na
+  // DECOLAGEM de um pulo alto (hold) = ~630ms de subida + ~573ms de queda ≈
+  // 1200ms. Dimensionar isto só pela queda (573ms) deixava o jogador atingido na
+  // subida sem o pulo justamente no salto mais longo — o caso mais assustador.
+  // Na prática quase nunca chega ao fim: a janela FECHA assim que os pés tocam o
+  // chão (ver InputSystem.update), porque a partir daí o toque já pula sozinho.
+  RECOVERY_INPUT_MS: 1300,
   // HUD: 3ª linha da coluna direita (y 10 → 32 → 54), ancorada na direita como
   // o 🗳️ e o 💵. Segmentos DISCRETOS: lê como "caiu 33%" e como barra ao mesmo
   // tempo. 3×26 + 2×3 = 84px de largura total.
@@ -148,6 +165,12 @@ export const INPUT = {
   SWIPE_CANCEL_WINDOW_MS: 140, // janela p/ swipe converter o pulo em slide
   SWIPE_INTENT_PX: 14, // deslocamento ↓ que caracteriza swipe (tap desleixado fica bem abaixo)
   SLIDE_MS: 550, // duração do slide após soltar o dedo (swipe/flick)
+  // Buffer de pulo (D-35): a intenção de pulo que chega com o player ainda no ar
+  // é GUARDADA e cobrada no instante do pouso, em vez de descartada. Casa com
+  // SWIPE_CANCEL_WINDOW_MS — é a mesma "unidade de gesto" do projeto (~8 frames).
+  // Sem isto, um toque 1-3 frames antes de aterrissar simplesmente evapora, o que
+  // no celular real (latência de toque, queda de frame) lê como "não aceita comando".
+  JUMP_BUFFER_MS: 140,
 } as const;
 
 // Economia de gemas (T07B-02/03, D-11): recompensa RARA de alto risco.

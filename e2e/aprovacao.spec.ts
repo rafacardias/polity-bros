@@ -479,3 +479,261 @@ test('a barra não colide com o contador de distância', async ({ page }) => {
 
   expect(overlaps, 'a barra de aprovação está por cima do "faltam Xm"').toBe(false);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// D-35 — controle durante o pisca pós-impacto.
+//
+// O bug relatado no celular: ao levar o impacto o player piscava e "não aceitava
+// comandos de saltar ou abaixar", batendo nos obstáculos seguintes até morrer.
+// A causa não era o pisca: era o impacto acontecer com o player NO AR. Enquanto
+// !onGround, todo toque caía no ramo de fast-fall — não existia caminho de
+// código que chamasse startJump() com sucesso até os pés tocarem o chão.
+//
+// Esta suíte é a rede que faltava: o arquivo já mexia em invulnerableUntil, mas
+// não tinha UM caso de pular/agachar durante a carência.
+
+interface ControlScene extends DamageScene {
+  player: {
+    y: number;
+    isSliding: boolean;
+    body: { velocity: { y: number } };
+    startJump: () => boolean;
+    slide: (on: boolean) => void;
+    onGround: boolean;
+  };
+  inputSystem: { airDive: boolean; resetTransient: () => void };
+}
+
+// ⚠️ Não extraia a busca da cena para um helper de módulo: o corpo do
+// page.evaluate é serializado e executado NO NAVEGADOR, onde nada do escopo do
+// Node existe. Só o tipo (apagado na compilação) pode ser compartilhado.
+
+// Detector de IMPULSO, amostrado por frame.
+//
+// Medir o pico de velocidade não funciona: o pulo nasce em -520, o cutJump do
+// tap corta para -420 em ~1ms e a gravidade come 23px por frame — o pico vive
+// menos de um quadro e o rAF passa por cima dele. O que é robusto é a DIREÇÃO:
+// a gravidade só faz vy CRESCER, então qualquer queda relevante de vy entre dois
+// quadros é necessariamente um impulso para cima (startJump / quique do stomp).
+// Contar impulsos responde as duas perguntas desta suíte sem depender de timing:
+// "pulou?" (>= 1) e "pulou duas vezes no mesmo salto?" (> 1).
+async function installMotionProbe(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __probe?: { impulses: number; minVy: number };
+      __game?: Phaser.Game;
+    };
+    w.__probe = { impulses: 0, minVy: 0 };
+    let prevVy: number | null = null;
+    const tick = (): void => {
+      const scene = w.__game?.scene.keys.GameScene as unknown as
+        | { player?: { body?: { velocity?: { y?: number } } } }
+        | undefined;
+      const vy = scene?.player?.body?.velocity?.y;
+      if (typeof vy === 'number' && w.__probe) {
+        if (vy < w.__probe.minVy) w.__probe.minVy = vy;
+        // Duas condições, e a segunda não é decorativa: o POUSO também derruba
+        // vy de uma vez (+700 → 0) e seria contado como impulso, deixando o
+        // teste verde pelo motivo errado. Impulso PARA CIMA termina com vy
+        // negativo; o pouso termina em zero.
+        // 200 de folga: o holdJump (-28/frame, quase anulado pela gravidade)
+        // nunca chega perto, e o pulo (>= 420) sempre passa.
+        if (prevVy !== null && vy < prevVy - 200 && vy < -100) w.__probe.impulses += 1;
+        prevVy = vy;
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+function readProbe(page: Page): Promise<{ impulses: number; minVy: number }> {
+  return page.evaluate(() => {
+    const w = window as unknown as { __probe: { impulses: number; minVy: number } };
+    return w.__probe;
+  });
+}
+
+// Espera o player estar CAINDO. Instalar o probe só depois disto elimina o
+// resíduo do pulo programático do setup — a partir daí, qualquer impulso medido
+// só pode ter vindo do toque que o teste deu.
+async function waitUntilFalling(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+        .GameScene as unknown as ControlScene).player.body.velocity.y > 0,
+    undefined,
+    { timeout: 5_000 },
+  );
+}
+
+// A intro cinematográfica congela o mundo por ~1s e o player NÃO está no chão
+// enquanto ela roda — startJump() simplesmente falha. Todo teste de input tem
+// de esperar a intro terminar, senão mede o jogo antes de o jogo começar.
+async function waitForRunReady(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const scene = (window as unknown as { __game: Phaser.Game }).__game.scene.keys
+        .GameScene as unknown as ControlScene & { introActive: boolean };
+      return !scene.introActive && scene.player.onGround;
+    },
+    undefined,
+    { timeout: 15_000 },
+  );
+}
+
+// Sobe e espera sair do chão de verdade: o impacto precisa acontecer NO AR, que
+// é a condição que produzia o travamento.
+async function jumpAndLeaveGround(page: Page): Promise<void> {
+  await waitForRunReady(page);
+  await page.evaluate(() => ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene).player.startJump());
+  await page.waitForFunction(() => !((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene).player.onGround, undefined, { timeout: 5_000 });
+}
+
+async function canvasCenter(page: Page): Promise<{ x: number; y: number }> {
+  const box = await page.locator('#game-container canvas').first().boundingBox();
+  if (!box) throw new Error('canvas sem boundingBox');
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+test('durante o pisca, o toque no ar vira PULO ao aterrissar', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await stubScoreSubmit(page);
+  await startRun(page);
+
+  // box ANTES do impacto: cada ida ao navegador consome janela de recuperação
+  const { x, y } = await canvasCenter(page);
+  await jumpAndLeaveGround(page);
+  await page.evaluate(() => {
+    const scene = ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene);
+    scene.invulnerableUntil = 0;
+    scene.takeDamage(); // impacto NO AR — o caso que travava
+  });
+
+  await waitUntilFalling(page);
+  await installMotionProbe(page);
+  // o toque TEM de acontecer com o player no ar; no chão o pulo já funcionava
+  // antes do fix e o teste passaria sem provar nada
+  expect(
+    await page.evaluate(() => ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene).player.onGround),
+  ).toBe(false);
+  await page.mouse.move(x, y);
+  await page.mouse.down(); // tocar e SEGURAR: o reflexo de pânico do jogador
+
+  // ANTES do fix: o toque virava fast-fall e NENHUM impulso para cima acontecia
+  // — o jogador descia mais rápido em vez de pular, e batia no obstáculo seguinte.
+  await expect
+    .poll(async () => (await readProbe(page)).impulses, { timeout: 5_000 })
+    .toBeGreaterThanOrEqual(1);
+
+  // e com o dedo AINDA na tela ele não pode estar agachado: correr agachado
+  // (hitbox 44×32) era o que o entregava aos obstáculos seguintes
+  expect(await page.evaluate(() => ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene).player.isSliding)).toBe(false);
+  await page.mouse.up();
+});
+
+test('fora da carência, o toque no ar continua sendo descida rápida (RF-05)', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await stubScoreSubmit(page);
+  await startRun(page);
+
+  await jumpAndLeaveGround(page);
+  const { x, y } = await canvasCenter(page);
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+
+  // sem impacto não há recuperação: o fast-fall tem de estar intacto
+  await expect
+    .poll(async () => page.evaluate(() => ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene).player.isSliding), { timeout: 3_000 })
+    .toBe(true);
+  await page.mouse.up();
+});
+
+test('o impacto zera o fast-fall em curso — ninguém aterrissa agachado', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await stubScoreSubmit(page);
+  await startRun(page);
+
+  await jumpAndLeaveGround(page);
+  const { x, y } = await canvasCenter(page);
+  await page.mouse.move(x, y);
+  await page.mouse.down(); // vira fast-fall + agachado
+
+  await expect
+    .poll(async () => page.evaluate(() => ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene).player.isSliding), { timeout: 3_000 })
+    .toBe(true);
+
+  const after = await page.evaluate(() => {
+    const scene = ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene);
+    scene.invulnerableUntil = 0;
+    scene.takeDamage();
+    return { sliding: scene.player.isSliding, airDive: scene.inputSystem.airDive };
+  });
+
+  expect(after.sliding, 'o agachamento de fast-fall tem de morrer com o impacto').toBe(false);
+  expect(after.airDive).toBe(false);
+  await page.mouse.up();
+});
+
+test('o buffer de pulo não vira pulo duplo', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await stubScoreSubmit(page);
+  await startRun(page);
+
+  await waitForRunReady(page);
+  await installMotionProbe(page);
+  await page.evaluate(() => {
+    const scene = ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene);
+    scene.invulnerableUntil = 0;
+    scene.takeDamage(); // abre a janela de recuperação (o cenário mais permissivo)
+  });
+  const { x, y } = await canvasCenter(page);
+  await page.mouse.move(x, y);
+  await page.mouse.click(x, y); // pulo de verdade, do chão
+  await page.waitForTimeout(120);
+  // no ar e ainda subindo: estes toques só podem BUFFERIZAR, nunca pular
+  await page.mouse.click(x, y);
+  await page.mouse.click(x, y);
+  // ~420ms após a decolagem o player ainda está no ar (o tap sobe e desce em
+  // ~600ms), então um 2º impulso aqui seria pulo duplo de verdade — e não o
+  // buffer sendo cobrado no pouso, que é legítimo.
+  await page.waitForTimeout(300);
+
+  const probe = await readProbe(page);
+  expect(probe.impulses, 'só pode existir UM impulso de pulo por salto').toBe(1);
+});
+
+test('gesto de toque preso se autocura quando nenhum dedo está na tela', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await stubScoreSubmit(page);
+  await startRun(page);
+
+  await waitForRunReady(page);
+  // simula o evento de soltura PERDIDO (touchcancel do iOS, app em background,
+  // dedo solto fora do canvas): o estado fica preso sem nenhum ponteiro ativo
+  await page.evaluate(() => {
+    const scene = ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene);
+    scene.inputSystem.airDive = true;
+    scene.player.slide(true);
+  });
+
+  await expect
+    .poll(async () => page.evaluate(() => ((window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as ControlScene).player.isSliding), { timeout: 3_000 })
+    .toBe(false);
+});

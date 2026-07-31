@@ -548,6 +548,15 @@ export class GameScene extends Phaser.Scene {
     this.progression.stumble(); // 1. menos distância percorrida = menos pontos
     this.spawner.breakOpenLines(); // 2. perde o bônus das linhas na tela
     this.stompCombo = 0; // 3. perde a escada de combo aéreo em curso
+    // D-35: sair do impacto EM CONTROLE. O gesto em curso morre com o escândalo
+    // (um dedo preso no meio de um fast-fall não pode sobreviver ao pisca) e,
+    // por RECOVERY_INPUT_MS, o toque NO AR vira intenção de pulo — cobrada ao
+    // aterrissar. Sem isto, quem levava o impacto no ar não tinha caminho de
+    // código nenhum para pular até tocar o chão, e morria na sequência.
+    // Antes do playHitSquash() de propósito: o squash retorna cedo se `sliding`
+    // (Player.playHitSquash), e é o resetTransient que desfaz o agachamento.
+    this.inputSystem.resetTransient();
+    this.inputSystem.setRecovering(HEALTH.RECOVERY_INPUT_MS);
     this.player.playHitSquash();
     this.audio.hit();
     this.cameras.main.shake(HEALTH.HIT_SHAKE_MS, HEALTH.HIT_SHAKE_INTENSITY);

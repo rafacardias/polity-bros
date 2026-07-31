@@ -28,6 +28,8 @@ export class Player extends Entity {
   // reporta como "no chão" para poder pular. Não toca no pulo (velocity<0).
   private terrainFeetY = Number.POSITIVE_INFINITY;
   private groundedOnTerrain = false;
+  // Coyote time (D-35): instante do último frame com os pés no chão. Ver canJump().
+  private lastGroundedAt = Number.NEGATIVE_INFINITY;
 
   constructor(scene: Phaser.Scene, x: number, y: number, opts?: { faixa?: boolean }) {
     const skin = getSelectedSkin();
@@ -155,10 +157,24 @@ export class Player extends Entity {
     }
   }
 
+  // Coyote time (D-35): pular vale por COYOTE_MS depois de deixar o chão. Os dois
+  // guards juntos tornam pulo duplo impossível POR CONSTRUÇÃO:
+  //   - velocity.y >= 0 exclui quem está SUBINDO (pulo: -520; quique do stomp: -380);
+  //   - startJump() consome a janela, então a graça nunca é cobrada duas vezes.
+  // Só age em borda de degrau/bloco: na base, applyTerrainFloor() re-aterra o
+  // player quase todo frame e o caminho normal (onGround) já responde.
+  private canJump(): boolean {
+    if (this.onGround) return true;
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (body.velocity.y < 0) return false;
+    return this.scene.time.now - this.lastGroundedAt <= PHYSICS.COYOTE_MS;
+  }
+
   // chamado ao iniciar o toque/tecla (RF-05); retorna se pulou de fato —
   // InputSystem usa isso pra só disparar o SFX de pulo quando ele acontece
   startJump(): boolean {
-    if (!this.onGround) return false;
+    if (!this.canJump()) return false;
+    this.lastGroundedAt = Number.NEGATIVE_INFINITY; // consome o coyote (sem pulo duplo)
     this.slide(false); // pular cancela o slide
     this.setVelocityY(PHYSICS.JUMP_VELOCITY);
     this.playStretch(); // game feel: alonga ao sair do chão (T07A-02)
@@ -289,7 +305,7 @@ export class Player extends Entity {
     }
   }
 
-  update(_time: number, _delta: number): void {
+  update(time: number, _delta: number): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
     if (body.velocity.y > PHYSICS.MAX_FALL_SPEED) this.setVelocityY(PHYSICS.MAX_FALL_SPEED);
     this.applyTerrainFloor(body); // degraus (D-26): auto-climb + grounded no degrau
@@ -299,6 +315,7 @@ export class Player extends Entity {
     const grounded = this.onGround;
     if (grounded && !this.wasOnGround && !this.sliding) this.playSquash();
     this.wasOnGround = grounded;
+    if (grounded) this.lastGroundedAt = time; // janela de coyote (D-35)
 
     // state machine visual: corre no chão, congela no ar. O slide tem visual
     // próprio (setado em slide()) — não mexer enquanto agachado.
