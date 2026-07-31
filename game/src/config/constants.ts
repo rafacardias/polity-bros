@@ -151,7 +151,11 @@ export const HEALTH = {
   // dentro do apex do tap (~90px) → cabeçada estilo Mario, sem exigir o hold
   PICKUP_ABOVE_GROUND: 100,
   PICKUP_CHANCE: 0.3, // sorteio POR slot de ameaça (rng próprio, SEMPRE corre)
-  PICKUP_MIN_GAP_PX: 600, // nunca dois na tela, mesmo com a barra em 1/3
+  // Piso do espaçamento — nunca dois na tela, mesmo com a barra em 1/3. O
+  // espaçamento REAL é derivado do mundo (comprimento ÷ teto+1, ver
+  // SpawnerSystem), o que distribui os santinhos ao longo da fase em vez de
+  // deixá-los sair todos em sequência logo após o primeiro dano.
+  PICKUP_MIN_GAP_PX: 600,
   PICKUP_BURST_COUNT: 12,
 } as const;
 
@@ -211,11 +215,18 @@ export const GEM_BAR = {
 // seed do layout fixo, o CHECK da migration 003 e o WORLD_LENGTH_M da Edge
 // Function. Renomear id apagaria recordes e coleções de todo mundo.
 // Para exibir o nome de um mundo a partir do id, use worldLabel().
+//
+// `approvalCap` = teto de santinhos (vida) que podem nascer na fase. Escala
+// 1/2/3 acompanhando a distância e a dificuldade: a fase 3 é o dobro da 1 e tem
+// o dobro de ameaças, então um teto fixo a tornaria injusta. Antes não havia
+// teto nenhum — quem tomava dano cedo via ~10 santinhos na capital, e o item de
+// resgate abundante esvazia a tensão da barra de APROVAÇÃO.
 export const WORLDS = [
   {
     id: 'sp',
     name: 'Interior',
     lengthM: 600,
+    approvalCap: 1,
     seed: 'sp-v1',
     bg: 0x1e293b,
     groundTint: 0xffffff,
@@ -226,6 +237,7 @@ export const WORLDS = [
     id: 'rj',
     name: 'Cidade Grande',
     lengthM: 900,
+    approvalCap: 2,
     seed: 'rj-v1',
     bg: 0x134e4a,
     groundTint: 0xf5deb3,
@@ -236,6 +248,7 @@ export const WORLDS = [
     id: 'bsb',
     name: 'Capital',
     lengthM: 1200,
+    approvalCap: 3,
     seed: 'bsb-v1',
     bg: 0x312e81,
     groundTint: 0xc7d2fe,

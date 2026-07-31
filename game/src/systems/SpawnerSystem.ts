@@ -12,6 +12,10 @@ export class SpawnerSystem {
   private lastSpawnX = 0;
   private currentDistance = 0; // mundo do player no frame atual (offset de terreno)
   private lastApprovalAt = Number.NEGATIVE_INFINITY; // espaçamento do item de vida
+  private approvalsSpawned = 0; // teto por fase (WorldDef.approvalCap)
+  // `number` explícito: HEALTH é `as const`, então sem a anotação o TS inferiria
+  // o tipo literal 600 e recusaria o valor derivado do mundo no construtor
+  private approvalGapPx: number = HEALTH.PICKUP_MIN_GAP_PX;
   // ledger das linhas de voto (T07A-03): lineId → progresso. Entrada some na
   // primeira quebra (voto perdido) ou na completude — não cresce sem limite.
   private lineLedger = new Map<number, { total: number; collected: number }>();
@@ -48,8 +52,20 @@ export class SpawnerSystem {
     // feitos nelas (D-16). Ver o portão em e2e/determinism.spec.ts.
     private approvalRng: Phaser.Math.RandomDataGenerator,
     private approvals: Phaser.Physics.Arcade.Group,
+    // Teto de santinhos da fase (WorldDef.approvalCap): 1/2/3 do interior à
+    // capital. Chega por parâmetro, não por leitura de WORLDS, para o System
+    // seguir lógica pura (RN-06).
+    private approvalCap: number,
   ) {
     const lengthM = worldLengthPx / SCORE.PX_PER_M;
+    // Espaçamento derivado do mundo: dividir o comprimento pelo teto+1 espalha os
+    // santinhos ao longo da fase (300m entre eles nas três) em vez de deixá-los
+    // sair em sequência logo depois do primeiro dano. O piso da constante protege
+    // um mundo futuro curto demais.
+    this.approvalGapPx = Math.max(
+      HEALTH.PICKUP_MIN_GAP_PX,
+      worldLengthPx / (this.approvalCap + 1),
+    );
     const playableEndM = lengthM - FINISH_CLEAR_M;
     this.gemTargets = ECONOMY.GEM_POSITIONS_FRAC.map((frac, index) => ({
       index,
@@ -278,9 +294,15 @@ export class SpawnerSystem {
     // jogador, por design da escassez. É seguro porque o item dá ZERO
     // votos/pontos (RN-04) — não move o teto de score de ninguém — e não entra em
     // isPerfectRun(): contá-lo faria a 3ª estrela depender de ter levado dano.
+    //
+    // ⚠️ A tirada do approvalRng é a PRIMEIRA coisa da expressão e tem de
+    // continuar sendo: `&&` avalia da esquerda para a direita, então mover o teto
+    // ou a escassez para a frente dela faria o sorteio deixar de correr em
+    // algumas partidas e dessincronizaria o stream entre jogadores.
     const wantsApproval = this.approvalRng.frac() < HEALTH.PICKUP_CHANCE;
-    const spacedOut = this.currentDistance - this.lastApprovalAt >= HEALTH.PICKUP_MIN_GAP_PX;
-    if (wantsApproval && needsApproval && spacedOut) {
+    const spacedOut = this.currentDistance - this.lastApprovalAt >= this.approvalGapPx;
+    const underCap = this.approvalsSpawned < this.approvalCap;
+    if (wantsApproval && needsApproval && spacedOut && underCap) {
       // 0.72 do vão: DEPOIS da ameaça (quem acabou de escapar do repórter tem o
       // respiro para o pulinho) e longe da linha fácil, que fica em gap/2.
       const px = refX + gap * 0.72;
@@ -288,6 +310,7 @@ export class SpawnerSystem {
       // velocidade, a altura relativa ao degrau se mantém por toda a vida dele
       this.spawnApproval(px, this.spawnGroundTop(px) - HEALTH.PICKUP_ABOVE_GROUND, speed);
       this.lastApprovalAt = this.currentDistance;
+      this.approvalsSpawned += 1;
     }
   }
 

@@ -195,6 +195,7 @@ export class GameScene extends Phaser.Scene {
       this.terrain,
       approvalRng,
       this.approvals,
+      this.world.approvalCap, // teto de santinhos da fase (1/2/3 — D-36)
     );
 
     // RF-11: coletar voto incrementa o contador do HUD

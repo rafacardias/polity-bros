@@ -737,3 +737,32 @@ test('gesto de toque preso se autocura quando nenhum dedo está na tela', async 
       .GameScene as unknown as ControlScene).player.isSliding), { timeout: 3_000 })
     .toBe(false);
 });
+
+// D-36 — escassez do santinho. Antes não havia teto: o item era sorteado por
+// slot de ameaça e, numa run com dano cedo, a capital cuspia ~10 santinhos. Item
+// de resgate abundante esvazia a tensão da barra. O teto agora escala com a fase
+// (1/2/3), acompanhando distância e dificuldade.
+test('o santinho respeita o teto de aparições da fase', async ({ page }) => {
+  await emptyWallet(page);
+  await stubRanking(page);
+  await stubScoreSubmit(page);
+  await startRun(page);
+  await waitForRunReady(page);
+
+  // Percorre a fase INTEIRA no spawner, sempre pedindo santinho (barra
+  // incompleta, o cenário mais permissivo que existe). O RNG é semeado por
+  // mundo, então o resultado é determinístico.
+  const result = await page.evaluate(() => {
+    const scene = (window as unknown as { __game: Phaser.Game }).__game.scene.keys
+      .GameScene as unknown as {
+      world: { lengthM: number; approvalCap: number };
+      spawner: { update: (d: number, s: number, needs: boolean) => void; approvalsSpawned: number };
+    };
+    const worldPx = scene.world.lengthM * 10; // SCORE.PX_PER_M
+    for (let d = 0; d <= worldPx; d += 40) scene.spawner.update(d, 250, true);
+    return { spawned: scene.spawner.approvalsSpawned, cap: scene.world.approvalCap };
+  });
+
+  expect(result.spawned, 'o teto por fase não pode ser furado').toBeLessThanOrEqual(result.cap);
+  expect(result.spawned, 'o santinho não pode ter sumido do jogo').toBeGreaterThan(0);
+});
